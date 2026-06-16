@@ -38,7 +38,9 @@ import {
   Coins,
   ShieldAlert,
   DollarSign,
-  CreditCard
+  CreditCard,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Client, AIConfig, ModelItem, Message, BusinessOwner } from "./types";
 
@@ -58,6 +60,22 @@ function getCountedCharacters(text: string, limitType: 'all' | 'specific' | unde
 }
 
 export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("theme");
+    return saved ? saved === "dark" : false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add("dark");
+      document.documentElement.classList.add("dark");
+    } else {
+      document.body.classList.remove("dark");
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
+
   // Tabs: 'clients' | 'playground' | 'history' | 'radar' | 'owners'
   const [activeTab, setActiveTab] = useState<"clients" | "playground" | "history" | "radar" | "owners">("clients");
 
@@ -1500,6 +1518,21 @@ CoreOS AI Integrations System Core.
                 )}
               </div>
             )}
+            {/* Theme Toggle Button */}
+            <button
+              id="theme-toggle"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="flex items-center justify-center h-8 w-8 text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded shadow-sm hover:bg-slate-50 transition-all cursor-pointer"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle Theme"
+            >
+              {isDarkMode ? (
+                <Sun className="h-4 w-4 text-amber-500" />
+              ) : (
+                <Moon className="h-4 w-4 text-indigo-600" />
+              )}
+            </button>
+
             <a
               href="https://coreos-ai-1022619878110.europe-west2.run.app/"
               target="_blank"

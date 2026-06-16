@@ -12,3 +12,147 @@ body {
   background-color: #f8fafc; /* Slate 50 background is key to Geometric Balance */
   color: #0f172a; /* Deep slate charcoal text */
 }
+
+/* Dark Mode Spec overrides */
+body.dark {
+  background-color: #090d16 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .min-h-screen {
+  background-color: #090d16 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Base backgrounds */
+.dark .bg-slate-50, 
+.dark .bg-slate-100/50,
+.dark .bg-slate-100,
+.dark main.flex-1 {
+  background-color: #0d131f !important;
+}
+
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: #172554 !important;
+  color: #3b82f6 !important;
+}
+
+/* Borders */
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  border-color: #1f2937 !important;
+}
+
+.dark .border-slate-300 {
+  border-color: #374151 !important;
+}
+
+/* Text Colors */
+.dark .text-slate-900 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-slate-800 {
+  color: #e5e7eb !important;
+}
+
+.dark .text-slate-705,
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-505,
+.dark .text-slate-500 {
+  color: #9ca3af !important;
+}
+
+.dark .text-slate-400 {
+  color: #6b7280 !important;
+}
+
+/* Highlights and active items */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1f2937 !important;
+}
+
+.dark .hover\:border-slate-300:hover {
+  border-color: #4b5563 !important;
+}
+
+/* Interactive elements: Inputs, textareas, selects */
+.dark input, 
+.dark textarea, 
+.dark select {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+  border-color: #374151 !important;
+}
+
+.dark input::placeholder, 
+.dark textarea::placeholder {
+  color: #4b5563 !important;
+}
+
+.dark select option {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Headers / Nav and items */
+.dark header {
+  background-color: #111827 !important;
+  border-color: #1f2937 !important;
+}
+
+/* Modals */
+.dark .bg-slate-900\/50,
+.dark .bg-black\/50,
+.dark .bg-slate-950\/40 {
+  background-color: rgba(3, 7, 18, 0.8) !important;
+}
+
+/* Extra alerts and tags */
+.dark .bg-blue-50\/40 {
+  background-color: rgba(23, 37, 84, 0.4) !important;
+}
+
+.dark .bg-emerald-50 {
+  background-color: #064e3b !important;
+  color: #34d399 !important;
+}
+.dark .border-emerald-200 {
+  border-color: #047857 !important;
+}
+.dark .text-emerald-800 {
+  color: #a7f3d0 !important;
+}
+
+.dark .bg-rose-50 {
+  background-color: #4c1d1d !important;
+  color: #fca5a5 !important;
+}
+.dark .border-rose-200 {
+  border-color: #b91c1c !important;
+}
+.dark .text-rose-800 {
+  color: #fecaca !important;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-100 {
+  background-color: #451a03 !important;
+  color: #fde047 !important;
+}
+.dark .border-amber-200 {
+  border-color: #a16207 !important;
+}
+.dark .text-amber-805,
+.dark .text-amber-800 {
+  color: #fef08a !important;
+}
