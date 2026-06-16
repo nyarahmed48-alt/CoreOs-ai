@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoreOS AI SaaS Manager - Portable Dashboard</title>
+  <!-- Load Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full font-sans text-slate-800 bg-[#fafafa]">
+
+  <div class="flex flex-col min-h-screen">
+    <!-- Top Modern Navbar -->
+    <header class="bg-slate-900 border-b border-slate-800 text-white shadow-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <!-- Logo Header -->
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-sky-500 rounded-lg shadow-lg">
+            <i data-lucide="cpu" class="h-6 w-6 text-white animate-pulse"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-extrabold tracking-tight text-white font-sans">CoreOS</h1>
+              <span class="text-[9px] bg-sky-500/20 text-sky-450 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold text-sky-300">PORTABLE V1.0</span>
+            </div>
+            <p class="text-xs text-slate-400">Autonomous B2B AI Model Node & Quota Manager</p>
+          </div>
+        </div>
+
+        <!-- Connection indicators -->
+        <div class="flex items-center gap-4">
+          <div class="bg-indigo-950/50 border border-indigo-500/30 px-3 py-1.5 rounded-md flex items-center gap-2">
+            <span class="h-2 w-2 bg-emerald-400 rounded-full animate-ping"></span>
+            <span class="text-[11px] font-mono tracking-wider text-indigo-300 font-bold">PORTABLE INTEGRATION ACTIVE</span>
+          </div>
+          <!-- Download Backup Button -->
+          <button onclick="downloadSelfBackup()" class="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-md active:scale-95 flex items-center gap-1.5">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i>
+            <span>Export Self-Backup</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sub-header Alert Banner -->
+    <div class="bg-amber-500/10 border-b border-amber-500/20 py-2.5 px-4 text-center">
+      <p class="text-xs text-amber-800 font-medium">
+        🛡️ This is a fully functional, offline-capable <strong>CoreOS Portable Companion File</strong>. You can customize model nodes, refill sentence limits, and simulate interactive AI chats locally in any web browser.
+      </p>
+    </div>
+
+    <!-- Main Workspace Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      
+      <!-- Top Alert Notification Box -->
+      <div id="alertBox" class="hidden mb-6 p-4 rounded-lg flex items-center gap-3 transition-all duration-300 shadow-sm border">
+        <div id="alertIconContainer" class="p-1 rounded bg-white"></div>
+        <div class="flex-1">
+          <p id="alertMessage" class="text-xs font-bold leading-none"></p>
+        </div>
+        <button onclick="dismissAlert()" class="text-slate-400 hover:text-slate-600 text-xs font-bold font-mono px-1">✕</button>
+      </div>
+
+      <!-- Live Telemetry / Overviews Row -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- Stat Card 1 -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Active Client Nodes</p>
+              <h3 id="statTotalClients" class="text-2xl font-black text-slate-900 mt-1">3</h3>
+            </div>
+            <span class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="server" class="h-5 w-5"></i></span>
+          </div>
+          <div class="mt-3 text-[10.5px] text-slate-500">
+            Dynamically configured llm clusters
+          </div>
+        </div>
+        <!-- Stat Card 2 -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Pre-allocated Seats</p>
+              <h3 id="statTotalCustomers" class="text-2xl font-black text-slate-900 mt-1">9</h3>
+            </div>
+            <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="users" class="h-5 w-5"></i></span>
+          </div>
+          <div class="mt-3 text-[10.5px] text-slate-500">
+            B2B client dynamic usage metrics
+          </div>
+        </div>
+        <!-- Stat Card 3 -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Critical Alert Limits</p>
+              <h3 id="statExhaustedQuotas" class="text-2xl font-black text-rose-600 mt-1">1</h3>
+            </div>
+            <span class="p-2 bg-rose-50 text-rose-600 rounded-lg"><i data-lucide="alert-triangle" class="h-5 w-5"></i></span>
+          </div>
+          <div class="mt-3 text-[10.5px] text-slate-500">
+            Exhausted sentence quota seats
+          </div>
+        </div>
+        <!-- Stat Card 4 -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Standalone Status</p>
+              <h3 class="text-2xl font-black text-emerald-600 mt-1">Ready</h3>
+            </div>
+            <span class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="check-circle" class="h-5 w-5"></i></span>
+          </div>
+          <div class="mt-3 text-[10.5px] text-slate-500">
+            No dynamic server required
+          </div>
+        </div>
+      </div>
+
+      <!-- App Tabs Navigation -->
+      <div class="flex border-b border-slate-200 mb-6 font-mono text-xs font-bold gap-2 overflow-x-auto">
+        <button onclick="switchTab('tabOwners')" id="btnTabOwners" class="tab-button active-tab border-b-2 border-indigo-600 text-indigo-600 px-4 py-3 pb-2.5 transition-all outline-none flex items-center gap-1.5 shrink-0">
+          <i data-lucide="users" class="h-4 w-4"></i>
+          <span>Business Owners Node Deck</span>
+        </button>
+        <button onclick="switchTab('tabClients')" id="btnTabClients" class="tab-button text-slate-500 border-indigo-600 hover:text-slate-800 px-4 py-3 pb-2.5 transition-all outline-none flex items-center gap-1.5 shrink-0">
+          <i data-lucide="server" class="h-4 w-4"></i>
+          <span>Custom Client AI Profiles</span>
+        </button>
+        <button onclick="switchTab('tabSimulator')" id="btnTabSimulator" class="tab-button text-slate-500 border-indigo-600 hover:text-slate-800 px-4 py-3 pb-2.5 transition-all outline-none flex items-center gap-1.5 shrink-0">
+          <i data-lucide="terminal" class="h-4 w-4"></i>
+          <span>Interactive Sandbox Terminal</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div>
+
+        <!-- Tab 1: Business Owners Node Deck -->
+        <div id="tabOwners" class="tab-pane">
+          <div class="bg-amber-50 border border-amber-150 p-4 rounded-xl mb-6 flex items-start gap-3">
+            <span class="p-1.5 bg-white text-amber-600 border border-amber-150 rounded shadow-xs shrink-0 mt-0.5"><i data-lucide="info" class="h-4 w-4 animate-bounce"></i></span>
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs">Dynamic Allocation Instructions</h4>
+              <p class="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
+                Click any Business Owner card below to review their configured client subscription limits and restore overall operational quotas (Refill & Reset) instantly for their associated custom subscription nodes.
+              </p>
+            </div>
+          </div>
+
+          <!-- Grid of Owners -->
+          <div id="ownersGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Populated via Javascript -->
+          </div>
+        </div>
+
+        <!-- Tab 2: Custom Client AI Profiles -->
+        <div id="tabClients" class="tab-pane hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar list of Clients -->
+            <div class="lg:col-span-1 bg-white border border-slate-200 rounded-xl p-4 shadow-xs h-fit">
+              <div class="mb-4">
+                <label class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Search Client Node</p>
+                <input type="text" id="clientSearch" oninput="renderClients()" placeholder="Filter client nodes..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              </div>
+
+              <div id="clientsSidebarList" class="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
+                <!-- Populated via Javascript -->
+              </div>
+            </div>
+
+            <!-- Client Node Directives Details Panel -->
+            <div id="clientDetailsContainer" class="lg:col-span-2 flex flex-col gap-6">
+              <!-- Selected Client Details populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Interactive Sandbox Terminal -->
+        <div id="tabSimulator" class="tab-pane hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Simulator Selector (Sidebar) -->
+            <div class="lg:col-span-1 bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4 h-fit">
+              <h4 class="font-bold text-xs tracking-wider text-slate-400 uppercase font-mono pb-2 border-b border-slate-100">Simulator Settings</h4>
+              
+              <div>
+                <label class="text-[10.5px] font-bold text-slate-650 block mb-1 font-sans">1. Select AI Node Profile</label>
+                <select id="simClientSelect" onchange="onSimulatorClientChange()" class="w-full bg-slate-50 p-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[10.5px] font-bold text-slate-650 block mb-1 font-sans">2. Select B2B Seat User</label>
+                <select id="simCustomerSelect" onchange="onSimulatorCustomerChange()" class="w-full bg-slate-50 p-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <!-- Quota Indicator of Selected Simulator -->
+              <div id="simQuotaIndicator" class="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3.5 flex flex-col gap-2">
+                <!-- JS populated -->
+              </div>
+            </div>
+
+            <!-- Simulator Chat Interface -->
+            <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl flex flex-col h-[520px] shadow-2xl relative overflow-hidden">
+              <!-- Terminal Header -->
+              <div class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                  <span class="h-2.5 w-2.5 bg-rose-500 rounded-full"></span>
+                  <span class="h-2.5 w-2.5 bg-amber-500 rounded-full"></span>
+                  <span class="h-2.5 w-2.5 bg-emerald-500 rounded-full"></span>
+                  <span class="text-slate-400 font-mono text-[10.5px] ml-1.5 uppercase font-bold tracking-wider" id="simTerminalTitle">NODE SECURITY SIMULATOR</span>
+                </div>
+                <button onclick="clearSimHistory()" class="text-xs text-slate-400 hover:text-white font-mono bg-slate-800 px-2 py-1 rounded transition-colors">Clear History</button>
+              </div>
+
+              <!-- Chat messages console -->
+              <div id="simMessageConsole" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 font-sans text-xs">
+                <!-- Welcome greeting populated via JS -->
+              </div>
+
+              <!-- Message Input console -->
+              <div class="p-3 bg-slate-900 border-t border-slate-800 shrink-0">
+                <form id="simInputForm" onsubmit="handleSimMessageSubmit(event)" class="flex gap-2.5">
+                  <input type="text" id="simMessageInput" placeholder="Enter message to query CoreOS AI node..." class="flex-grow bg-slate-950 text-slate-100 rounded-xl px-4 py-2.5 border border-slate-800 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 font-sans shadow-inner">
+                  <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
+                    <span>Query Node</span>
+                    <i data-lucide="send" class="h-3 w-3"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Portable footer details -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500">
+        <p class="font-bold">CoreOS Autonomous Enterprise Resource Cluster Management System</p>
+        <p class="text-slate-400 mt-1 leading-normal">
+          Designed with Inter and JetBrains Mono. Self-contained system logic executes entirely within standard client variables.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Portable Script Engine -->
+  <script>
+    // Seeding internal CoreOS Database directly inside client script variables
+    let clients = [
+      {
+        id: "client-1",
+        name: "Aether Omni (CoreOS Prime)",
+        description: "Primary B2B core workflow driver, reasoning agent and logical processor.",
+        websiteUrl: "https://coreos-ai-1022619878110.europe-west2.run.app/cargo",
+        logoUrl: "ship",
+        status: "active",
+        needs: "Help users check logistics tracking, analyze system logs, and answer complex reasoning requirements in a highly professional and analytical tone.",
+        aiConfig: {
+          model: "gemini-2.5-pro",
+          systemInstruction: "You are Aether Omni (CoreOS Prime). Your goal is to provide deep strategic advice, parse complex dataset requests, and construct logical summaries.\n\nGuidelines:\n1. Keep answers comprehensive yet clear.\n2. Present comparative tables in beautifully formatted markdown tables.\n3. Maintain an intellectual, technical, yet elegant executive tone.",
+          temperature: 0.7,
+          topP: 0.9,
+          safetySettings: "standard",
+          customVariables: {
+            "Company": "CoreOS Enterprise Nodes",
+            "SupportEmail": "support@coreosomni.io",
+            "WarrantyPeriod": "3-Year Premium Gold"
+          }
+        },
+        language: "english",
+        customers: [
+          { id: "c1-cust-1", name: "Karwan Hewleri (Zanyar Tech)", email: "karwan@zanyartech.iq", sentencesUsed: 52, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" },
+          { id: "c1-cust-2", name: "Dara Al-Azzawi (Iraq Logistics)", email: "dara@iraqlogistics.com", sentencesUsed: 70, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" }, // Exhausted!
+          { id: "c1-cust-3", name: "Samantha Vance (Apex Global)", email: "samantha@apex.uk", sentencesUsed: 15, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" }
+        ],
+        charLimit: 1200,
+        limitType: "all"
+      },
+      {
+        id: "client-2",
+        name: "Vanguard Voice (CoreOS Interactive)",
+        description: "Tuned low-latency chat agent and instant text responder for messaging channels.",
+        websiteUrl: "https://coreos-ai-1022619878110.europe-west2.run.app/concierge",
+        logoUrl: "laptop",
+        status: "active",
+        needs: "Formulate instant customer support chat replies, answer frequent questions under 1.5 seconds latency, and explain services concisely with helpful highlights.",
+        aiConfig: {
+          model: "gemini-2.0-flash",
+          systemInstruction: "You are Vanguard Voice (CoreOS Interactive), designed for micro-second interactive dialogs.\n\nInstructions:\n- Keep all replies extremely brief, clean, and interactive.\n- Prioritize short, crisp bullet points over long dense paragraphs.\n- Present technical configurations in small tabular outlines.",
+          temperature: 0.9,
+          topP: 0.95,
+          safetySettings: "standard",
+          customVariables: {
+            "BrandPartner": "Amd & Intel Official",
+            "WarrantyPeriod": "3-Year Gold Care"
+          }
+        },
+        language: "english",
+        customers: [
+          { id: "c2-cust-1", name: "Karwan Hewleri (Zanyar Tech)", email: "karwan@zanyartech.iq", sentencesUsed: 32, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" },
+          { id: "c2-cust-2", name: "Dara Al-Azzawi (Iraq Logistics)", email: "dara@iraqlogistics.com", sentencesUsed: 45, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" },
+          { id: "c2-cust-3", name: "Samantha Vance (Apex Global)", email: "samantha@apex.uk", sentencesUsed: 8, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" }
+        ],
+        charLimit: 1200,
+        limitType: "all"
+      },
+      {
+        id: "client-3",
+        name: "Vesper Shield (CoreOS Sentinel)",
+        description: "Privacy-guard sentinel, telemetry auditor and log file compliance agent.",
+        websiteUrl: "https://coreos-ai-1022619878110.europe-west2.run.app/quill",
+        logoUrl: "shield",
+        status: "active",
+        needs: "Audit incoming transcripts and documents for potential PII (Personally Identifiable Information) breaches, and redact sensitive tokens.",
+        aiConfig: {
+          model: "gemini-2.5-flash",
+          systemInstruction: "You are Vesper Shield (CoreOS Sentinel). You run in high-alert privacy auditing mode.\n\nStrict Rules:\n1. Clean inputs of any clear credential paths or PII leak tokens.\n2. Output brief auditing status markers indicating system posture.\n3. Present reports cleanly styled in monospace markdown blocks.",
+          temperature: 0.2,
+          topP: 0.8,
+          safetySettings: "strict",
+          customVariables: {
+            "ComplianceLevel": "SOC-2 Standard Audited",
+            "FormatStyle": "Ultra-concise"
+          }
+        },
+        language: "kurdish",
+        customers: [
+          { id: "c3-cust-1", name: "Karwan Hewleri (Zanyar Tech)", email: "karwan@zanyartech.iq", sentencesUsed: 12, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" },
+          { id: "c3-cust-2", name: "Dara Al-Azzawi (Iraq Logistics)", email: "dara@iraqlogistics.com", sentencesUsed: 22, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" },
+          { id: "c3-cust-3", name: "Samantha Vance (Apex Global)", email: "samantha@apex.uk", sentencesUsed: 14, sentenceLimit: 70, charLimitPerSentence: 115, status: "active" }
+        ],
+        charLimit: 1200,
+        limitType: "all"
+      }
+    ];
+
+    let owners = [
+      {
+        id: "owner-1",
+        name: "Aland Ahmed",
+        companyName: "Aland Logistics Corp",
+        email: "aland@logistics.co",
+        linkedClientId: "client-1",
+        plan: "enterprise",
+        status: "active",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "owner-2",
+        name: "Darya Goran",
+        companyName: "Kurdish Telecom Solutions",
+        email: "darya@kurdtelecom.iq",
+        linkedClientId: "client-2",
+        plan: "growth",
+        status: "active",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "owner-3",
+        name: "Sardar Bakir",
+        companyName: "Bakir Global Security",
+        email: "sardar@bakir-sec.com",
+        linkedClientId: "client-3",
+        plan: "standard",
+        status: "active",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    let currentSelectedClientId = "client-1";
+    let activeTabId = "tabOwners";
+    let simHistory = {};
+
+    // Trigger Notification system
+    function triggerAlert(type, message) {
+      const alertBox = document.getElementById("alertBox");
+      const alertMessage = document.getElementById("alertMessage");
+      const container = document.getElementById("alertIconContainer");
+      
+      alertBox.className = "mb-6 p-4 rounded-xl flex items-center gap-3 transition-all duration-300 shadow-sm border ";
+      
+      if (type === "success") {
+        alertBox.className += "bg-emerald-50 border-emerald-150 text-emerald-800";
+        container.innerHTML = '<i data-lucide="check-circle" class="h-4 w-4 text-emerald-600"></i>';
+      } else if (type === "error") {
+        alertBox.className += "bg-rose-50 border-rose-150 text-rose-800";
+        container.innerHTML = '<i data-lucide="alert-triangle" class="h-4 w-4 text-rose-600"></i>';
+      } else {
+        alertBox.className += "bg-blue-50 border-blue-150 text-blue-800";
+        container.innerHTML = '<i data-lucide="info" class="h-4 w-4 text-blue-600"></i>';
+      }
+
+      alertMessage.textContent = message;
+      alertBox.classList.remove("hidden");
+      lucide.createIcons();
+
+      // Autohide after 3.5 seconds
+      setTimeout(() => {
+        dismissAlert();
+      }, 3500);
+    }
+
+    function dismissAlert() {
+      document.getElementById("alertBox").classList.add("hidden");
+    }
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active-tab', 'border-b-2', 'border-indigo-600', 'text-indigo-600');
+        btn.classList.add('text-slate-500');
+      });
+
+      const activeBtn = document.getElementById('btn' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+      if (activeBtn) {
+        activeBtn.classList.add('active-tab', 'border-b-2', 'border-indigo-600', 'text-indigo-600');
+        activeBtn.classList.remove('text-slate-500');
+      }
+
+      activeTabId = tabId;
+      if (tabId === 'tabClients') {
+        renderClients();
+      } else if (tabId === 'tabSimulator') {
+        populateSimulatorConfigs();
+      }
+    }
+
+    // Stat metric calculators
+    function updateMetrics() {
+      document.getElementById("statTotalClients").textContent = clients.length;
+      
+      let totCust = 0;
+      let exhaustedCount = 0;
+      clients.forEach(c => {
+        totCust += (c.customers || []).length;
+        (c.customers || []).forEach(cust => {
+          if (cust.sentencesUsed >= cust.sentenceLimit) {
+            exhaustedCount++;
+          }
+        });
+      });
+
+      document.getElementById("statTotalCustomers").textContent = totCust;
+      document.getElementById("statExhaustedQuotas").textContent = exhaustedCount;
+    }
+
+    // Render Tab 1 card layouts
+    function renderOwners() {
+      const container = document.getElementById("ownersGrid");
+      container.innerHTML = "";
+
+      owners.forEach(owner => {
+        const linkedClient = clients.find(c => c.id === owner.linkedClientId);
+        let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[9px] px-2 py-0.5 rounded font-mono font-bold uppercase">Active Licence</span>`;
+        if (owner.status !== 'active') {
+          statusBadge = `<span class="bg-rose-100 text-rose-800 text-[9px] px-2 py-0.5 rounded font-mono font-bold uppercase">Suspended</span>`;
+        }
+
+        let dynamicProgress = "";
+        if (linkedClient) {
+          // Accumulate usage metrics across seats
+          let totalLimit = 0;
+          let totalUsed = 0;
+          let customerListHtml = "";
+
+          (linkedClient.customers || []).forEach(c => {
+            totalLimit += c.sentenceLimit;
+            totalUsed += c.sentencesUsed;
+            const fullPct = Math.min(100, Math.round((c.sentencesUsed / c.sentenceLimit) * 100));
+            customerListHtml += `
+              <div class="flex flex-col gap-1 text-[11px] bg-slate-50 p-2 rounded border border-slate-200/60">
+                <div class="flex justify-between items-center text-slate-700">
+                  <span class="font-bold">${c.name}</span>
+                  <span class="font-mono ${c.sentencesUsed >= c.sentenceLimit ? 'text-rose-600 font-extrabold' : 'text-slate-500'}">${c.sentencesUsed}/${c.sentenceLimit} phrases</span>
+                </div>
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full ${c.sentencesUsed >= c.sentenceLimit ? 'bg-gradient-to-r from-rose-500 to-rose-600' : 'bg-gradient-to-r from-sky-500 to-indigo-600'}" style="width: ${fullPct}%"></div>
+                </div>
+              </div>
+            `;
+          });
+
+          const quotaPercentage = Math.round((totalUsed / totalLimit) * 100) || 0;
+
+          dynamicProgress = `
+            <div class="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Quota Progress Link</span>
+                <span class="text-xs font-bold text-indigo-700 font-mono">${quotaPercentage}% Capacity Pool</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                ${customerListHtml}
+              </div>
+            </div>
+          `;
+        }
+
+        const planNames = {
+          'enterprise': 'Enterprise Elite',
+          'growth': 'SaaS Growth Node',
+          'standard': 'Standard Core'
+        };
+
+        const card = document.createElement("div");
+        card.className = "bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md hover:border-indigo-200 transition-all flex flex-col justify-between gap-4";
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start gap-2 mb-2">
+              <span class="p-2 bg-slate-100 text-slate-600 rounded-lg shrink-0"><i data-lucide="shield-check" class="h-5 w-5"></i></span>
+              <div class="flex flex-col items-end">
+                ${statusBadge}
+                <span class="text-[9.5px] font-mono text-slate-400 font-bold uppercase mt-1.5">${planNames[owner.plan] || 'Custom'}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 font-sans tracking-tight">${owner.name}</h3>
+              <p class="text-[11px] text-slate-500 leading-normal">${owner.companyName} • <span class="font-mono text-[10px] text-indigo-600">${owner.email}</span></p>
+            </div>
+
+            ${dynamicProgress}
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex gap-2">
+            <button onclick="instantRefillOwner('${owner.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold font-sans text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-sm hover:scale-[1.01] transition-all cursor-pointer">
+              <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i>
+              <span>Refill & Reset Quotas</span>
+            </button>
+            <button onclick="selectClientNodeFromOwner('${owner.linkedClientId}')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer" title="Edit instruction tuning rules">
+              <i data-lucide="sliders" class="h-4 w-4"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function selectClientNodeFromOwner(clientId) {
+      if (!clientId) {
+        triggerAlert("error", "No allocated client AI node configuration link found.");
+        return;
+      }
+      currentSelectedClientId = clientId;
+      switchTab('tabClients');
+    }
+
+    // Refill logic
+    function instantRefillOwner(ownerId) {
+      const owner = owners.find(o => o.id === ownerId);
+      if (!owner) return;
+
+      const client = clients.find(c => c.id === owner.linkedClientId);
+      if (client) {
+        client.customers = (client.customers || []).map(cust => {
+          return { ...cust, sentencesUsed: 0 };
+        });
+        triggerAlert("success", `Sentence allowance of all subscriber seats fully refilled for: ${owner.name}`);
+        renderOwners();
+        updateMetrics();
+      } else {
+        triggerAlert("error", "Failed to retrieve the associated customizable AI node to complete dynamic resetting.");
+      }
+    }
+
+    // Tab 2: Client configuration
+    function renderClients() {
+      const searchVal = document.getElementById("clientSearch").value.toLowerCase();
+      const listContainer = document.getElementById("clientsSidebarList");
+      listContainer.innerHTML = "";
+
+      const filtered = clients.filter(c => c.name.toLowerCase().includes(searchVal) || c.description.toLowerCase().includes(searchVal));
+
+      filtered.forEach(client => {
+        const isSelected = client.id === currentSelectedClientId;
+        const itemBtn = document.createElement("button");
+        itemBtn.className = `w-full text-left p-3.5 rounded-lg border flex flex-col gap-1 transition-all cursor-pointer ${
+          isSelected 
+            ? "bg-slate-900 border-slate-900 text-white shadow-md font-bold" 
+            : "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
+        }`;
+        
+        // Count total phrases used
+        let used = 0;
+        let limit = 0;
+        (client.customers || []).forEach(cust => { used += cust.sentencesUsed; limit += cust.sentenceLimit; });
+
+        itemBtn.onclick = () => {
+          currentSelectedClientId = client.id;
+          renderClients();
+        };
+
+        itemBtn.innerHTML = `
+          <div class="flex justify-between items-center w-full">
+            <span class="text-xs font-bold font-sans tracking-tight leading-none">${client.name}</span>
+            <span class="text-[9.5px] font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-indigo-500/30 text-indigo-200' : 'bg-slate-100 text-slate-500'} uppercase font-bold text-[8px]">${client.aiConfig.model.replace('models/', '').replace('-preview', '')}</span>
+          </div>
+          <p class="text-[10px] leading-normal mt-1 ${isSelected ? 'text-slate-400' : 'text-slate-500'} line-clamp-2">${client.description}</p>
+          <div class="flex justify-between items-center text-[9px] font-mono mt-2 pt-2 border-t ${isSelected ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-400'}">
+            <span>Quota Used: ${used}/${limit}</span>
+            <span class="capitalize">${client.language}</span>
+          </div>
+        `;
+        listContainer.appendChild(itemBtn);
+      });
+
+      renderClientDetails();
+    }
+
+    function renderClientDetails() {
+      const container = document.getElementById("clientDetailsContainer");
+      const client = clients.find(c => c.id === currentSelectedClientId);
+      
+      if (!client) {
+        container.innerHTML = `
+          <div class="bg-white p-12 text-center rounded-xl border border-slate-200 shadow-xs">
+            <i data-lucide="server" class="h-10 w-10 text-slate-300 mx-auto mb-3"></i>
+            <p class="text-xs text-slate-500 font-bold">Please select a Custom AI Portal Profile to tweak model nodes.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      const linkedOwner = owners.find(o => o.linkedClientId === client.id);
+
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-5">
+          <!-- Title & Config header -->
+          <div class="pb-3 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <span class="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest leading-none">CONFIG PANEL</span>
+              <h2 class="font-display font-black text-lg text-slate-900 tracking-tight mt-1/2">${client.name}</h2>
+              <p class="text-[11px] text-slate-450 text-slate-500">${client.description}</p>
+            </div>
+            <div class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="bg-indigo-50 text-indigo-805 border border-indigo-100 px-2 py-1 rounded font-bold uppercase transition-all">Node: ${client.id}</span>
+            </div>
+          </div>
+
+          <!-- Direct instructions tweak -->
+          <div class="flex flex-col gap-2">
+            <div class="flex justify-between items-center text-[11px] text-slate-700 font-bold">
+              <span class="flex items-center gap-1.5"><i data-lucide="scroll-text" class="h-3.5 w-3.5 text-slate-500"></i>Tweak Live Persona Directives</span>
+              <span class="text-[9.5px] font-mono font-normal text-slate-400">Updates interactive port sandbox</span>
+            </div>
+            <textarea id="liveSystemInstruction" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 leading-relaxed font-sans text-slate-700 whitespace-pre-wrap">${client.aiConfig.systemInstruction}</textarea>
+            <p class="text-[9.5px] text-slate-400 italic font-medium">Modifying instructions here allows you to immediately evaluate responsive behaviors under the Sandbox Simulator.</p>
+          </div>
+
+          <!-- Parameter grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+            <div>
+              <label class="text-[10.5px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Target Language Dialect</label>
+              <select id="liveLanguage" class="w-full bg-slate-50 p-2 text-xs rounded-lg border border-slate-200 focus:outline-none">
+                <option value="english" ${client.language === 'english' ? 'selected' : ''}>English Language Dialect</option>
+                <option value="kurdish" ${client.language === 'kurdish' ? 'selected' : ''}>Kurdish Localization (Soranî)</option>
+                <option value="arabic" ${client.language === 'arabic' ? 'selected' : ''}>Arabic Standard Al-Fusha Dialect</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10.5px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Assigned LLM Model</label>
+              <select id="liveModel" class="w-full bg-slate-50 p-2 text-xs rounded-lg border border-slate-200 focus:outline-none">
+                <option value="gemini-2.5-pro" ${client.aiConfig.model === 'gemini-2.5-pro' ? 'selected' : ''}>Gemini 2.5 Pro (Analytical)</option>
+                <option value="gemini-2.5-flash" ${client.aiConfig.model === 'gemini-2.5-flash' ? 'selected' : ''}>Gemini 2.5 Flash (Balanced Core)</option>
+                <option value="gemini-2.0-flash" ${client.aiConfig.model === 'gemini-2.0-flash' ? 'selected' : ''}>Gemini 2.0 Flash (Fast Response)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Saved changes controls -->
+          <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+            <button onclick="saveLiveClientConfig()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="save" class="h-3.5 w-3.5"></i>
+              <span>Save Node Adjustments</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Option export packet block -->
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
+          <div>
+            <span class="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-0.5">EXPORT UTILITIES</span>
+            <h4 class="font-sans font-bold text-sm text-slate-900">Export & Download Integration File</h4>
+            <p class="text-[11.5px] text-slate-500 leading-normal mt-0.5 leading-relaxed">
+              Compile customer attributes, license plan agreements, live standalone iframe lines, and system parameters into portable configuration files instantly.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button onclick="portableDownloadJSONConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer">
+              <i data-lucide="file-json" class="h-4 w-4"></i>
+              <span>Save client-config.json</span>
+            </button>
+            <button onclick="portableDownloadInstructionsTXT()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer">
+              <i data-lucide="file-text" class="h-4 w-4"></i>
+              <span>Save instructions-guide.txt</span>
+            </button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // Save edited configurations back to local memory arrays
+    function saveLiveClientConfig() {
+      const client = clients.find(c => c.id === currentSelectedClientId);
+      if (!client) return;
+
+      const inst = document.getElementById("liveSystemInstruction").value;
+      const lang = document.getElementById("liveLanguage").value;
+      const model = document.getElementById("liveModel").value;
+
+      client.aiConfig.systemInstruction = inst;
+      client.language = lang;
+      client.aiConfig.model = model;
+
+      triggerAlert("success", `AI Node settings successfully compiled for: ${client.name}`);
+      renderClients();
+      renderOwners();
+    }
+
+    // Download dynamic JSON schema
+    function portableDownloadJSONConfig() {
+      const client = clients.find(c => c.id === currentSelectedClientId);
+      if (!client) return;
+
+      const linkedOwner = owners.find(o => o.linkedClientId === client.id);
+
+      const data = {
+        title: "CoreOS AI SaaS Client Integrated Configuration File",
+        exportTimestamp: new Date().toISOString(),
+        clientNode: {
+          id: client.id,
+          name: client.name,
+          description: client.description,
+          assignedModel: client.aiConfig.model,
+          instructParameters: client.aiConfig.systemInstruction,
+          languageDialect: client.language
+        },
+        licenseOwner: linkedOwner ? {
+          name: linkedOwner.name,
+          company: linkedOwner.companyName,
+          email: linkedOwner.email,
+          authPlan: linkedOwner.plan
+        } : "Unallocated",
+        subscribers: (client.customers || []).map(c => ({
+          name: c.name,
+          email: c.email,
+          usage: `${c.sentencesUsed} used of ${c.sentenceLimit} sentences quota`,
+          sentenceCharCap: `${c.charLimitPerSentence} characters`
+        }))
+      };
+
+      const fileString = JSON.stringify(data, null, 2);
+      const blob = new Blob([fileString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${client.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-config.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      triggerAlert("success", "Saved integration settings as client-config.json");
+    }
+
+    // Download system txt outline
+    function portableDownloadInstructionsTXT() {
+      const client = clients.find(c => c.id === currentSelectedClientId);
+      if (!client) return;
+
+      const text = `============================================================
+           COREOS SYSTEM CUSTOM AI INTELLIGENT NODE
+                     PORTABLE INTEGRATION GUIDE
+============================================================
+
+Thank you for selecting CoreOS AI Node Integrations. Below is your technical instruction file.
+
+Client Application Name : ${client.name}
+Unique Node ID          : ${client.id}
+Allocated LLM Engine    : ${client.aiConfig.model}
+Tuned Dialect Dialect   : ${client.language}
+
+------------------------------------------------------------
+ACTIVE USER SEATS CONFIGURATION
+------------------------------------------------------------
+${(client.customers || []).map((c, index) => `
+[Seat #${index+1}]
+- Full Name: ${c.name}
+- Email Address: ${c.email}
+- Sentences Processed: ${c.sentencesUsed} of ${c.sentenceLimit} allowed
+- Sentence Char Threshold: ${c.charLimitPerSentence} characters
+`).join('\n')}
+
+------------------------------------------------------------
+SYSTEM PERSONA DIRECTIVE
+------------------------------------------------------------
+${client.aiConfig.systemInstruction}
+
+------------------------------------------------------------
+Generated on: ${new Date().toLocaleString()}
+============================================================`;
+
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${client.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-instructions.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      triggerAlert("success", "Saved integration settings as instructions.txt");
+    }
+
+    // Tab 3: Terminal Simulation Logic
+    function populateSimulatorConfigs() {
+      const clientSelect = document.getElementById("simClientSelect");
+      clientSelect.innerHTML = "";
+
+      clients.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.id;
+        option.textContent = c.name;
+        clientSelect.appendChild(option);
+      });
+
+      onSimulatorClientChange();
+    }
+
+    function onSimulatorClientChange() {
+      const clientId = document.getElementById("simClientSelect").value;
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const customerSelect = document.getElementById("simCustomerSelect");
+      customerSelect.innerHTML = "";
+
+      (client.customers || []).forEach(cust => {
+        const option = document.createElement("option");
+        option.value = cust.id;
+        option.textContent = cust.name;
+        customerSelect.appendChild(option);
+      });
+
+      // Reset or load message history
+      if (!simHistory[clientId]) {
+        simHistory[clientId] = [
+          { sender: "system", text: `🤖 **[PORTABLE NODE ONLINE]** Active interface node connected to terminal core.\nModel: \`${client.aiConfig.model.toUpperCase()}\` • Safety Level: \`${client.aiConfig.safetySettings.toUpperCase()}\` • Language: \`${client.language.toUpperCase()}\`.\n\nPlease type your message into the prompt line below.` }
+        ];
+      }
+
+      onSimulatorCustomerChange();
+      renderSimHistory();
+    }
+
+    function onSimulatorCustomerChange() {
+      const clientId = document.getElementById("simClientSelect").value;
+      const custId = document.getElementById("simCustomerSelect").value;
+
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const customer = (client.customers || []).find(cust => cust.id === custId);
+      const quotaDiv = document.getElementById("simQuotaIndicator");
+
+      if (!customer) {
+        quotaDiv.innerHTML = `<p class="text-[10px] text-slate-400">Please choose a customer seat.</p>`;
+        return;
+      }
+
+      const isExhausted = customer.sentencesUsed >= customer.sentenceLimit;
+      const percentage = Math.round((customer.sentencesUsed / customer.sentenceLimit) * 100);
+
+      quotaDiv.innerHTML = `
+        <div class="flex justify-between items-center text-[11px]">
+          <span class="font-bold text-slate-400 uppercase tracking-widest font-mono">User Balance</span>
+          <span class="font-bold ${isExhausted ? 'text-rose-600' : 'text-slate-650'}">${customer.sentencesUsed}/${customer.sentenceLimit} phs</span>
+        </div>
+        <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+          <div class="h-full rounded-full ${isExhausted ? 'bg-gradient-to-r from-rose-500 to-rose-600' : 'bg-gradient-to-r from-indigo-500 to-sky-500'}" style="width: ${percentage}%"></div>
+        </div>
+        <p class="text-[9.5px] mt-1.5 ${isExhausted ? 'text-rose-500 font-bold' : 'text-slate-400'}">
+          ${isExhausted ? '🚨 Out of allocation credit. Ask the business owner to click "Refill & Reset" on their dashboard card.' : 'Normal status quota in tracking.'}
+        </p>
+      `;
+    }
+
+    function renderSimHistory() {
+      const clientId = document.getElementById("simClientSelect").value;
+      const history = simHistory[clientId] || [];
+      const messagesContainer = document.getElementById("simMessageConsole");
+      messagesContainer.innerHTML = "";
+
+      history.forEach(m => {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "p-3 rounded-lg leading-relaxed whitespace-pre-wrap flex flex-col gap-1 " + (
+          m.sender === "user" 
+            ? "bg-indigo-950/20 text-indigo-100 border border-indigo-500/10 self-end max-w-[85%] text-left" 
+            : m.sender === "system"
+              ? "bg-slate-900 border border-slate-800 text-slate-400 text-center font-mono text-[10px] my-1"
+              : "bg-slate-900/40 text-slate-300 border border-slate-800/50 self-start max-w-[85%] text-left"
+        );
+        
+        let headerLabel = "";
+        if (m.sender === "user") {
+          headerLabel = `<span class="text-[9.5px] font-mono font-bold text-indigo-400 capitalize">You (B2B Seat Selector)</span>`;
+        } else if (m.sender === "assistant") {
+          const clientName = document.getElementById("simClientSelect").options[document.getElementById("simClientSelect").selectedIndex].text;
+          headerLabel = `<span class="text-[9.5px] font-mono font-bold text-sky-400">${clientName} (AI Output)</span>`;
+        }
+
+        msgDiv.innerHTML = `
+          ${headerLabel}
+          <div class="markdown-body text-xs">${m.text}</div>
+        `;
+        messagesContainer.appendChild(msgDiv);
+      });
+
+      // Scroll to bottom
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      lucide.createIcons();
+    }
+
+    function clearSimHistory() {
+      const clientId = document.getElementById("simClientSelect").value;
+      simHistory[clientId] = [
+        { sender: "system", text: `🧹 Terminal logs cleared. Ready for next query.` }
+      ];
+      renderSimHistory();
+    }
+
+    // Handle interactive submit simulated queries
+    function handleSimMessageSubmit(event) {
+      event.preventDefault();
+      
+      const clientId = document.getElementById("simClientSelect").value;
+      const custId = document.getElementById("simCustomerSelect").value;
+      const inputEl = document.getElementById("simMessageInput");
+      const message = inputEl.value.trim();
+
+      if (!message) return;
+
+      const client = clients.find(c => c.id === clientId);
+      const customer = (client ? client.customers || [] : []).find(cust => cust.id === custId);
+
+      if (!client || !customer) {
+        triggerAlert("error", "Invalid model configuration parameters.");
+        return;
+      }
+
+      // Add user message to history logs
+      simHistory[clientId].push({ sender: "user", text: message });
+      inputEl.value = "";
+      renderSimHistory();
+
+      // Check credit availability
+      if (customer.sentencesUsed >= customer.sentenceLimit) {
+        setTimeout(() => {
+          let warnMsg = `❌ **[SENTENCE LIMIT EXCEEDED]**\n\nYou have fully consumed the pre-allocated quota pool under this AI subscription seat (${customer.sentencesUsed}/${customer.sentenceLimit} phrases limits used).\n\n**Please ask Aland of Aland Logistics Corp or other registered business owners to complete a refill operation immediately.**`;
+          simHistory[clientId].push({ sender: "assistant", text: warnMsg });
+          renderSimHistory();
+        }, 600);
+        return;
+      }
+
+      // Process and consume sentences
+      const sentencesCount = message.split(/[.!?؟]+/).filter(Boolean).length || 1;
+      
+      if (customer.sentencesUsed + sentencesCount > customer.sentenceLimit) {
+        setTimeout(() => {
+          let warnMsg = `❌ **[SENTENCE LIMIT EXCEEDED]**\n\nYour message contains ${sentencesCount} sentences/phrases, which exceeds your remaining remaining credits limit (${customer.sentenceLimit - customer.sentencesUsed} sentences left). please contact your administrator for refilling operations.`;
+          simHistory[clientId].push({ sender: "assistant", text: warnMsg });
+          renderSimHistory();
+        }, 600);
+        return;
+      }
+
+      // Increment allocation
+      customer.sentencesUsed += sentencesCount;
+      onSimulatorCustomerChange();
+      updateMetrics();
+      renderOwners();
+
+      // Trigger standard localized responses mock replies
+      setTimeout(() => {
+        let replyText = "";
+        const lang = client.language;
+        const lowerMsg = message.toLowerCase();
+
+        if (lang === "kurdish") {
+          replyText = `🤖 **[وەڵامی پۆرتال کوردی لۆژیکی دەرچوو]**\n\nبۆ داواکارییەکەت لەسەر بەشی ڕێڕەوی کارکردن پێشوو:\n\n- **کۆدی براند**: ${client.id}\n- **وەڵامی ڕاوێژکار**: وەک براند یاریدەدەری یەک پێکهاتەی هەمەلایەنەی لۆکاڵی، وەڵامتان دەدەینەوە. پشکنینەکان نیشان دەدەن هەر هەڵەیەکی بەرهەمهێنان بوونی نییە.\n\n*ئایا پرسیارێکی ترت هەیە؟*`;
+        } else if (lang === "arabic") {
+          replyText = `🤖 **[رد النظام المتكامل باللغة العربية]**\n\nبناءً على طلبكم لعلامة **${client.name}**:\n\n- **معلومات التحقق**: لقد تمت مراجعة المخرجات بشكل متوافق تماماً.\n- **الحالة البرمجية**: الخادم المتنقل يعمل بشكل كامل وفي حالة تشغيل ممتازة.\n\n*تواصل معنا للمزيد من التوجيهات!*`;
+        } else {
+          // Standard analytical English
+          if (lowerMsg.includes("track") || lowerMsg.includes("where") || lowerMsg.includes("package")) {
+            replyText = `### 📦 Dynamic Logistics Tracking Status Report\n\nYour CoreOS air-cargo status has been compiled securely:\n\n- **Waypoint**: Heathrow Cargo Base ➔ Paris Terminal\n- **Status**: 🟢 Ready with absolute security clearing.\n\n*Would you like to initiate another cargo tracking payload?*`;
+          } else {
+            replyText = `### CoreOS Integrated Model Response\nGreetings, I am **${client.name}**. I am processing your queries through model node \`${client.aiConfig.model}\`.\n\nBased on your active custom instructions, I are executing at: \`Temperature: ${client.aiConfig.temperature}\` with compliance checks active in \`${client.language.toUpperCase()}\`.\n\n**Response Result:** The CoreOS database has loaded current custom instructions guidelines perfectly! Let me know of other questions.`;
+          }
+        }
+
+        simHistory[clientId].push({ sender: "assistant", text: replyText });
+        renderSimHistory();
+        triggerAlert("success", `Processed ${sentencesCount} sentence allocations dynamically!`);
+      }, 700);
+    }
+
+    // Export Self-Backup function
+    function downloadSelfBackup() {
+      const data = {
+        systemHeader: "CoreOS AI System Portable Overall Backup State",
+        timestamp: new Date().toISOString(),
+        clients: clients,
+        owners: owners
+      };
+
+      const fileString = JSON.stringify(data, null, 2);
+      const blob = new Blob([fileString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `coreos-portable-backup-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      triggerAlert("success", "Dynamically compiled sandbox state backup downloaded!");
+    }
+
+    // Initial load setup bootstrap
+    window.addEventListener("DOMContentLoaded", () => {
+      renderOwners();
+      updateMetrics();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
