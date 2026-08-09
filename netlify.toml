@@ -1,0 +1,18 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# The agent sandbox. Must come before the SPA catch-all below, or the
+# catch-all would swallow it and return index.html instead.
+[[redirects]]
+  from = "/api/lab/chat"
+  to = "/.netlify/functions/lab-chat"
+  status = 200
+
+# Client-side routing: every other path serves the app shell so /mission,
+# /coreos-ai, /contact and friends survive a refresh or a shared link.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -27,6 +27,13 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
+lab/agents.ts         shared agent runtime — roster, charter, Claude calls
+api/lab/chat.ts       Vercel serverless entry point for the sandbox
+netlify/functions/    Netlify entry point for the sandbox
+public/_redirects     SPA + function routing for Netlify
+vercel.json           Vercel build + rewrite config
+netlify.toml          Netlify build + redirect config
+render.yaml           Render blueprint
 src/
   main.tsx            entry point
   Root.tsx            route table; lazy-loads the manager console
@@ -49,13 +56,15 @@ src/
 models (`/coreos-ai`).
 
 Every agent is published under a **CoreOs codename only**. Each codename maps to
-an effort level and a private system instruction in `LAB_ENGINES` in `server.ts`,
+an effort level and a private system instruction in `LAB_ENGINES` in
+`lab/agents.ts`,
 and neither is ever serialised to the browser. `GET /api/lab/agents` returns slugs
 and display names and nothing else. This is deliberate: a familiar model badge
 biases a tester's judgement of the answer.
 
 **When adding an agent**, add its public copy to `src/site/catalog.ts` and its
-private entry to `LAB_ENGINES` under the same slug. Keep model names, provider
+private entry to `LAB_ENGINES` in `lab/agents.ts` under the same slug — every
+deployment target shares that one roster. Keep model names, provider
 names and system instructions out of anything the client receives — including
 error messages, which is why `/api/lab/chat` returns a generic failure string
 rather than the provider's.
@@ -88,9 +97,10 @@ npm run dev     # http://localhost:3000
 ```
 
 ```bash
-npm run lint    # tsc --noEmit
-npm run build   # vite build + bundle the server to dist/
-npm start       # serve the production build
+npm run lint       # tsc --noEmit
+npm run build      # vite build + bundle the Express server to dist/
+npm run build:web  # vite build only — for Vercel / Netlify / static hosts
+npm start          # serve the production build
 ```
 
 ## The AI behind CoreOS
@@ -99,7 +109,7 @@ Every AI response — the client agents, the sandbox simulator, the instruction
 generator and all 31 public testing agents — is produced by **Claude**
 (`claude-opus-5`), through the official `@anthropic-ai/sdk`.
 
-All calls go through one helper, `callClaude()` in `server.ts`. Things worth
+All calls go through one helper, `callClaude()` in `lab/agents.ts`. Things worth
 knowing before changing it:
 
 - **No sampling parameters.** `temperature`, `top_p` and `top_k` are rejected by
@@ -129,6 +139,18 @@ The server honours `$PORT`, so it runs on any Node host without configuration.
 connect the repository at https://render.com and it picks up the build and start
 commands automatically. Set `ANTHROPIC_API_KEY` in the dashboard afterwards; it
 is deliberately not committed.
+
+**Vercel or Netlify**: `vercel.json` and `netlify.toml` are both in the repo.
+Import the repository on either platform and it picks up the build command, the
+SPA rewrite, and the sandbox function (`api/lab/chat.ts` on Vercel,
+`netlify/functions/lab-chat.ts` on Netlify). Set `ANTHROPIC_API_KEY` in the
+project's environment variables.
+
+> **Static-only deploys.** Dragging the built `dist/` folder onto a host gives
+> you the whole site *except* the agent sandbox — there is no function to answer
+> `/api/lab/chat`, so the Test buttons say the sandbox isn't running on this
+> deployment and point at the contact address. Deploy from Git instead if you
+> want the agents live.
 
 **Google Cloud Run**, if you'd rather stay there:
 
