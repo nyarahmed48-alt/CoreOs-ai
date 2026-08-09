@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -497,22 +497,106 @@ function recordChatInteraction(clientId: string, clientName: string, modelUsed: 
   }
 }
 
-// Lazy Gemini Client Initialization
-const initGemini = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-    // If empty or placeholder, return null to fall back gracefully
+/* =========================================================================
+   CLAUDE CLIENT
+   Every AI response in CoreOS — the client agents, the sandbox simulator and
+   the public testing lab — is produced by Claude.
+   ========================================================================= */
+
+/** The model behind every CoreOS agent. Never sent to the browser. */
+const CLAUDE_MODEL = "claude-opus-5";
+
+/** Lazy client init. Returns null when no key is configured, so every caller
+ *  can fall back to a canned response instead of erroring. */
+const initClaude = () => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "MY_ANTHROPIC_API_KEY") {
     return null;
   }
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
+  return new Anthropic({ apiKey });
 };
+
+export type Effort = "low" | "medium" | "high" | "xhigh";
+
+/**
+ * The dashboard stores a 0.0–2.0 "temperature" per client. Claude Opus 5 does
+ * not accept sampling parameters at all, so that dial is mapped onto response
+ * effort instead — the slider keeps meaning "how much work should it do".
+ */
+function temperatureToEffort(temperature: number): Effort {
+  if (!Number.isFinite(temperature)) return "medium";
+  if (temperature <= 0.4) return "low";
+  if (temperature <= 0.9) return "medium";
+  if (temperature <= 1.4) return "high";
+  return "xhigh";
+}
+
+interface ClaudeCallOptions {
+  system: string;
+  messages: Anthropic.MessageParam[];
+  maxTokens?: number;
+  effort?: Effort;
+}
+
+/** True once a request has been rejected for the server-side fallback beta, so
+ *  we stop asking for it rather than paying a failed call every time. */
+let fallbackBetaUnavailable = false;
+
+/**
+ * Single entry point for every Claude call.
+ *
+ * Refusal fallbacks are requested by default: if the safety classifiers
+ * decline a request, the API re-runs it on the recommended fallback model
+ * server-side instead of handing us an empty response. If this account has no
+ * access to that beta, the first rejection disables it for the process and the
+ * call is retried plainly, so a missing beta degrades rather than breaks.
+ */
+async function callClaude(
+  client: Anthropic,
+  { system, messages, maxTokens = 4096, effort = "medium" }: ClaudeCallOptions,
+): Promise<{ text: string; refused: boolean }> {
+  const params = {
+    model: CLAUDE_MODEL,
+    max_tokens: maxTokens,
+    system,
+    messages,
+    output_config: { effort },
+  };
+
+  let response: Anthropic.Message;
+
+  if (fallbackBetaUnavailable) {
+    response = await client.messages.create(params);
+  } else {
+    try {
+      response = (await client.beta.messages.create({
+        ...params,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      } as any)) as unknown as Anthropic.Message;
+    } catch (err: any) {
+      const message = String(err?.message || "");
+      const isBetaRejection =
+        err?.status === 400 && /fallback|beta/i.test(message);
+      if (!isBetaRejection) throw err;
+      console.warn("Server-side fallbacks unavailable; continuing without them.");
+      fallbackBetaUnavailable = true;
+      response = await client.messages.create(params);
+    }
+  }
+
+  if (response.stop_reason === "refusal") {
+    return { text: "", refused: true };
+  }
+
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("")
+    .trim();
+
+  return { text, refused: false };
+}
 
 /* =========================================================================
    API ENDPOINTS
@@ -522,7 +606,7 @@ const initGemini = () => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    hasApiKey: !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY",
+    hasApiKey: initClaude() !== null,
     timestamp: new Date().toISOString()
   });
 });
@@ -557,51 +641,40 @@ app.get("/api/clients", (req, res) => {
   res.json(clients);
 });
 
-// POST dynamic model list from real Gemini API or list up-to-date models
-app.get("/api/models", async (req, res) => {
-  const ai = initGemini();
-
-  // Baseline standard models we offer in the app
-  const defaultModels = [
+// Capability tiers offered to clients
+app.get("/api/models", (req, res) => {
+  // CoreOS publishes capability tiers, not engine names. Each tier is the same
+  // Claude model run at a different effort level, so a client can be dialled
+  // between speed and depth without any migration.
+  const models = [
     {
-      name: "gemini-2.5-flash",
+      name: "coreos-prime",
       displayName: "CoreOS AI Prime (High-Speed)",
-      version: "2.5",
-      description: "Recommended by default. Ultra-fast, smart processing, ideal for high speed client chats with 1M tokens capacity.",
-      supportedFeatures: ["Text Generation", "Multimodal", "Streaming", "Fast Inference"],
-      inputTypes: ["Text", "Image", "Audio"],
+      version: "5",
+      description: "Recommended by default. Fast, capable responses for high-volume client chat.",
+      supportedFeatures: ["Text Generation", "System Instructions", "Fast Inference"],
+      inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "24/7 Active Stable",
       isCustom: false
     },
     {
-      name: "gemini-2.5-pro",
+      name: "coreos-max",
       displayName: "CoreOS AI Max (Reasoning)",
-      version: "2.5",
-      description: "Ultimate reasoning, advanced coding, complex mathematical/logical constraints.",
-      supportedFeatures: ["Advanced Reasoning", "System Instructions", "High Fidelity Text"],
-      inputTypes: ["Text", "Image"],
-      outputTypes: ["Text"],
-      releaseDate: "Released Q1 2026",
-      isCustom: false
-    },
-    {
-      name: "gemini-2.0-flash",
-      displayName: "CoreOS AI Flash (Interactive)",
-      version: "2.0",
-      description: "Fast, response-driven responsive multitasking node.",
-      supportedFeatures: ["High Speed", "Dynamic Code Execution"],
-      inputTypes: ["Text", "Image", "Audio"],
+      version: "5",
+      description: "Deepest reasoning for complex policy, analysis and multi-step problems.",
+      supportedFeatures: ["Advanced Reasoning", "System Instructions", "Long Context"],
+      inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "Active Stable",
       isCustom: false
     },
     {
-      name: "gemini-2.0-flash-lite",
-      displayName: "CoreOS AI Lite (Low-Latency)",
-      version: "2.0",
-      description: "Highly cost-efficient, ultra low latency structured execution node.",
-      supportedFeatures: ["Strict JSON", "Basic Instruction Following"],
+      name: "coreos-flash",
+      displayName: "CoreOS AI Flash (Interactive)",
+      version: "5",
+      description: "Lowest latency tier for short, high-frequency exchanges.",
+      supportedFeatures: ["High Speed", "System Instructions"],
       inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "Active Stable",
@@ -609,72 +682,7 @@ app.get("/api/models", async (req, res) => {
     }
   ];
 
-  if (!ai) {
-    return res.json({ models: defaultModels, isLive: false });
-  }
-
-  try {
-    // If key is set, attempt to list real models dynamically to include newer release models
-    const realModelsList = await ai.models.list();
-    
-    // Custom robust iteration supporting array, sync iterable, async iterable, and properties
-    const listArray: any[] = [];
-    if (Array.isArray(realModelsList)) {
-      listArray.push(...realModelsList);
-    } else if (realModelsList && typeof (realModelsList as any)[Symbol.iterator] === "function") {
-      for (const m of (realModelsList as any)) {
-        listArray.push(m);
-      }
-    } else if (realModelsList && typeof (realModelsList as any)[Symbol.asyncIterator] === "function") {
-      for await (const m of (realModelsList as any)) {
-        listArray.push(m);
-      }
-    } else if (realModelsList && (realModelsList as any).models) {
-      listArray.push(...(realModelsList as any).models);
-    }
-
-    // Transform real list to highlight any newly released models
-    const fetchedModels = listArray.map(m => {
-      const isNew = !defaultModels.some(dm => dm.name === m.name);
-      return {
-        name: m.name || "",
-        displayName: m.displayName || m.name || "Unnamed Model",
-        version: m.version || "Unknown",
-        description: m.description || "Dynamically loaded through live Gemini API updates.",
-        supportedFeatures: m.supportedGenerationMethods || m.supportedActions || ["Text Generation"],
-        inputTypes: m.inputFormats || ["Text"],
-        outputTypes: m.outputFormats || ["Text"],
-        isCustom: isNew
-      };
-    });
-
-    // Merge default lists with any unique dynamic ones
-    const merged = [...defaultModels];
-    fetchedModels.forEach(fm => {
-      // Avoid duplicate standard names, but append any newly found release models
-      if (fm.name.startsWith("models/")) {
-        const cleanedName = fm.name.replace("models/", "");
-        if (!merged.some(m => m.name === cleanedName || m.name === fm.name)) {
-          merged.push({
-            name: fm.name,
-            displayName: fm.displayName,
-            version: fm.version,
-            description: fm.description,
-            supportedFeatures: fm.supportedFeatures,
-            inputTypes: fm.inputTypes,
-            outputTypes: fm.outputTypes,
-            releaseDate: "Active Live Release",
-            isCustom: true
-          });
-        }
-      }
-    });
-
-    res.json({ models: merged, isLive: true });
-  } catch (err: any) {
-    console.error("Failed to list active Gemini models dynamically, using fallbacks:", err.message);
-    res.json({ models: defaultModels, isLive: false, error: err.message });
-  }
+  res.json({ models, isLive: initClaude() !== null });
 });
 
 // CREATE a new client AI profile
@@ -833,9 +841,9 @@ app.post("/api/generate-instruction", async (req, res) => {
     return res.status(400).json({ error: "Needs statement is required to build instructions" });
   }
 
-  const ai = initGemini();
+  const ai = initClaude();
 
-  const prompt = `Write a professional system instruction/persona prompt for a customized Gemini AI chatbot integration.
+  const prompt = `Write a professional system instruction/persona prompt for a customized CoreOS AI chatbot integration.
 The target website is CoreOS SaaS. The client is:
 Client Name: "${clientName}"
 Client Description: "${description || 'None'}"
@@ -865,18 +873,23 @@ Respond ONLY with the complete, fully written system instruction text block. Do 
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        systemInstruction: "You are an expert prompt engineering systems architect. You generate structured, rich, and highly effective persona system instructions."
-      }
+    const { text, refused } = await callClaude(ai, {
+      system: "You are an expert prompt engineering systems architect. You generate structured, rich, and highly effective persona system instructions.",
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: 4096,
+      effort: "medium",
     });
 
-    res.json({ instruction: response.text || "", isFallback: false });
+    if (refused) {
+      return res.status(422).json({
+        error: "INSTRUCTION_DECLINED",
+        message: "The model declined to write instructions for this brief. Rephrase the client needs and try again."
+      });
+    }
+
+    res.json({ instruction: text, isFallback: false });
   } catch (error: any) {
-    console.error("Failed to generate instructions via Gemini:", error);
+    console.error("Failed to generate instructions:", error?.message || error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -961,21 +974,30 @@ app.post("/api/chat/simulate", async (req, res) => {
   const clientLanguage = (activeClient && activeClient.language) ? activeClient.language : "english";
 
   const config = aiConfig || {};
-  const rawModel = config.model || "gemini-2.5-flash";
+  const rawModel = config.model || "coreos-prime";
   const systemInstruction = config.systemInstruction || "You are a helpful assistant.";
   const temperature = Number(config.temperature ?? 0.7);
-  const topP = Number(config.topP ?? 0.9);
   const customVariables = config.customVariables || {};
 
-  // Model ID Routing/Adapter for SDK alignment
-  let processedModel = rawModel;
-  if (processedModel === "gemini-3.5-flash") {
-    processedModel = "gemini-2.5-flash";
-  } else if (processedModel === "gemini-3.1-pro-preview") {
-    processedModel = "gemini-2.5-pro";
-  } else if (processedModel === "gemini-3.1-flash-lite") {
-    processedModel = "gemini-2.0-flash-lite";
-  }
+  /* Tier routing. Clients created before the move to Claude still carry the old
+     engine IDs in data/clients.json, so those keep resolving to a tier rather
+     than breaking. Every tier runs the same model at a different effort. */
+  const TIER_EFFORT: Record<string, Effort> = {
+    "coreos-max": "xhigh",
+    "coreos-prime": "medium",
+    "coreos-flash": "low",
+    // Legacy identifiers from the pre-Claude configuration.
+    "gemini-2.5-pro": "xhigh",
+    "gemini-3.1-pro-preview": "xhigh",
+    "gemini-2.5-flash": "medium",
+    "gemini-3.5-flash": "medium",
+    "gemini-2.0-flash": "low",
+    "gemini-2.0-flash-lite": "low",
+    "gemini-3.1-flash-lite": "low",
+  };
+  // An unrecognised tier falls back to the client's own temperature dial.
+  const effort: Effort = TIER_EFFORT[rawModel] || temperatureToEffort(temperature);
+  const processedModel = rawModel;
 
   // Inject custom variables and brand details
   let compiledInstruction = `Your brand name/agent identity is: "${clientName}". ${systemInstruction}`;
@@ -984,15 +1006,15 @@ app.post("/api/chat/simulate", async (req, res) => {
     compiledInstruction += `\n[Context Data Option: ${key} = ${val}]`;
   });
 
-  // Inject Language restriction into Gemini prompt instructions
+  // Inject the language restriction into the compiled system instruction
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
-  const ai = initGemini();
+  const ai = initClaude();
 
   if (!ai) {
     // Simulate responses translated or formatted based on chosen Language
     setTimeout(() => {
-      let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${processedModel.toUpperCase()} (Tuned Temp: ${temperature}, TopP: ${topP})\n\n`;
+      let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${processedModel.toUpperCase()} (Effort: ${effort})\n\n`;
       let bodyText = "";
       const msgLower = message.toLowerCase();
 
@@ -1026,7 +1048,7 @@ app.post("/api/chat/simulate", async (req, res) => {
         }
       }
 
-      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Save your GEMINI_API_KEY as a secret to run real live conversations in ${clientLanguage.toUpperCase()} using actual Gemini model reasoning.*`;
+      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Save your ANTHROPIC_API_KEY as a secret to run real live conversations in ${clientLanguage.toUpperCase()} using actual Claude reasoning.*`;
       recordChatInteraction(id, clientName, processedModel, message, reply, req.body.channel || "Sandbox Simulator");
       res.json({ text: reply, isFallback: true, customerUsage: customer });
     }, 750);
@@ -1034,35 +1056,36 @@ app.post("/api/chat/simulate", async (req, res) => {
   }
 
   try {
-    const contentHistory: any[] = [];
-    
+    const conversation: Anthropic.MessageParam[] = [];
+
     if (history && history.length > 0) {
       history.forEach((h: any) => {
-        if (h.sender === 'user') {
-          contentHistory.push({ role: 'user', parts: [{ text: h.text }] });
-        } else if (h.sender === 'assistant') {
-          contentHistory.push({ role: 'model', parts: [{ text: h.text }] });
+        if (!h || typeof h.text !== "string" || !h.text.trim()) return;
+        if (h.sender === "user") {
+          conversation.push({ role: "user", content: h.text });
+        } else if (h.sender === "assistant") {
+          conversation.push({ role: "assistant", content: h.text });
         }
       });
     }
 
-    contentHistory.push({ role: 'user', parts: [{ text: message }] });
+    conversation.push({ role: "user", content: message });
 
-    const response = await ai.models.generateContent({
-      model: processedModel,
-      contents: contentHistory,
-      config: {
-        systemInstruction: compiledInstruction,
-        temperature: temperature,
-        topP: topP,
-      }
+    const { text, refused } = await callClaude(ai, {
+      system: compiledInstruction,
+      messages: conversation,
+      maxTokens: 4096,
+      effort,
     });
 
-    const replyText = response.text || "";
+    const replyText = refused
+      ? "I can't help with that particular request. If you think this is a mistake, rephrase it or contact the business owner."
+      : text;
+
     recordChatInteraction(id, clientName, processedModel, message, replyText, req.body.channel || "Sandbox Simulator");
     res.json({ text: replyText, isFallback: false, customerUsage: customer });
   } catch (err: any) {
-    console.error("Gemini simulation error:", err);
+    console.error("Simulation error:", err?.message || err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1082,9 +1105,8 @@ app.post("/api/chat/simulate", async (req, res) => {
 interface LabEngine {
   /** Persona name the agent answers as (matches the public catalogue). */
   name: string;
-  /** Real engine. Private. */
-  engine: string;
-  temperature: number;
+  /** How much work this agent puts into an answer. Private. */
+  effort: Effort;
   /** Persona brief, private. */
   brief: string;
 }
@@ -1103,39 +1125,39 @@ Keep replies concise and useful: normally under 180 words unless the user asks f
 
 const LAB_ENGINES: Record<string, LabEngine> = {
   /* ---- CoreOs: 11 business agents in open testing ---- */
-  verano: { name: "Verano", engine: "gemini-2.5-flash", temperature: 0.5, brief: "A front-line customer support agent. Warm, plain-spoken, resolves common questions and escalates anything involving refunds, complaints or exceptions to a human colleague." },
-  kestrel: { name: "Kestrel", engine: "gemini-2.5-flash", temperature: 0.4, brief: "An inbound lead qualifier. Ask about need, budget, timeline, decision-maker and fit — one or two questions at a time, never an interrogation. End with a short written summary for the sales team. Never oversell or quote prices." },
-  marlowe: { name: "Marlowe", engine: "gemini-2.5-pro", temperature: 0.3, brief: "A document analyst. Summarise long business documents, extract obligations, dates and amounts, quote the source wording for anything material, and flag clauses that need a qualified professional. Never give legal advice." },
-  sable: { name: "Sable", engine: "gemini-2.5-flash", temperature: 0.25, brief: "A billing and invoicing assistant. Explain charges in plain language, show arithmetic, chase overdue payments politely, and reconcile discrepancies. Precise with numbers; never invent an amount." },
-  onyxa: { name: "Onyxa", engine: "gemini-2.5-flash", temperature: 0.5, brief: "A multilingual front desk for English, Arabic and Kurdish. Reply in whichever of those the user writes in, using the correct script, and keep a consistent, courteous brand voice across all three." },
-  piper: { name: "Piper", engine: "gemini-2.0-flash-lite", temperature: 0.4, brief: "A scheduling assistant. Take booking requests, offer a small number of concrete slots rather than open-ended availability, confirm details back, and handle reschedules and reminders. Always restate the time and date you understood." },
-  halden: { name: "Halden", engine: "gemini-2.5-flash", temperature: 0.3, brief: "An internal knowledge assistant for staff. Answer from company policies and procedures, point to the specific document or section, and say plainly when something is not covered rather than guessing." },
-  cirro: { name: "Cirro", engine: "gemini-2.0-flash-lite", temperature: 0.3, brief: "An orders and logistics assistant. Handle order status, delivery timing, stock and tracking questions. Be literal and honest about delays, never promise a date you have not been given, and offer the next concrete step." },
-  wren: { name: "Wren", engine: "gemini-2.5-flash", temperature: 0.7, brief: "A reply-drafting assistant. Turn notes into finished customer messages and rewrite blunt drafts into something professional. Always present output as a draft for a human to review and send." },
-  tamsin: { name: "Tamsin", engine: "gemini-2.5-flash", temperature: 0.5, brief: "An onboarding assistant for new employees. Patient and encouraging, works through checklists, answers first-week questions, and directs people to the right colleague as well as the right document." },
-  bramble: { name: "Bramble", engine: "gemini-2.5-flash", temperature: 0.4, brief: "A feedback and review analyst. Group feedback into themes, rank by urgency and frequency, separate genuine problems from noise, and finish with the few actions the owner should take this week." },
+  verano: { name: "Verano", effort: "medium", brief: "A front-line customer support agent. Warm, plain-spoken, resolves common questions and escalates anything involving refunds, complaints or exceptions to a human colleague." },
+  kestrel: { name: "Kestrel", effort: "medium", brief: "An inbound lead qualifier. Ask about need, budget, timeline, decision-maker and fit — one or two questions at a time, never an interrogation. End with a short written summary for the sales team. Never oversell or quote prices." },
+  marlowe: { name: "Marlowe", effort: "xhigh", brief: "A document analyst. Summarise long business documents, extract obligations, dates and amounts, quote the source wording for anything material, and flag clauses that need a qualified professional. Never give legal advice." },
+  sable: { name: "Sable", effort: "medium", brief: "A billing and invoicing assistant. Explain charges in plain language, show arithmetic, chase overdue payments politely, and reconcile discrepancies. Precise with numbers; never invent an amount." },
+  onyxa: { name: "Onyxa", effort: "medium", brief: "A multilingual front desk for English, Arabic and Kurdish. Reply in whichever of those the user writes in, using the correct script, and keep a consistent, courteous brand voice across all three." },
+  piper: { name: "Piper", effort: "low", brief: "A scheduling assistant. Take booking requests, offer a small number of concrete slots rather than open-ended availability, confirm details back, and handle reschedules and reminders. Always restate the time and date you understood." },
+  halden: { name: "Halden", effort: "medium", brief: "An internal knowledge assistant for staff. Answer from company policies and procedures, point to the specific document or section, and say plainly when something is not covered rather than guessing." },
+  cirro: { name: "Cirro", effort: "low", brief: "An orders and logistics assistant. Handle order status, delivery timing, stock and tracking questions. Be literal and honest about delays, never promise a date you have not been given, and offer the next concrete step." },
+  wren: { name: "Wren", effort: "high", brief: "A reply-drafting assistant. Turn notes into finished customer messages and rewrite blunt drafts into something professional. Always present output as a draft for a human to review and send." },
+  tamsin: { name: "Tamsin", effort: "medium", brief: "An onboarding assistant for new employees. Patient and encouraging, works through checklists, answers first-week questions, and directs people to the right colleague as well as the right document." },
+  bramble: { name: "Bramble", effort: "medium", brief: "A feedback and review analyst. Group feedback into themes, rank by urgency and frequency, separate genuine problems from noise, and finish with the few actions the owner should take this week." },
 
   /* ---- CoreOs.ai: 20 codenamed models ---- */
-  aurelis: { name: "Aurelis", engine: "gemini-2.5-pro", temperature: 0.4, brief: "A deliberate reasoning model. Work multi-step problems through carefully, show the reasoning, state assumptions, and flag where the answer would change if an assumption is wrong." },
-  nimbex: { name: "Nimbex", engine: "gemini-2.0-flash-lite", temperature: 0.5, brief: "A fast general-purpose model. Answer briefly and directly — usually two or three sentences. Optimise for speed and clarity over depth, and say when a question deserves a more thorough model." },
-  solvane: { name: "Solvane", engine: "gemini-2.5-pro", temperature: 0.15, brief: "A quantitative analyst. Handle percentages, margins, pricing and unit economics. Show every calculation step so it can be audited, and state the assumptions behind any figure." },
-  quillex: { name: "Quillex", engine: "gemini-2.5-flash", temperature: 0.6, brief: "An editor. Tighten and correct prose while preserving the writer's voice and register. Return the edited text first, then a short note on what changed and why." },
-  tessara: { name: "Tessara", engine: "gemini-2.5-pro", temperature: 0.25, brief: "A code generation model. Produce idiomatic, runnable code with minimal but useful comments. State assumptions about the environment, and mention edge cases the code does not handle." },
-  verith: { name: "Verith", engine: "gemini-2.5-pro", temperature: 0.2, brief: "A fact-checking and research model. Separate what is well established from what is contested or merely asserted, state your confidence, and refuse to fabricate sources, statistics or citations." },
-  lumora: { name: "Lumora", engine: "gemini-2.5-flash", temperature: 1.0, brief: "A creative ideation model. Generate a high volume of varied ideas quickly, including unconventional ones, then help narrow to the strongest few with a reason for each." },
-  draven: { name: "Draven", engine: "gemini-2.5-flash", temperature: 0.25, brief: "A debugging model. Read errors and stack traces, explain in plain language what broke, narrow it to the likely cause, and propose the smallest fix. Ask for missing context rather than guessing." },
-  calyx: { name: "Calyx", engine: "gemini-2.5-flash", temperature: 0.1, brief: "A data extraction model. Pull structured fields out of messy text and return clean JSON or CSV. Never add commentary around the data, and use null for anything genuinely absent." },
-  orbion: { name: "Orbion", engine: "gemini-2.5-flash", temperature: 0.4, brief: "A translation model, strongest in English, Arabic and Kurdish. Translate idiomatically rather than literally, match the register of the original, and note where a phrase has no clean equivalent." },
-  meridia: { name: "Meridia", engine: "gemini-2.5-pro", temperature: 0.45, brief: "A strategy and planning model. Turn goals into sequenced phases with owners, checkpoints and dependencies. Be opinionated, name the trade-offs, and say explicitly what should not be attempted yet." },
-  pyrrha: { name: "Pyrrha", engine: "gemini-2.5-flash", temperature: 0.85, brief: "A marketing copy model. Write punchy, benefit-led copy and offer several variants for testing. Avoid hype and unverifiable claims — persuasive, never dishonest." },
-  vantel: { name: "Vantel", engine: "gemini-2.5-pro", temperature: 0.2, brief: "A formal-document explainer. Summarise contracts and terms in plain English, highlight the clauses carrying real risk, and prepare questions for a qualified professional. State clearly that you do not give legal advice." },
-  sorrel: { name: "Sorrel", engine: "gemini-2.5-flash", temperature: 0.55, brief: "A teaching model. Explain concepts with analogies pitched at the learner's level, offer a second explanation from a different angle if the first does not land, and check understanding with a question." },
-  halcyon: { name: "Halcyon", engine: "gemini-2.5-flash", temperature: 0.5, brief: "A de-escalation model. Rewrite tense or angry messages into calm, professional ones without losing the substance or conceding points the writer did not concede." },
-  zephyrine: { name: "Zephyrine", engine: "gemini-2.5-flash", temperature: 0.3, brief: "A meeting-notes model. Turn transcripts and rough notes into minutes: decisions, action items with owners, and open questions. Terse and structured, no filler." },
-  corvid: { name: "Corvid", engine: "gemini-2.5-pro", temperature: 0.5, brief: "A critique model. Attack the plan, not the person: find the weakest assumption, list the objections a sceptical buyer would raise, and be specific rather than generically negative. Do not soften findings to be pleasant." },
-  ashlin: { name: "Ashlin", engine: "gemini-2.5-flash", temperature: 0.2, brief: "A spreadsheet model. Write and debug formulas, explain what an existing formula does, and design sheets that survive changes. Always mention the edge cases that will break a formula." },
-  nocturne: { name: "Nocturne", engine: "gemini-2.5-pro", temperature: 0.25, brief: "A long-context document model. Answer questions over long documents, quote precisely, point to where in the text an answer came from, and surface contradictions between sections." },
-  ferrous: { name: "Ferrous", engine: "gemini-2.5-flash", temperature: 0.3, brief: "A technical documentation model. Write READMEs, runbooks and references with steps in executable order and concrete examples. No filler, no marketing tone." },
+  aurelis: { name: "Aurelis", effort: "xhigh", brief: "A deliberate reasoning model. Work multi-step problems through carefully, show the reasoning, state assumptions, and flag where the answer would change if an assumption is wrong." },
+  nimbex: { name: "Nimbex", effort: "low", brief: "A fast general-purpose model. Answer briefly and directly — usually two or three sentences. Optimise for speed and clarity over depth, and say when a question deserves a more thorough model." },
+  solvane: { name: "Solvane", effort: "xhigh", brief: "A quantitative analyst. Handle percentages, margins, pricing and unit economics. Show every calculation step so it can be audited, and state the assumptions behind any figure." },
+  quillex: { name: "Quillex", effort: "medium", brief: "An editor. Tighten and correct prose while preserving the writer's voice and register. Return the edited text first, then a short note on what changed and why." },
+  tessara: { name: "Tessara", effort: "xhigh", brief: "A code generation model. Produce idiomatic, runnable code with minimal but useful comments. State assumptions about the environment, and mention edge cases the code does not handle." },
+  verith: { name: "Verith", effort: "xhigh", brief: "A fact-checking and research model. Separate what is well established from what is contested or merely asserted, state your confidence, and refuse to fabricate sources, statistics or citations." },
+  lumora: { name: "Lumora", effort: "high", brief: "A creative ideation model. Generate a high volume of varied ideas quickly, including unconventional ones, then help narrow to the strongest few with a reason for each." },
+  draven: { name: "Draven", effort: "medium", brief: "A debugging model. Read errors and stack traces, explain in plain language what broke, narrow it to the likely cause, and propose the smallest fix. Ask for missing context rather than guessing." },
+  calyx: { name: "Calyx", effort: "medium", brief: "A data extraction model. Pull structured fields out of messy text and return clean JSON or CSV. Never add commentary around the data, and use null for anything genuinely absent." },
+  orbion: { name: "Orbion", effort: "medium", brief: "A translation model, strongest in English, Arabic and Kurdish. Translate idiomatically rather than literally, match the register of the original, and note where a phrase has no clean equivalent." },
+  meridia: { name: "Meridia", effort: "xhigh", brief: "A strategy and planning model. Turn goals into sequenced phases with owners, checkpoints and dependencies. Be opinionated, name the trade-offs, and say explicitly what should not be attempted yet." },
+  pyrrha: { name: "Pyrrha", effort: "high", brief: "A marketing copy model. Write punchy, benefit-led copy and offer several variants for testing. Avoid hype and unverifiable claims — persuasive, never dishonest." },
+  vantel: { name: "Vantel", effort: "xhigh", brief: "A formal-document explainer. Summarise contracts and terms in plain English, highlight the clauses carrying real risk, and prepare questions for a qualified professional. State clearly that you do not give legal advice." },
+  sorrel: { name: "Sorrel", effort: "medium", brief: "A teaching model. Explain concepts with analogies pitched at the learner's level, offer a second explanation from a different angle if the first does not land, and check understanding with a question." },
+  halcyon: { name: "Halcyon", effort: "medium", brief: "A de-escalation model. Rewrite tense or angry messages into calm, professional ones without losing the substance or conceding points the writer did not concede." },
+  zephyrine: { name: "Zephyrine", effort: "medium", brief: "A meeting-notes model. Turn transcripts and rough notes into minutes: decisions, action items with owners, and open questions. Terse and structured, no filler." },
+  corvid: { name: "Corvid", effort: "xhigh", brief: "A critique model. Attack the plan, not the person: find the weakest assumption, list the objections a sceptical buyer would raise, and be specific rather than generically negative. Do not soften findings to be pleasant." },
+  ashlin: { name: "Ashlin", effort: "medium", brief: "A spreadsheet model. Write and debug formulas, explain what an existing formula does, and design sheets that survive changes. Always mention the edge cases that will break a formula." },
+  nocturne: { name: "Nocturne", effort: "xhigh", brief: "A long-context document model. Answer questions over long documents, quote precisely, point to where in the text an answer came from, and surface contradictions between sections." },
+  ferrous: { name: "Ferrous", effort: "medium", brief: "A technical documentation model. Write READMEs, runbooks and references with steps in executable order and concrete examples. No filler, no marketing tone." },
 };
 
 /** Public projection — deliberately omits engine, temperature and brief. */
@@ -1145,7 +1167,7 @@ app.get("/api/lab/agents", (req, res) => {
       slug,
       name: a.name,
     })),
-    live: initGemini() !== null,
+    live: initClaude() !== null,
   });
 });
 
@@ -1201,40 +1223,47 @@ app.post("/api/lab/chat", async (req, res) => {
     });
   }
 
-  const ai = initGemini();
+  const ai = initClaude();
 
   if (!ai) {
     // Offline preview: the site must still demonstrate the flow without a key.
     return res.json({
-      text: `[Sandbox preview — this CoreOs deployment has no live engine configured, so ${agent.name} is replying from a canned response.]\n\nYou asked: "${message}"\n\nWith a live engine, ${agent.name} would answer this directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
+      text: `[Sandbox preview — this CoreOs deployment has no AI key configured, so ${agent.name} is replying from a canned response.]\n\nYou asked: "${message}"\n\nWith a live engine, ${agent.name} would answer this directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
       fallback: true,
     });
   }
 
   try {
-    const contents: any[] = [];
+    const conversation: Anthropic.MessageParam[] = [];
     if (Array.isArray(history)) {
       for (const turn of history.slice(-8)) {
         if (!turn || typeof turn.text !== "string" || !turn.text.trim()) continue;
-        contents.push({
-          role: turn.role === "agent" ? "model" : "user",
-          parts: [{ text: String(turn.text).slice(0, 2000) }],
+        conversation.push({
+          role: turn.role === "agent" ? "assistant" : "user",
+          content: String(turn.text).slice(0, 2000),
         });
       }
     }
-    contents.push({ role: "user", parts: [{ text: message }] });
+    conversation.push({ role: "user", content: message });
 
-    const response = await ai.models.generateContent({
-      model: agent.engine,
-      contents,
-      config: {
-        systemInstruction: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
-        temperature: agent.temperature,
-        topP: 0.95,
-      },
+    const { text, refused } = await callClaude(ai, {
+      system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
+      messages: conversation,
+      maxTokens: 4096,
+      effort: agent.effort,
     });
 
-    res.json({ text: response.text || "No response was produced. Try rephrasing the question.", fallback: false });
+    if (refused) {
+      return res.json({
+        text: `${agent.name} isn't able to help with that one. Try a question from your own business — ${agent.name} is built for ${agent.brief.split(".")[0].toLowerCase()}.`,
+        fallback: false,
+      });
+    }
+
+    res.json({
+      text: text || "No response was produced. Try rephrasing the question.",
+      fallback: false,
+    });
   } catch (err: any) {
     // Never surface provider error strings — they name the engine.
     console.error(`Lab chat error for agent "${slug}":`, err?.message || err);
