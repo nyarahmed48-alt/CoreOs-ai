@@ -14,7 +14,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+// Cloud Run (and most PaaS hosts) inject the port to listen on via $PORT and
+// health-check the container against it. Falling back to 3000 keeps local
+// development unchanged.
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
