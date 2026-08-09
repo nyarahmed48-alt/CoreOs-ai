@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Runtime state written by the server (seeded on first run)
+data/chats.json
+data/owners.json

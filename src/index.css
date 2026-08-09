@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Poppins:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
+  --font-brand: "Poppins", "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -155,4 +156,50 @@ body.dark {
 .dark .text-amber-805,
 .dark .text-amber-800 {
   color: #fef08a !important;
+}
+
+/* =========================================================================
+   PUBLIC MARKETING SITE SURFACE
+   The site is always dark by design (it follows the CoreOs logo). These rules
+   are scoped to body[data-surface="site"] so they never touch the SaaS
+   manager dashboard, and so the dashboard's .dark overrides never touch them.
+   ========================================================================= */
+
+body[data-surface="site"] {
+  background-color: #05060a;
+  color: #e7eaf6;
+  font-family: var(--font-sans);
+}
+
+body[data-surface="site"] ::selection {
+  background-color: #6c7bf0;
+  color: #05060a;
+}
+
+body[data-surface="site"] * {
+  scrollbar-color: #232a40 #05060a;
+  scrollbar-width: thin;
+}
+
+.site-grain {
+  background-image:
+    radial-gradient(60rem 40rem at 12% -10%, rgba(108, 123, 240, 0.22), transparent 60%),
+    radial-gradient(50rem 35rem at 92% 8%, rgba(24, 120, 220, 0.18), transparent 62%);
+}
+
+.site-hairline {
+  background-image: linear-gradient(90deg, transparent, #262e46, transparent);
+}
+
+@keyframes site-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.site-rise {
+  animation: site-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-rise { animation: none; }
 }

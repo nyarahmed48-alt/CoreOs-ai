@@ -191,7 +191,7 @@ export default function App() {
         setPortalMessages([
           {
             id: "system-init",
-            sender: "bot",
+            sender: "assistant",
             text: `👋 Hello! Welcome to the secure interactive chat terminal powered by **CoreOS AI**.\n\nI am **${activeP.name}** and I am fully configured to align with your customized operational rules.\n\nHow can I help you check information, automate tasks, or resolve inquiries today?`,
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           }
@@ -908,7 +908,7 @@ export default function App() {
         ownerName: linkedOwner.name,
         company: linkedOwner.companyName,
         adminEmail: linkedOwner.email,
-        licensePlan: linkedOwner.planCode
+        licensePlan: linkedOwner.plan
       } : "No business owner allocated yet",
       livePortalUrl: `${window.location.origin}/?portal=${client.id}`,
       iframeEmbedCode: `<iframe src="${window.location.origin}/?portal=${client.id}" width="100%" height="600" style="border:none; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08);"></iframe>`,
