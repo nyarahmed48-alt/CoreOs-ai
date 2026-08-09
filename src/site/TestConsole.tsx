@@ -58,18 +58,40 @@ export function TestConsole({
     setBusy(true);
     setError(null);
 
+    // Never spin forever: a host that swallows the request (a misconfigured
+    // proxy, a serverless function that never returns) would otherwise leave
+    // the console stuck on "thinking".
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+
     try {
       const res = await fetch("/api/lab/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: agent.slug, message, history }),
+        signal: abort.signal,
       });
+
+      // A host serving only the static build has no sandbox endpoint, so the
+      // SPA fallback answers with index.html. Say so plainly instead of
+      // failing on a JSON parse error the visitor can't interpret.
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error(
+          "The live sandbox isn't running on this deployment. Email coreosgmail.com@gmail.com and we'll set one up for you.",
+        );
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || data?.error || "Request failed");
       setTurns((t) => [...t, { role: "agent", text: data.text }]);
     } catch (err: any) {
-      setError(err?.message || "Could not reach the testing endpoint.");
+      setError(
+        err?.name === "AbortError"
+          ? `${agent.name} took too long to answer. Try a shorter question, or email coreosgmail.com@gmail.com.`
+          : err?.message || "Could not reach the testing endpoint.",
+      );
     } finally {
+      clearTimeout(timeout);
       setBusy(false);
     }
   }

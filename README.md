@@ -27,6 +27,13 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
+lab/agents.ts         shared agent runtime — roster, charter, Gemini calls
+api/lab/chat.ts       Vercel serverless entry point for the sandbox
+netlify/functions/    Netlify entry point for the sandbox
+public/_redirects     SPA + function routing for Netlify
+vercel.json           Vercel build + rewrite config
+netlify.toml          Netlify build + redirect config
+render.yaml           Render blueprint
 src/
   main.tsx            entry point
   Root.tsx            route table; lazy-loads the manager console
@@ -50,12 +57,13 @@ models (`/coreos-ai`).
 
 Every agent is published under a **CoreOs codename only**. The codename → engine
 mapping, along with each agent's system instruction, lives in `LAB_ENGINES` in
-`server.ts` and is never serialised to the browser. `GET /api/lab/agents` returns
+`lab/agents.ts` and is never serialised to the browser. `GET /api/lab/agents` returns
 slugs and display names and nothing else. This is deliberate: a familiar model
 badge biases a tester's judgement of the answer.
 
 **When adding an agent**, add its public copy to `src/site/catalog.ts` and its
-private engine entry to `LAB_ENGINES` under the same slug. Keep engine names,
+private engine entry to `LAB_ENGINES` in `lab/agents.ts` under the same slug —
+every deployment target shares that one roster. Keep engine names,
 provider names and system instructions out of anything the client receives —
 including error messages, which is why `/api/lab/chat` returns a generic failure
 string rather than the provider's.
@@ -74,8 +82,8 @@ uncertainty, and decline to help plan staff reductions.
 ```
 
 Messages are capped at 500 characters and throttled to 60 per IP per hour. With
-no `GEMINI_API_KEY` configured the endpoint returns a clearly-labelled canned
-reply so the site still demonstrates the flow.
+no `GEMINI_API_KEY` configured the endpoint says so plainly rather than
+pretending to answer.
 
 ## Run locally
 
@@ -88,7 +96,47 @@ npm run dev     # http://localhost:3000
 ```
 
 ```bash
-npm run lint    # tsc --noEmit
-npm run build   # vite build + bundle the server to dist/
-npm start       # serve the production build
+npm run lint       # tsc --noEmit
+npm run build      # vite build + bundle the Express server to dist/
+npm run build:web  # vite build only — for Vercel / Netlify / static hosts
+npm start          # serve the production build
 ```
+
+## The API key
+
+Live answers need a Gemini API key. **Free keys:
+https://aistudio.google.com/apikey** — the free tier is generous enough for a
+public demo sandbox.
+
+Set it as `GEMINI_API_KEY`, in `.env.local` locally or in the hosting
+provider's environment settings. Without a key the site still runs and every
+page works; the agents reply saying no key is configured.
+
+## Deploying
+
+The server honours `$PORT`, so it runs on any Node host with no extra config.
+
+**Vercel or Netlify**: `vercel.json` and `netlify.toml` are both in the repo.
+Import the repository on either platform and it picks up the build command, the
+SPA rewrite, and the sandbox function (`api/lab/chat.ts` on Vercel,
+`netlify/functions/lab-chat.ts` on Netlify). Add `GEMINI_API_KEY` in the
+project's environment variables.
+
+**Render**: `render.yaml` is a blueprint — connect the repository at
+render.com and set `GEMINI_API_KEY` in the dashboard.
+
+**Google Cloud Run**:
+
+```bash
+gcloud run deploy coreos --source . --region <region> --allow-unauthenticated
+```
+
+> **Static-only deploys.** Dragging the built `dist/` folder onto a host gives
+> you the whole site *except* the agent sandbox — there is no function to answer
+> `/api/lab/chat`, so the Test buttons say the sandbox isn't running on this
+> deployment and point at the contact address. Deploy from Git instead if you
+> want the agents live.
+
+Note that `data/*.json` is written at runtime. On hosts with ephemeral disks
+(Render's free plan, Cloud Run, serverless) those files reset — fine for the
+seeded demo data, but move to a real database before relying on it.
