@@ -9,6 +9,7 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { generateReply, handleLabChat, isConfigured, publicAgentList } from "./lab/agents";
 import type { ChatTurn } from "./lab/agents";
+import { actionPage, authorizeScan, handleInboxAction, inboxStatus, runInboxScan } from "./lab/inbox";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -1015,6 +1016,59 @@ app.post("/api/lab/chat", async (req, res) => {
   const { slug, message, history } = req.body || {};
   const { status, body } = await handleLabChat({ slug, message, history });
   res.status(status).json(body);
+});
+
+
+/* =========================================================================
+   INBOX RESPONDER (Express transport)
+
+   The pipeline lives in lab/inbox.ts so the serverless deployments share it.
+   Three routes: one the scheduler pokes, one the notification's links open,
+   and one to see what the thing is doing.
+   ========================================================================= */
+
+app.get("/api/inbox/status", async (_req, res) => {
+  try {
+    res.json(await inboxStatus());
+  } catch (err: any) {
+    console.error("Inbox status failed:", err?.message || err);
+    res.status(500).json({ error: "STATUS_FAILED" });
+  }
+});
+
+app.post("/api/inbox/scan", async (req, res) => {
+  const presented = req.headers["x-inbox-secret"] || req.query.secret;
+  const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress || "");
+  if (!authorizeScan(Array.isArray(presented) ? presented[0] : presented, local)) {
+    return res.status(401).json({ error: "UNAUTHORIZED" });
+  }
+
+  try {
+    const report = await runInboxScan();
+    if (report.ran) {
+      console.log(
+        `Inbox scan: examined ${report.examined}, drafted ${report.drafted}, sent ${report.sent}, escalated ${report.escalated}, ignored ${report.ignored}`,
+      );
+    }
+    res.json(report);
+  } catch (err: any) {
+    console.error("Inbox scan failed:", err?.message || err);
+    res.status(500).json({ error: "SCAN_FAILED", message: err?.message || "unknown error" });
+  }
+});
+
+/* Opened from an email client, so it answers with a page rather than JSON. */
+app.get("/api/inbox/action", async (req, res) => {
+  try {
+    const outcome = await handleInboxAction(req.query.id, req.query.do, req.query.t);
+    res.status(outcome.status).type("html").send(actionPage(outcome));
+  } catch (err: any) {
+    console.error("Inbox action failed:", err?.message || err);
+    res
+      .status(500)
+      .type("html")
+      .send(actionPage({ status: 500, title: "That didn't work", message: "Something went wrong. Open the draft in Gmail instead." }));
+  }
 });
 
 

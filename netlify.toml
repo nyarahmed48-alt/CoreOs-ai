@@ -10,6 +10,15 @@
   to = "/.netlify/functions/lab-chat"
   status = 200
 
+# The "Stop it" / "Send now" links in the inbox responder's notification email.
+# Its sibling, inbox-scan, is deliberately absent: it declares a schedule in
+# code, and Netlify does not expose scheduled functions over HTTP in
+# production. The cron is its only trigger.
+[[redirects]]
+  from = "/api/inbox/action"
+  to = "/.netlify/functions/inbox-action"
+  status = 200
+
 # Client-side routing: every other path serves the app shell so /mission,
 # /coreos-ai, /contact and friends survive a refresh or a shared link.
 [[redirects]]

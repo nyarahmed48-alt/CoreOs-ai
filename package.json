@@ -12,7 +12,10 @@
     "build:web": "vite build",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "inbox:auth": "node scripts/gmail-auth.mjs",
+    "inbox:scan": "tsx scripts/inbox-scan.ts",
+    "inbox:test": "tsx scripts/inbox-selftest.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
