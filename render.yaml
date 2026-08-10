@@ -4,8 +4,8 @@
 # reads this file for the build and start commands. It injects $PORT, which the
 # server honours (see server.ts).
 #
-# ANTHROPIC_API_KEY is marked sync:false so it is never committed — set its
-# value in the Render dashboard after the first deploy.
+# The OpenRouter key is marked sync:false so it is never committed — set both
+# values in the Render dashboard after the first deploy.
 services:
   - type: web
     name: coreos
@@ -17,5 +17,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: ANTHROPIC_API_KEY
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
         sync: false

@@ -13,36 +13,122 @@
  * Nothing in this file is bundled into the browser build.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+/* =============================================================== provider ===
 
-/**
- * Every agent runs on Claude Haiku 4.5 — fast and inexpensive, which is what a
- * public sandbox anyone can hammer actually needs. Agents differ by their
- * persona brief and temperature, not by model.
- *
- * Never sent to the browser.
- */
-const CLAUDE_MODEL = "claude-haiku-4-5";
+   Every agent runs through OpenRouter, configured with two variables:
 
-/** Short replies keep the sandbox cheap; Haiku 4.5 could go far higher. */
+     OPENROUTER_API_KEY   https://openrouter.ai/keys
+     OPENROUTER_MODEL     https://openrouter.ai/models
+
+   One key, one bill, and the choice of model is a deployment setting rather
+   than a code change — including models that are free to call. Nothing here
+   is tied to a particular vendor: switching the whole site to a different
+   model is an environment variable, not a release.
+
+   Unconfigured is a supported state. Every caller falls back to saying so
+   plainly rather than erroring or pretending to answer.
+
+   None of this reaches the browser.
+============================================================================ */
+
+/** Short replies keep the sandbox cheap; most models allow far higher. */
 const MAX_TOKENS = 2048;
 
-/** Lazy client init. Returns null when no key is configured, so every caller
- *  can fall back to a clear message instead of erroring.
- *
- *  Keys come from https://console.anthropic.com */
-export const initClaude = () => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "MY_ANTHROPIC_API_KEY") {
+/** Overridable so the path can be exercised against a stand-in endpoint, and
+ *  so anyone fronting OpenRouter with their own proxy can point at it. */
+const openRouterUrl = () =>
+  `${(process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "")}/chat/completions`;
+
+/** Optional attribution header OpenRouter uses for its rankings. */
+const OPENROUTER_SITE = process.env.OPENROUTER_SITE_URL || "https://coreosai.netlify.app";
+
+/* OPENROUTER_MODEL is deliberately required rather than defaulted. Model ids
+   on aggregators are renamed and retired constantly, and a hardcoded one that
+   quietly 404s is exactly the failure that cost this project two releases on
+   Gemini. Better to be unconfigured and say so. */
+const openRouterConfig = () => {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL;
+  if (!apiKey) return null;
+  if (!model) {
+    console.warn("OPENROUTER_API_KEY is set but OPENROUTER_MODEL is not — pick an id from https://openrouter.ai/models");
     return null;
   }
-  return new Anthropic({ apiKey });
+  return { apiKey, model };
 };
+
+/** True once a key and a model are both configured. */
+export const isConfigured = (): boolean => openRouterConfig() !== null;
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ReplyRequest {
+  system: string;
+  messages: ChatTurn[];
+  temperature: number;
+  maxTokens?: number;
+}
+
+export interface ReplyResult {
+  text: string;
+  /** True when the provider declined on safety grounds rather than failing. */
+  refused: boolean;
+}
+
+/**
+ * One reply from the configured model. Throws on transport or provider errors
+ * so callers can log the detail and show their own message — provider error
+ * strings must never reach the browser.
+ *
+ * OpenRouter speaks the OpenAI chat-completions shape: the system prompt is
+ * the first message rather than its own field, and there is no SDK to add —
+ * Node 20+ has fetch built in.
+ */
+export async function generateReply({ system, messages, temperature, maxTokens }: ReplyRequest): Promise<ReplyResult> {
+  const config = openRouterConfig();
+  if (!config) throw new Error("No AI provider configured");
+
+  const max_tokens = maxTokens ?? MAX_TOKENS;
+  const { apiKey, model } = config;
+  const response = await fetch(openRouterUrl(), {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+      "http-referer": OPENROUTER_SITE,
+      "x-title": "CoreOs",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens,
+      temperature,
+      messages: [{ role: "system", content: system }, ...messages],
+    }),
+  });
+
+  const payload: any = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter ${response.status}: ${payload?.error?.message || response.statusText}`);
+  }
+  // OpenRouter can report a provider-side failure inside a 200.
+  if (payload?.error) {
+    throw new Error(`OpenRouter: ${payload.error.message || "unknown error"}`);
+  }
+
+  const choice = payload?.choices?.[0];
+  if (choice?.finish_reason === "content_filter") return { text: "", refused: true };
+
+  return { text: String(choice?.message?.content ?? "").trim(), refused: false };
+}
 
 export interface LabEngine {
   /** Persona name the agent answers as (matches the public catalogue). */
   name: string;
-  /** Sampling temperature. Haiku 4.5 accepts this; newer models do not. */
+  /** Sampling temperature. Most models accept it; a few newer ones reject it. */
   temperature: number;
   /** Persona brief, private. */
   brief: string;
@@ -138,9 +224,7 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     };
   }
 
-  const ai = initClaude();
-
-  if (!ai) {
+  if (!isConfigured()) {
     // No key configured: say so plainly rather than pretending to answer.
     return {
       status: 200,
@@ -152,7 +236,7 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
   }
 
   try {
-    const conversation: Anthropic.MessageParam[] = [];
+    const conversation: ChatTurn[] = [];
     if (Array.isArray(history)) {
       for (const turn of history.slice(-8)) {
         if (!turn || typeof turn.text !== "string" || !turn.text.trim()) continue;
@@ -164,15 +248,13 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     }
     conversation.push({ role: "user", content: message });
 
-    const response = await ai.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: agent.temperature,
+    const { text, refused } = await generateReply({
       system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
       messages: conversation,
+      temperature: agent.temperature,
     });
 
-    if (response.stop_reason === "refusal") {
+    if (refused) {
       return {
         status: 200,
         body: {
@@ -181,12 +263,6 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
         },
       };
     }
-
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
 
     return {
       status: 200,
