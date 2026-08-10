@@ -94,6 +94,89 @@ export function publicAgentList(): Array<{ slug: string; name: string }> {
   return Object.entries(LAB_ENGINES).map(([slug, a]) => ({ slug, name: a.name }));
 }
 
+/* -------------------------------------------------------------------------
+   Model resolution
+
+   Google renames and retires model IDs over time, and a retired ID fails with
+   a 404 that looks identical to a broken key. Rather than hardcode names that
+   rot, ask the API which models this key can actually call and map each
+   agent's preferred tier onto the best one available.
+   ------------------------------------------------------------------------- */
+
+/** Resolved once per process; a cold serverless start re-resolves. */
+let availableModels: string[] | null = null;
+/** Preferred id -> id actually used, so the log shows a substitution once. */
+const resolvedModels = new Map<string, string>();
+
+export async function getAvailableModels(ai: GoogleGenAI): Promise<string[]> {
+  if (availableModels) return availableModels;
+
+  const found: string[] = [];
+  try {
+    const pager = await ai.models.list();
+    for await (const model of pager) {
+      if (!model.name) continue;
+      // supportedActions is absent on some responses — treat unknown as usable.
+      if (model.supportedActions && !model.supportedActions.includes("generateContent")) continue;
+      found.push(model.name.replace(/^models\//, ""));
+    }
+  } catch (err: any) {
+    // Fall through with an empty list: callers then use their preferred id and
+    // surface the real error from the generate call instead of this one.
+    console.error("Could not list available models:", err?.message || err);
+  }
+
+  availableModels = found;
+  return found;
+}
+
+/** Higher is better. Prefers newer versions and stable over preview builds. */
+function scoreModel(name: string): number {
+  const version = Number.parseFloat(/gemini-(\d+(?:\.\d+)?)/.exec(name)?.[1] ?? "0");
+  let score = version * 10;
+  if (/preview|exp|experimental/.test(name)) score -= 25; // unstable
+  if (/\d{6,}/.test(name)) score -= 1;                     // prefer undated aliases
+  return score;
+}
+
+/**
+ * Map a preferred model id onto one this key can actually call.
+ *
+ * Falls back within the same tier first (pro stays deep, lite stays cheap), then
+ * to any general-purpose Gemini text model, then to the original id so the
+ * caller sees Google's own error rather than a silently wrong substitution.
+ */
+export function resolveModel(preferred: string, available: string[]): string {
+  if (!available.length || available.includes(preferred)) return preferred;
+
+  // Fall through in the direction that preserves intent: a "lite" agent should
+  // land on flash before pro, never the reverse.
+  const tiers = preferred.includes("pro")
+    ? ["pro", "flash"]
+    : preferred.includes("lite")
+      ? ["lite", "flash"]
+      : ["flash", "pro"];
+
+  const generalPurpose = available.filter(
+    (name) =>
+      name.startsWith("gemini-") &&
+      !/embedding|aqa|vision|tts|image|audio|live|imagen|veo/.test(name),
+  );
+
+  const pool =
+    tiers.map((tier) => generalPurpose.filter((n) => n.includes(tier))).find((m) => m.length) ??
+    generalPurpose;
+  if (!pool.length) return preferred;
+
+  const best = pool.reduce((a, b) => (scoreModel(b) > scoreModel(a) ? b : a));
+
+  if (!resolvedModels.has(preferred)) {
+    resolvedModels.set(preferred, best);
+    console.info(`Model "${preferred}" unavailable; using "${best}" instead.`);
+  }
+  return best;
+}
+
 export interface LabChatRequest {
   slug?: unknown;
   message?: unknown;
@@ -156,8 +239,10 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     }
     contents.push({ role: "user", parts: [{ text: message }] });
 
+    const model = resolveModel(agent.engine, await getAvailableModels(ai));
+
     const response = await ai.models.generateContent({
-      model: agent.engine,
+      model,
       contents,
       config: {
         systemInstruction: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
