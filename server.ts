@@ -75,7 +75,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Help users check logistics tracking, analyze system logs, and answer complex reasoning requirements in a highly professional and analytical tone.",
     aiConfig: {
-      model: "gemini-2.5-pro",
+      model: "coreos-prime",
       systemInstruction: "You are Aether Omni (CoreOS Prime). Your goal is to provide deep strategic advice, parse complex dataset requests, and construct logical summaries.\n\nGuidelines:\n1. Keep answers comprehensive yet clear.\n2. Present comparative tables in beautifully formatted markdown tables.\n3. Maintain an intellectual, technical, yet elegant executive tone.",
       temperature: 0.7,
       topP: 0.9,
@@ -97,7 +97,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Formulate instant customer support chat replies, answer frequent questions under 1.5 seconds latency, and explain services concisely with helpful highlights.",
     aiConfig: {
-      model: "gemini-2.0-flash",
+      model: "coreos-creative",
       systemInstruction: "You are Vanguard Voice (CoreOS Interactive), designed for micro-second interactive dialogs.\n\nInstructions:\n- Keep all replies extremely brief, clean, and interactive.\n- Prioritize short, crisp bullet points over long dense paragraphs.\n- Present technical configurations in small tabular outlines.",
       temperature: 0.9,
       topP: 0.95,
@@ -118,7 +118,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Audit incoming transcripts and documents for potential PII (Personally Identifiable Information) breaches, and redact sensitive tokens.",
     aiConfig: {
-      model: "gemini-2.5-flash",
+      model: "coreos-precise",
       systemInstruction: "You are Vesper Shield (CoreOS Sentinel). You run in high-alert privacy auditing mode.\n\nStrict Rules:\n1. Clean inputs of any clear credential paths or PII leak tokens.\n2. Output brief auditing status markers indicating system posture.\n3. Present reports cleanly styled in monospace markdown blocks.",
       temperature: 0.2,
       topP: 0.8,
@@ -138,7 +138,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Formulate catchy product marketing slogans, newsletter outlines, and high engagement advertising copies.",
     aiConfig: {
-      model: "gemini-2.5-flash",
+      model: "coreos-creative",
       systemInstruction: "You are Lumina Creative (CoreOS Copywriter). You specialize in engaging corporate marketing copy.",
       temperature: 0.85,
       topP: 0.9,
@@ -157,7 +157,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Analyze visual descriptors, OCR transcripts, and structural camera configurations.",
     aiConfig: {
-      model: "gemini-2.0-flash",
+      model: "coreos-precise",
       systemInstruction: "You are Chronos Vision (CoreOS Analyzer). Analyze the provided input schema or visual details and extract precise coordinate grids.",
       temperature: 0.4,
       topP: 0.85,
@@ -176,7 +176,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Construct clean TypeScript algorithms, review code blocks for security anti-patterns, and write automated tests.",
     aiConfig: {
-      model: "gemini-2.5-pro",
+      model: "coreos-precise",
       systemInstruction: "You are Helix Coder (CoreOS Compiler). Format all output blocks in clean styled markdown code containers with explanatory comments.",
       temperature: 0.3,
       topP: 0.8,
@@ -195,7 +195,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Distill high-volume corporate discussions, meetings audio transcripts, and dense developer debug files.",
     aiConfig: {
-      model: "gemini-2.0-flash-lite",
+      model: "coreos-precise",
       systemInstruction: "You are Scribe Summary (CoreOS Scriptor). Extract critical milestones, timeline dates, and action items with zero fluff.",
       temperature: 0.2,
       topP: 0.9,
@@ -214,7 +214,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Translate complex SaaS platform strings and localized copywriting files to guarantee cultural compliance.",
     aiConfig: {
-      model: "gemini-2.0-flash",
+      model: "coreos-prime",
       systemInstruction: "You are Hermes Global (CoreOS Translator). Seamlessly translate target dialogs while retaining original brand tones.",
       temperature: 0.5,
       topP: 0.9,
@@ -233,7 +233,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Write persuasive cold engagement B2B outreach messaging, refine sales frameworks, and convert targets.",
     aiConfig: {
-      model: "gemini-2.5-flash",
+      model: "coreos-creative",
       systemInstruction: "You are Atlas Sales (CoreOS Outreach). Structure enticing B2B offerings focusing on real economic values.",
       temperature: 0.8,
       topP: 0.9,
@@ -252,7 +252,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Translate internal compliance guidelines into clear training workflows and employee interactive quizzes.",
     aiConfig: {
-      model: "gemini-2.0-flash-lite",
+      model: "coreos-prime",
       systemInstruction: "You are Zephyr HR (CoreOS Recruiter). Explain internal policy codes with extreme warmth and structured lessons.",
       temperature: 0.7,
       topP: 0.9,
@@ -271,7 +271,7 @@ const DEFAULT_CLIENTS = [
     status: "active",
     needs: "Run seamless speech-like conversation answers and calculate instant bill estimates orally.",
     aiConfig: {
-      model: "gemini-2.5-flash",
+      model: "coreos-prime",
       systemInstruction: "You are Aether Voice Link (CoreOS Audio). Standardize text inputs to sound perfectly natural when spoken aloud.",
       temperature: 0.6,
       topP: 0.9,
@@ -544,7 +544,7 @@ app.get("/api/clients", (req, res) => {
   res.json(clients);
 });
 
-// POST dynamic model list from real Gemini API or list up-to-date models
+// GET the capability tiers a client profile can be assigned to
 app.get("/api/models", (req, res) => {
   // CoreOS publishes capability tiers, not engine names. Every tier runs the
   // same model; the tier sets how much latitude the agent is given.
@@ -600,7 +600,7 @@ app.post("/api/clients", (req, res) => {
     status: req.body.status || "configuring",
     needs: req.body.needs || "Please summarize our clients needs.",
     aiConfig: {
-      model: req.body.aiConfig?.model || "gemini-2.5-flash",
+      model: req.body.aiConfig?.model || "coreos-prime",
       systemInstruction: req.body.aiConfig?.systemInstruction || "You are a helpful SaaS client assistant.",
       temperature: Number(req.body.aiConfig?.temperature) ?? 0.7,
       topP: Number(req.body.aiConfig?.topP) ?? 0.9,
@@ -745,7 +745,7 @@ app.post("/api/generate-instruction", async (req, res) => {
 
   const ai = initClaude();
 
-  const prompt = `Write a professional system instruction/persona prompt for a customized Gemini AI chatbot integration.
+  const prompt = `Write a professional system instruction/persona prompt for a customized CoreOS AI chatbot integration.
 The target website is CoreOS SaaS. The client is:
 Client Name: "${clientName}"
 Client Description: "${description || 'None'}"
@@ -892,7 +892,7 @@ app.post("/api/chat/simulate", async (req, res) => {
     compiledInstruction += `\n[Context Data Option: ${key} = ${val}]`;
   });
 
-  // Inject Language restriction into Gemini prompt instructions
+  // Inject the language restriction into the compiled system instruction
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
   const ai = initClaude();
@@ -934,7 +934,7 @@ app.post("/api/chat/simulate", async (req, res) => {
         }
       }
 
-      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Save your GEMINI_API_KEY as a secret to run real live conversations in ${clientLanguage.toUpperCase()} using actual Gemini model reasoning.*`;
+      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Set ANTHROPIC_API_KEY in this deployment's environment variables to run real live conversations in ${clientLanguage.toUpperCase()} against the actual model.*`;
       recordChatInteraction(id, clientName, configuredTier, message, reply, req.body.channel || "Sandbox Simulator");
       res.json({ text: reply, isFallback: true, customerUsage: customer });
     }, 750);
@@ -973,7 +973,7 @@ app.post("/api/chat/simulate", async (req, res) => {
     recordChatInteraction(id, clientName, configuredTier, message, replyText, req.body.channel || "Sandbox Simulator");
     res.json({ text: replyText, isFallback: false, customerUsage: customer });
   } catch (err: any) {
-    console.error("Gemini simulation error:", err);
+    console.error("Simulator error:", err);
     res.status(500).json({ error: err.message });
   }
 });
