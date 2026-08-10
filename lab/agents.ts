@@ -107,6 +107,8 @@ export function publicAgentList(): Array<{ slug: string; name: string }> {
 let availableModels: string[] | null = null;
 /** Preferred id -> id actually used, so the log shows a substitution once. */
 const resolvedModels = new Map<string, string>();
+/** Preferred id -> id proven to work by a successful call. */
+const workingModel = new Map<string, string>();
 
 export async function getAvailableModels(ai: GoogleGenAI): Promise<string[]> {
   if (availableModels) return availableModels;
@@ -121,14 +123,33 @@ export async function getAvailableModels(ai: GoogleGenAI): Promise<string[]> {
       found.push(model.name.replace(/^models\//, ""));
     }
   } catch (err: any) {
-    // Fall through with an empty list: callers then use their preferred id and
-    // surface the real error from the generate call instead of this one.
+    // Fall through with an empty list: callers then fall back to CANDIDATE_MODELS
+    // and surface the real error from the generate call instead of this one.
     console.error("Could not list available models:", err?.message || err);
   }
+
+  console.info(
+    found.length
+      ? `Models available to this key (${found.length}): ${found.slice(0, 12).join(", ")}${found.length > 12 ? ", …" : ""}`
+      : "Model listing returned nothing — falling back to candidate ids.",
+  );
 
   availableModels = found;
   return found;
 }
+
+/**
+ * Used only when listing fails outright. Spans several generations because the
+ * point is to find *anything* that answers, newest first.
+ */
+const CANDIDATE_MODELS = [
+  "gemini-flash-latest",
+  "gemini-3.0-flash",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+];
 
 /** Higher is better. Prefers newer versions and stable over preview builds. */
 function scoreModel(name: string): number {
@@ -147,7 +168,10 @@ function scoreModel(name: string): number {
  * caller sees Google's own error rather than a silently wrong substitution.
  */
 export function resolveModel(preferred: string, available: string[]): string {
-  if (!available.length || available.includes(preferred)) return preferred;
+  const proven = workingModel.get(preferred);
+  if (proven) return proven;
+  if (available.includes(preferred)) return preferred;
+  if (!available.length) return CANDIDATE_MODELS[0];
 
   // Fall through in the direction that preserves intent: a "lite" agent should
   // land on flash before pro, never the reverse.
@@ -239,22 +263,45 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     }
     contents.push({ role: "user", parts: [{ text: message }] });
 
-    const model = resolveModel(agent.engine, await getAvailableModels(ai));
+    const available = await getAvailableModels(ai);
+    const first = resolveModel(agent.engine, available);
 
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
-        temperature: agent.temperature,
-        topP: 0.95,
-      },
-    });
+    /* Try the resolved model, then alternates. A 404 means the id isn't served
+       for this key; anything else (auth, quota, safety) is real and rethrown
+       immediately rather than retried pointlessly against every candidate. */
+    const attempts = [first, ...(available.length ? available.filter((m) => m !== first).slice(0, 3) : CANDIDATE_MODELS.filter((m) => m !== first))];
 
-    return {
-      status: 200,
-      body: { text: response.text || "No response was produced. Try rephrasing the question.", fallback: false },
-    };
+    let lastError: any;
+    for (const model of attempts) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
+            temperature: agent.temperature,
+            topP: 0.95,
+          },
+        });
+
+        if (model !== first) {
+          console.info(`Model "${first}" returned 404; "${model}" worked. Using it from here.`);
+          workingModel.set(agent.engine, model);
+        }
+
+        return {
+          status: 200,
+          body: { text: response.text || "No response was produced. Try rephrasing the question.", fallback: false },
+        };
+      } catch (err: any) {
+        lastError = err;
+        const notFound = err?.status === 404 || /\b404\b|not found|is not supported/i.test(String(err?.message || ""));
+        console.error(`Model "${model}" failed for agent "${slug}":`, err?.message || err);
+        if (!notFound) throw err;
+      }
+    }
+
+    throw lastError;
   } catch (err: any) {
     // Never surface provider error strings — they name the engine.
     console.error(`Lab chat error for agent "${slug}":`, err?.message || err);
