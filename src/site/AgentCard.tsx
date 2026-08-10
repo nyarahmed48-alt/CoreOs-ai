@@ -5,6 +5,7 @@
 
 import { Play, Check } from "lucide-react";
 import type { PublicAgent } from "./catalog";
+import { useLang } from "./i18n";
 
 export function AgentCard({
   agent,
@@ -13,6 +14,8 @@ export function AgentCard({
   agent: PublicAgent;
   onTest: (agent: PublicAgent) => void;
 }) {
+  const { t, pick } = useLang();
+
   return (
     <article className="group flex flex-col rounded-2xl border border-[#171d2d] bg-[#0a0d16] p-5 transition-colors hover:border-[#2c3550]">
       <div className="flex items-start gap-3.5">
@@ -25,31 +28,34 @@ export function AgentCard({
               {agent.name}
             </h3>
             <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#5e677f]">
-              {agent.category}
+              {pick(agent.category)}
             </span>
           </div>
           <p className="mt-1 text-[13.5px] leading-snug text-[#98a0bb]">
-            {agent.tagline}
+            {pick(agent.tagline)}
           </p>
         </div>
       </div>
 
       <ul className="mt-4 space-y-2">
         {agent.uses.map((use) => (
-          <li key={use} className="flex gap-2.5 text-[13.5px] leading-relaxed text-[#b6bdd2]">
+          <li
+            key={use.en}
+            className="flex gap-2.5 text-[13.5px] leading-relaxed text-[#b6bdd2]"
+          >
             <Check className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#1878dc]" />
-            <span>{use}</span>
+            <span>{pick(use)}</span>
           </li>
         ))}
       </ul>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {agent.traits.map((t) => (
+        {agent.traits.map((trait) => (
           <span
-            key={t}
+            key={trait.en}
             className="rounded-md border border-[#1e2537] bg-[#0d1220] px-2 py-1 text-[11.5px] text-[#8c93ac]"
           >
-            {t}
+            {pick(trait)}
           </span>
         ))}
       </div>
@@ -63,7 +69,7 @@ export function AgentCard({
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#232b40] bg-[#0d1220] px-4 py-2.5 text-[13.5px] font-semibold text-[#c3c9dd] transition-colors group-hover:border-[#6c7bf0] group-hover:bg-[#6c7bf0] group-hover:text-[#05060a]"
         >
           <Play className="h-3.5 w-3.5" />
-          Test {agent.name}
+          {t("card.test")} {agent.name}
         </button>
       </div>
     </article>

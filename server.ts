@@ -1006,14 +1006,17 @@ app.post("/api/lab/chat", async (req, res) => {
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress || "unknown";
   const limit = labRateLimit(ip);
   if (!limit.ok) {
+    const arabic = req.body?.lang !== "en";
     return res.status(429).json({
       error: "RATE_LIMITED",
-      message: `You've reached the sandbox limit of ${LAB_MAX_PER_WINDOW} messages an hour. Try again in about ${limit.retryInMin} minutes, or get in touch and we'll open a proper trial.`,
+      message: arabic
+        ? `لقد بلغت حد بيئة الاختبار وهو ${LAB_MAX_PER_WINDOW} رسالة في الساعة. حاول بعد نحو ${limit.retryInMin} دقيقة، أو تواصل معنا لنفتح لك تجربة كاملة.`
+        : `You've reached the sandbox limit of ${LAB_MAX_PER_WINDOW} messages an hour. Try again in about ${limit.retryInMin} minutes, or get in touch and we'll open a proper trial.`,
     });
   }
 
-  const { slug, message, history } = req.body || {};
-  const { status, body } = await handleLabChat({ slug, message, history });
+  const { slug, message, history, lang } = req.body || {};
+  const { status, body } = await handleLabChat({ slug, message, history, lang });
   res.status(status).json(body);
 });
 

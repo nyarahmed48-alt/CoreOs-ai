@@ -35,8 +35,8 @@ export default async function handler(request: Request): Promise<Response> {
     );
   }
 
-  const { slug, message, history } = payload ?? {};
-  const { status, body } = await handleLabChat({ slug, message, history });
+  const { slug, message, history, lang } = payload ?? {};
+  const { status, body } = await handleLabChat({ slug, message, history, lang });
 
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }

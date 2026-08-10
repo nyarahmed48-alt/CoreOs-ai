@@ -33,7 +33,7 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  const { slug, message, history } = payload;
-  const { status, body } = await handleLabChat({ slug, message, history });
+  const { slug, message, history, lang } = payload;
+  const { status, body } = await handleLabChat({ slug, message, history, lang });
   return res.status(status).json(body);
 }

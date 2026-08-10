@@ -13,6 +13,8 @@
  *   tagline     #1878dc (signal blue)
  */
 
+import { useLang } from "./i18n";
+
 export const BRAND = {
   ink: "#05060a",
   cream: "#edf2e4",
@@ -50,7 +52,8 @@ export function CoreOsMark({
   );
 }
 
-/** Full lockup: mark + "coreOs" wordmark, with an optional tagline beneath. */
+/** Full lockup: mark + "coreOs" wordmark, with an optional tagline beneath.
+ *  The tagline is the site's own headline, so it follows the active language. */
 export function CoreOsLockup({
   size = 34,
   tagline = false,
@@ -63,6 +66,8 @@ export function CoreOsLockup({
   suffix?: string;
   className?: string;
 }) {
+  const { t } = useLang();
+
   return (
     <span className={`inline-flex flex-col gap-1 ${className}`}>
       <span className="inline-flex items-center gap-[0.38em]">
@@ -82,7 +87,7 @@ export function CoreOsLockup({
           className="font-display font-semibold tracking-tight"
           style={{ fontSize: size * 0.4, color: BRAND.signal }}
         >
-          Where your needs meet reality.
+          {`${t("home.h1a")} ${t("home.h1b")}`}
         </span>
       ) : null}
     </span>

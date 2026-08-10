@@ -5,6 +5,7 @@
 
 import { lazy, Suspense } from "react";
 import { RouterProvider, useRouter, Link } from "./site/router";
+import { LangProvider, useLang } from "./site/i18n";
 import { Layout } from "./site/Layout";
 import { HomePage } from "./site/HomePage";
 import { MissionPage } from "./site/MissionPage";
@@ -24,20 +25,28 @@ function isPortalLink(): boolean {
   return params.has("portal") || params.has("clientId");
 }
 
+function ConsoleFallback() {
+  const { t } = useLang();
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#05060a] text-sm text-[#8c93ac]">
+      {t("misc.loadingConsole")}
+    </div>
+  );
+}
+
 function Routes() {
   const { path } = useRouter();
 
   if (path === "/manager" || isPortalLink()) {
+    /* The console is an internal English tool and its layout was never built
+       for RTL. Pin it left-to-right so the site's Arabic default, which sets
+       dir on <html>, does not reach in and mirror the dashboard. */
     return (
-      <Suspense
-        fallback={
-          <div className="flex min-h-[100dvh] items-center justify-center bg-[#05060a] text-sm text-[#8c93ac]">
-            Loading the client console…
-          </div>
-        }
-      >
-        <Manager />
-      </Suspense>
+      <div dir="ltr" lang="en">
+        <Suspense fallback={<ConsoleFallback />}>
+          <Manager />
+        </Suspense>
+      </div>
     );
   }
 
@@ -58,29 +67,29 @@ function Routes() {
 }
 
 function NotFound({ path }: { path: string }) {
+  const { t } = useLang();
+
   return (
     <section className="mx-auto max-w-2xl px-5 py-32 text-center">
       <p className="font-display text-[13px] font-bold uppercase tracking-[0.18em] text-[#1878dc]">
         404
       </p>
       <h1 className="mt-4 font-brand text-[clamp(2rem,5vw,3rem)] font-extrabold tracking-[-0.03em] text-white">
-        Nothing lives at {path}
+        {t("nf.h1")} <span dir="ltr">{path}</span>
       </h1>
-      <p className="mt-4 text-[15.5px] text-[#a4abc4]">
-        The page you asked for isn't here. The agents, however, are.
-      </p>
+      <p className="mt-4 text-[15.5px] text-[#a4abc4]">{t("nf.p")}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Link
           to="/"
           className="rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] hover:bg-[#8390f4]"
         >
-          Back to CoreOs
+          {t("nf.back")}
         </Link>
         <Link
           to="/coreos-ai"
           className="rounded-xl border border-[#232b40] px-5 py-3 text-[14.5px] font-semibold text-[#c3c9dd] hover:border-[#3a4460] hover:text-white"
         >
-          Visit CoreOs.ai
+          {t("nf.lab")}
         </Link>
       </div>
     </section>
@@ -89,8 +98,10 @@ function NotFound({ path }: { path: string }) {
 
 export default function Root() {
   return (
-    <RouterProvider>
-      <Routes />
-    </RouterProvider>
+    <LangProvider>
+      <RouterProvider>
+        <Routes />
+      </RouterProvider>
+    </LangProvider>
   );
 }
