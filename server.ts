@@ -7,8 +7,8 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import Anthropic from "@anthropic-ai/sdk";
-import { handleLabChat, initClaude, publicAgentList } from "./lab/agents";
+import { activeProvider, generateReply, handleLabChat, publicAgentList } from "./lab/agents";
+import type { ChatTurn } from "./lab/agents";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -20,8 +20,9 @@ const app = express();
 // development unchanged.
 const PORT = Number(process.env.PORT) || 3000;
 
-/** The console's own AI features run on the same model as the agents. */
-const CONSOLE_MODEL = "claude-haiku-4-5";
+/* The console's AI features go through the same provider layer as the public
+   agents (lab/agents.ts), so the model and the key handling are chosen in
+   exactly one place. */
 
 app.use(express.json());
 
@@ -509,7 +510,7 @@ function recordChatInteraction(clientId: string, clientName: string, modelUsed: 
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    hasApiKey: initClaude() !== null,
+    hasApiKey: activeProvider() !== null,
     timestamp: new Date().toISOString()
   });
 });
@@ -584,7 +585,7 @@ app.get("/api/models", (req, res) => {
     }
   ];
 
-  res.json({ models, isLive: initClaude() !== null });
+  res.json({ models, isLive: activeProvider() !== null });
 });
 
 // CREATE a new client AI profile
@@ -743,8 +744,6 @@ app.post("/api/generate-instruction", async (req, res) => {
     return res.status(400).json({ error: "Needs statement is required to build instructions" });
   }
 
-  const ai = initClaude();
-
   const prompt = `Write a professional system instruction/persona prompt for a customized CoreOS AI chatbot integration.
 The target website is CoreOS SaaS. The client is:
 Client Name: "${clientName}"
@@ -762,7 +761,7 @@ Focus strictly on:
 
 Respond ONLY with the complete, fully written system instruction text block. Do not write introductory words like "Here are the instructions:" or place markdown backticks around the instruction itself. Offer direct, high-quality content.`;
 
-  if (!ai) {
+  if (!activeProvider()) {
     // Elegant fallback simulation is keys are not set
     const mockInstruction = `You are the specialized AI Assistant for ${clientName || 'our CoreOS Client'}.
 
@@ -775,19 +774,12 @@ Respond ONLY with the complete, fully written system instruction text block. Do 
   }
 
   try {
-    const response = await ai.messages.create({
-      model: CONSOLE_MODEL,
-      max_tokens: 4096,
-      temperature: 0.7,
+    const { text: instruction } = await generateReply({
       system: "You are an expert prompt engineering systems architect. You generate structured, rich, and highly effective persona system instructions.",
       messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      maxTokens: 4096,
     });
-
-    const instruction = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
 
     res.json({ instruction, isFallback: false });
   } catch (error: any) {
@@ -895,9 +887,7 @@ app.post("/api/chat/simulate", async (req, res) => {
   // Inject the language restriction into the compiled system instruction
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
-  const ai = initClaude();
-
-  if (!ai) {
+  if (!activeProvider()) {
     // Simulate responses translated or formatted based on chosen Language
     setTimeout(() => {
       let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${configuredTier.toUpperCase()} (Tuned Temp: ${temperature})\n\n`;
@@ -934,7 +924,7 @@ app.post("/api/chat/simulate", async (req, res) => {
         }
       }
 
-      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Set ANTHROPIC_API_KEY in this deployment's environment variables to run real live conversations in ${clientLanguage.toUpperCase()} against the actual model.*`;
+      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Set ANTHROPIC_API_KEY (or OPENROUTER_API_KEY and OPENROUTER_MODEL) in this deployment's environment variables to run real live conversations in ${clientLanguage.toUpperCase()} against the actual model.*`;
       recordChatInteraction(id, clientName, configuredTier, message, reply, req.body.channel || "Sandbox Simulator");
       res.json({ text: reply, isFallback: true, customerUsage: customer });
     }, 750);
@@ -942,7 +932,7 @@ app.post("/api/chat/simulate", async (req, res) => {
   }
 
   try {
-    const contentHistory: Anthropic.MessageParam[] = [];
+    const contentHistory: ChatTurn[] = [];
 
     if (history && history.length > 0) {
       history.forEach((h: any) => {
@@ -957,19 +947,12 @@ app.post("/api/chat/simulate", async (req, res) => {
 
     contentHistory.push({ role: "user", content: message });
 
-    const response = await ai.messages.create({
-      model: CONSOLE_MODEL,
-      max_tokens: 2048,
-      temperature,
+    const { text: replyText } = await generateReply({
       system: compiledInstruction,
       messages: contentHistory,
+      temperature,
     });
 
-    const replyText = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
     recordChatInteraction(id, clientName, configuredTier, message, replyText, req.body.channel || "Sandbox Simulator");
     res.json({ text: replyText, isFallback: false, customerUsage: customer });
   } catch (err: any) {
@@ -988,7 +971,7 @@ app.post("/api/chat/simulate", async (req, res) => {
    ========================================================================= */
 
 app.get("/api/lab/agents", (req, res) => {
-  res.json({ agents: publicAgentList(), live: initClaude() !== null });
+  res.json({ agents: publicAgentList(), live: activeProvider() !== null });
 });
 
 /* Coarse per-IP throttle. The endpoint is unauthenticated by design, so it

@@ -27,7 +27,7 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
-lab/agents.ts         shared agent runtime — roster, charter, Claude calls
+lab/agents.ts         shared agent runtime — roster, charter, provider calls
 api/lab/chat.ts       Vercel serverless entry point for the sandbox
 netlify/functions/    Netlify entry point for the sandbox
 public/_redirects     SPA + function routing for Netlify
@@ -82,7 +82,7 @@ uncertainty, and decline to help plan staff reductions.
 ```
 
 Messages are capped at 500 characters and throttled to 60 per IP per hour. With
-no `ANTHROPIC_API_KEY` configured the endpoint says so plainly rather than
+no provider configured the endpoint says so plainly rather than
 pretending to answer.
 
 ## Run locally
@@ -91,7 +91,7 @@ pretending to answer.
 
 ```bash
 npm install
-# optional: set ANTHROPIC_API_KEY in .env.local for live agent responses
+# optional: set a provider key in .env.local for live agent responses (see .env.example)
 npm run dev     # http://localhost:3000
 ```
 
@@ -105,25 +105,43 @@ npm start          # serve the production build
 ## The AI behind CoreOS
 
 Every agent — all 31 in the testing programme, plus the console's simulator and
-instruction generator — runs on **Claude Haiku 4.5** (`claude-haiku-4-5`)
-through the official `@anthropic-ai/sdk`. Fast and inexpensive, which is what a
-public sandbox anyone can hammer actually needs.
+instruction generator — goes through one function, `generateReply()` in
+`lab/agents.ts`. Agents differ by persona brief and `temperature`, not by model.
 
-Agents differ by persona brief and `temperature`, not by model. Two API notes
-for anyone changing the calls:
+Two providers are supported, so the site is never blocked on one company's
+billing. Whichever is configured wins, checked in this order:
+
+| Provider | Variables | Notes |
+| --- | --- | --- |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Claude Haiku 4.5. The default, and what the personas are tuned against. Wins if both are set. |
+| **OpenRouter** | `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | One key across many providers, including models that are free to call. |
+
+With neither set the site still runs and every page works; the agents reply
+saying no key is configured.
+
+### Anthropic
+
+Keys from https://console.anthropic.com. Pay-as-you-go with no free tier, but
+Haiku is cheap — a sandbox exchange costs a fraction of a cent. Two API notes
+for anyone changing the call:
 
 - **Haiku 4.5 accepts `temperature`.** Newer Claude models reject sampling
   parameters, so this does not port upward unchanged.
 - **Do not send `output_config.effort`** — it errors on Haiku 4.5.
 
-### The API key
+### OpenRouter
 
-Set `ANTHROPIC_API_KEY`, from https://console.anthropic.com — in `.env.local`
-locally, or in the hosting provider's environment settings.
+Keys from https://openrouter.ai/keys, model ids from
+https://openrouter.ai/models — anything ending `:free` costs nothing to call.
+OpenRouter speaks the OpenAI chat-completions shape rather than Anthropic's, so
+the system prompt goes in as the first message; it is called with `fetch`, with
+no extra dependency.
 
-Anthropic is pay-as-you-go with no free tier, but Haiku is cheap: a sandbox
-exchange costs a fraction of a cent. Without a key the site still runs and
-every page works; the agents reply saying no key is configured.
+**`OPENROUTER_MODEL` has no default and is required.** Model ids on aggregators
+get renamed and retired, and a stale hardcoded one fails as "model not found" —
+an error that points nowhere near the cause. Being unconfigured and saying so is
+better. Setting the key without the model logs a warning and leaves the provider
+inactive.
 
 ## Deploying
 
@@ -132,11 +150,11 @@ The server honours `$PORT`, so it runs on any Node host with no extra config.
 **Vercel or Netlify**: `vercel.json` and `netlify.toml` are both in the repo.
 Import the repository on either platform and it picks up the build command, the
 SPA rewrite, and the sandbox function (`api/lab/chat.ts` on Vercel,
-`netlify/functions/lab-chat.ts` on Netlify). Add `ANTHROPIC_API_KEY` in the
+`netlify/functions/lab-chat.ts` on Netlify). Add your provider key in the
 project's environment variables.
 
 **Render**: `render.yaml` is a blueprint — connect the repository at
-render.com and set `ANTHROPIC_API_KEY` in the dashboard.
+render.com and set your provider key in the dashboard.
 
 **Google Cloud Run**:
 
