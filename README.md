@@ -108,40 +108,30 @@ Every agent — all 31 in the testing programme, plus the console's simulator an
 instruction generator — goes through one function, `generateReply()` in
 `lab/agents.ts`. Agents differ by persona brief and `temperature`, not by model.
 
-Two providers are supported, so the site is never blocked on one company's
-billing. Whichever is configured wins, checked in this order:
+Everything runs through **OpenRouter**: one key across many providers, one
+bill, and models that are free to call. Which model serves the whole site is a
+deployment setting rather than a code change, so switching is an environment
+variable, not a release.
 
-| Provider | Variables | Notes |
-| --- | --- | --- |
-| **Anthropic** | `ANTHROPIC_API_KEY` | Claude Haiku 4.5. The default, and what the personas are tuned against. Wins if both are set. |
-| **OpenRouter** | `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | One key across many providers, including models that are free to call. |
+| Variable | |
+| --- | --- |
+| `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
+| `OPENROUTER_MODEL` | https://openrouter.ai/models — anything ending `:free` costs nothing |
+| `OPENROUTER_SITE_URL` | optional; attribution header |
+| `OPENROUTER_BASE_URL` | optional; point at a proxy or a stand-in endpoint |
 
-With neither set the site still runs and every page works; the agents reply
-saying no key is configured.
+Without them the site still runs and every page works; the agents reply saying
+no key is configured.
 
-### Anthropic
-
-Keys from https://console.anthropic.com. Pay-as-you-go with no free tier, but
-Haiku is cheap — a sandbox exchange costs a fraction of a cent. Two API notes
-for anyone changing the call:
-
-- **Haiku 4.5 accepts `temperature`.** Newer Claude models reject sampling
-  parameters, so this does not port upward unchanged.
-- **Do not send `output_config.effort`** — it errors on Haiku 4.5.
-
-### OpenRouter
-
-Keys from https://openrouter.ai/keys, model ids from
-https://openrouter.ai/models — anything ending `:free` costs nothing to call.
-OpenRouter speaks the OpenAI chat-completions shape rather than Anthropic's, so
-the system prompt goes in as the first message; it is called with `fetch`, with
-no extra dependency.
+OpenRouter speaks the OpenAI chat-completions shape, so the system prompt goes
+in as the first message rather than its own field. It is called with `fetch` —
+there is no provider SDK in the dependency list.
 
 **`OPENROUTER_MODEL` has no default and is required.** Model ids on aggregators
 get renamed and retired, and a stale hardcoded one fails as "model not found" —
 an error that points nowhere near the cause. Being unconfigured and saying so is
-better. Setting the key without the model logs a warning and leaves the provider
-inactive.
+better. Setting the key without the model logs what to do and leaves the agents
+switched off.
 
 ## Deploying
 

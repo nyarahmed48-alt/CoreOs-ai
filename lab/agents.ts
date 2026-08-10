@@ -13,32 +13,25 @@
  * Nothing in this file is bundled into the browser build.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+/* =============================================================== provider ===
 
-/* ============================================================== providers ===
+   Every agent runs through OpenRouter, configured with two variables:
 
-   The agents can be powered two ways. Whichever is configured wins, checked
-   in this order:
+     OPENROUTER_API_KEY   https://openrouter.ai/keys
+     OPENROUTER_MODEL     https://openrouter.ai/models
 
-     1. ANTHROPIC_API_KEY                      → Claude Haiku 4.5, direct
-     2. OPENROUTER_API_KEY + OPENROUTER_MODEL  → OpenRouter
+   One key, one bill, and the choice of model is a deployment setting rather
+   than a code change — including models that are free to call. Nothing here
+   is tied to a particular vendor: switching the whole site to a different
+   model is an environment variable, not a release.
 
-   OpenRouter fronts many providers behind one key and one bill, including
-   models that are free to call. It exists here so the site is never blocked
-   on a single provider's billing. Anthropic wins when both are set, because
-   it is the direct path and the personas below are tuned against Haiku.
-
-   Neither configured is a supported state: every caller falls back to saying
-   so plainly rather than erroring or pretending to answer.
+   Unconfigured is a supported state. Every caller falls back to saying so
+   plainly rather than erroring or pretending to answer.
 
    None of this reaches the browser.
 ============================================================================ */
 
-/** Direct Anthropic path. Fast and inexpensive, which is what a public
- *  sandbox anyone can hammer actually needs. */
-const CLAUDE_MODEL = "claude-haiku-4-5";
-
-/** Short replies keep the sandbox cheap; Haiku 4.5 could go far higher. */
+/** Short replies keep the sandbox cheap; most models allow far higher. */
 const MAX_TOKENS = 2048;
 
 /** Overridable so the path can be exercised against a stand-in endpoint, and
@@ -46,21 +39,13 @@ const MAX_TOKENS = 2048;
 const openRouterUrl = () =>
   `${(process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "")}/chat/completions`;
 
-/** Optional attribution headers OpenRouter uses for its rankings. */
+/** Optional attribution header OpenRouter uses for its rankings. */
 const OPENROUTER_SITE = process.env.OPENROUTER_SITE_URL || "https://coreosai.netlify.app";
-
-export type Provider = "anthropic" | "openrouter";
-
-const anthropicKey = () => {
-  const key = process.env.ANTHROPIC_API_KEY;
-  return key && key !== "MY_ANTHROPIC_API_KEY" ? key : null;
-};
 
 /* OPENROUTER_MODEL is deliberately required rather than defaulted. Model ids
    on aggregators are renamed and retired constantly, and a hardcoded one that
    quietly 404s is exactly the failure that cost this project two releases on
-   Gemini. Better to be unconfigured and say so. Pick an id from
-   https://openrouter.ai/models — anything ending ":free" costs nothing. */
+   Gemini. Better to be unconfigured and say so. */
 const openRouterConfig = () => {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL;
@@ -72,18 +57,8 @@ const openRouterConfig = () => {
   return { apiKey, model };
 };
 
-/** Which provider will serve a request, or null when nothing is configured. */
-export const activeProvider = (): Provider | null => {
-  if (anthropicKey()) return "anthropic";
-  if (openRouterConfig()) return "openrouter";
-  return null;
-};
-
-/** Kept for callers that want the Anthropic client itself. */
-export const initClaude = () => {
-  const key = anthropicKey();
-  return key ? new Anthropic({ apiKey: key }) : null;
-};
+/** True once a key and a model are both configured. */
+export const isConfigured = (): boolean => openRouterConfig() !== null;
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -104,40 +79,20 @@ export interface ReplyResult {
 }
 
 /**
- * One reply, from whichever provider is configured. Throws on transport or
- * provider errors so callers can log the detail and show their own message —
- * provider error strings must never reach the browser.
+ * One reply from the configured model. Throws on transport or provider errors
+ * so callers can log the detail and show their own message — provider error
+ * strings must never reach the browser.
+ *
+ * OpenRouter speaks the OpenAI chat-completions shape: the system prompt is
+ * the first message rather than its own field, and there is no SDK to add —
+ * Node 20+ has fetch built in.
  */
 export async function generateReply({ system, messages, temperature, maxTokens }: ReplyRequest): Promise<ReplyResult> {
-  const provider = activeProvider();
-  if (!provider) throw new Error("No AI provider configured");
+  const config = openRouterConfig();
+  if (!config) throw new Error("No AI provider configured");
 
   const max_tokens = maxTokens ?? MAX_TOKENS;
-
-  if (provider === "anthropic") {
-    const ai = initClaude()!;
-    const response = await ai.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens,
-      temperature,
-      system,
-      messages: messages as Anthropic.MessageParam[],
-    });
-
-    if (response.stop_reason === "refusal") return { text: "", refused: true };
-
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
-    return { text, refused: false };
-  }
-
-  // OpenRouter speaks the OpenAI chat-completions shape: the system prompt is
-  // the first message rather than its own field, and there is no SDK to add —
-  // Node 20+ has fetch built in.
-  const { apiKey, model } = openRouterConfig()!;
+  const { apiKey, model } = config;
   const response = await fetch(openRouterUrl(), {
     method: "POST",
     headers: {
@@ -173,7 +128,7 @@ export async function generateReply({ system, messages, temperature, maxTokens }
 export interface LabEngine {
   /** Persona name the agent answers as (matches the public catalogue). */
   name: string;
-  /** Sampling temperature. Haiku 4.5 accepts this; newer models do not. */
+  /** Sampling temperature. Most models accept it; a few newer ones reject it. */
   temperature: number;
   /** Persona brief, private. */
   brief: string;
@@ -269,7 +224,7 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     };
   }
 
-  if (!activeProvider()) {
+  if (!isConfigured()) {
     // No key configured: say so plainly rather than pretending to answer.
     return {
       status: 200,

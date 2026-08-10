@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { activeProvider, generateReply, handleLabChat, publicAgentList } from "./lab/agents";
+import { generateReply, handleLabChat, isConfigured, publicAgentList } from "./lab/agents";
 import type { ChatTurn } from "./lab/agents";
 import dotenv from "dotenv";
 
@@ -510,7 +510,7 @@ function recordChatInteraction(clientId: string, clientName: string, modelUsed: 
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    hasApiKey: activeProvider() !== null,
+    hasApiKey: isConfigured(),
     timestamp: new Date().toISOString()
   });
 });
@@ -585,7 +585,7 @@ app.get("/api/models", (req, res) => {
     }
   ];
 
-  res.json({ models, isLive: activeProvider() !== null });
+  res.json({ models, isLive: isConfigured() });
 });
 
 // CREATE a new client AI profile
@@ -761,7 +761,7 @@ Focus strictly on:
 
 Respond ONLY with the complete, fully written system instruction text block. Do not write introductory words like "Here are the instructions:" or place markdown backticks around the instruction itself. Offer direct, high-quality content.`;
 
-  if (!activeProvider()) {
+  if (!isConfigured()) {
     // Elegant fallback simulation is keys are not set
     const mockInstruction = `You are the specialized AI Assistant for ${clientName || 'our CoreOS Client'}.
 
@@ -887,7 +887,7 @@ app.post("/api/chat/simulate", async (req, res) => {
   // Inject the language restriction into the compiled system instruction
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
-  if (!activeProvider()) {
+  if (!isConfigured()) {
     // Simulate responses translated or formatted based on chosen Language
     setTimeout(() => {
       let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${configuredTier.toUpperCase()} (Tuned Temp: ${temperature})\n\n`;
@@ -924,7 +924,7 @@ app.post("/api/chat/simulate", async (req, res) => {
         }
       }
 
-      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Set ANTHROPIC_API_KEY (or OPENROUTER_API_KEY and OPENROUTER_MODEL) in this deployment's environment variables to run real live conversations in ${clientLanguage.toUpperCase()} against the actual model.*`;
+      let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Set OPENROUTER_API_KEY and OPENROUTER_MODEL in this deployment's environment variables to run real live conversations in ${clientLanguage.toUpperCase()} against the actual model.*`;
       recordChatInteraction(id, clientName, configuredTier, message, reply, req.body.channel || "Sandbox Simulator");
       res.json({ text: reply, isFallback: true, customerUsage: customer });
     }, 750);
@@ -971,7 +971,7 @@ app.post("/api/chat/simulate", async (req, res) => {
    ========================================================================= */
 
 app.get("/api/lab/agents", (req, res) => {
-  res.json({ agents: publicAgentList(), live: activeProvider() !== null });
+  res.json({ agents: publicAgentList(), live: isConfigured() });
 });
 
 /* Coarse per-IP throttle. The endpoint is unauthenticated by design, so it
