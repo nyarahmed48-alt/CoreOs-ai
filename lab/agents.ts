@@ -192,6 +192,19 @@ export interface LabChatRequest {
   slug?: unknown;
   message?: unknown;
   history?: unknown;
+  /** UI language of the visitor, so the reply comes back in it. */
+  lang?: unknown;
+}
+
+/** Reply-language rule, appended to the charter per request.
+ *
+ *  The site defaults to Arabic, so without this an Arabic visitor reads an
+ *  Arabic page, asks a question, and gets English back. The user's own message
+ *  still wins — someone browsing in Arabic who writes in Kurdish should be
+ *  answered in Kurdish. */
+function languageRule(lang: unknown): string {
+  const label = lang === "en" ? "English" : "Arabic";
+  return `\nThe visitor is reading the site in ${label}. Reply in ${label} unless they write to you in a different language, in which case reply in the language they used. Use the correct script for whichever language you answer in.`;
 }
 
 export interface LabChatOutcome {
@@ -205,22 +218,45 @@ export const LAB_MAX_MESSAGE_CHARS = 500;
  * The whole /api/lab/chat behaviour, minus transport and rate limiting, so
  * Express and each serverless runtime can share it verbatim.
  */
-export async function handleLabChat({ slug, message, history }: LabChatRequest): Promise<LabChatOutcome> {
+export async function handleLabChat({ slug, message, history, lang }: LabChatRequest): Promise<LabChatOutcome> {
+  /* Messages from this endpoint are read by the visitor, so they follow the
+     language the site is being read in — the same default as the UI. */
+  const ar = lang !== "en";
+  const say = (arabic: string, english: string) => (ar ? arabic : english);
+
   const agent = typeof slug === "string" ? LAB_ENGINES[slug] : undefined;
   if (!agent) {
     return {
       status: 404,
-      body: { error: "UNKNOWN_AGENT", message: "That agent is not part of the open testing programme." },
+      body: {
+        error: "UNKNOWN_AGENT",
+        message: say(
+          "هذا الوكيل ليس ضمن برنامج الاختبار المفتوح.",
+          "That agent is not part of the open testing programme.",
+        ),
+      },
     };
   }
 
   if (typeof message !== "string" || !message.trim()) {
-    return { status: 400, body: { error: "EMPTY_MESSAGE", message: "Type a message first." } };
+    return {
+      status: 400,
+      body: {
+        error: "EMPTY_MESSAGE",
+        message: say("اكتب رسالة أولًا.", "Type a message first."),
+      },
+    };
   }
   if (message.length > LAB_MAX_MESSAGE_CHARS) {
     return {
       status: 400,
-      body: { error: "MESSAGE_TOO_LONG", message: `Sandbox messages are capped at ${LAB_MAX_MESSAGE_CHARS} characters.` },
+      body: {
+        error: "MESSAGE_TOO_LONG",
+        message: say(
+          `رسائل بيئة الاختبار محدودة بـ ${LAB_MAX_MESSAGE_CHARS} حرفًا.`,
+          `Sandbox messages are capped at ${LAB_MAX_MESSAGE_CHARS} characters.`,
+        ),
+      },
     };
   }
 
@@ -229,7 +265,10 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     return {
       status: 200,
       body: {
-        text: `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
+        text: say(
+          `[لا يوجد مفتاح ذكاء اصطناعي مُهيَّأ على هذا النشر، لذلك لا يستطيع ${agent.name} الإجابة بعد.]\n\nسؤالك كان: «${message}»\n\nبمجرد ضبط المفتاح، يجيب ${agent.name} مباشرة. لتجربة النسخة الحقيقية، أو لتهيئة وكيل حول مستنداتك وسياساتك، راسلنا على coreosgmail.com@gmail.com.`,
+          `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
+        ),
         fallback: true,
       },
     };
@@ -249,7 +288,7 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
     conversation.push({ role: "user", content: message });
 
     const { text, refused } = await generateReply({
-      system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}`,
+      system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}${languageRule(lang)}`,
       messages: conversation,
       temperature: agent.temperature,
     });
@@ -258,7 +297,10 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
       return {
         status: 200,
         body: {
-          text: `${agent.name} isn't able to help with that one. Try a question from your own business — ${agent.name} is built for ${agent.brief.split(".")[0].toLowerCase()}.`,
+          text: say(
+            `لا يستطيع ${agent.name} المساعدة في هذا الطلب. جرّب سؤالًا من عملك أنت — ${agent.name} مبني لغرض محدد.`,
+            `${agent.name} isn't able to help with that one. Try a question from your own business — ${agent.name} is built for ${agent.brief.split(".")[0].toLowerCase()}.`,
+          ),
           fallback: false,
         },
       };
@@ -266,7 +308,15 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
 
     return {
       status: 200,
-      body: { text: text || "No response was produced. Try rephrasing the question.", fallback: false },
+      body: {
+        text:
+          text ||
+          say(
+            "لم تُنتَج أي إجابة. جرّب إعادة صياغة السؤال.",
+            "No response was produced. Try rephrasing the question.",
+          ),
+        fallback: false,
+      },
     };
   } catch (err: any) {
     // Log the detail; never surface provider error strings to the browser.
@@ -275,7 +325,10 @@ export async function handleLabChat({ slug, message, history }: LabChatRequest):
       status: 502,
       body: {
         error: "AGENT_UNAVAILABLE",
-        message: `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
+        message: say(
+          `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على coreosgmail.com@gmail.com إن تكرّر الأمر.`,
+          `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
+        ),
       },
     };
   }

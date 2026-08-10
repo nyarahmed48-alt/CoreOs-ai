@@ -19,9 +19,18 @@ import { OPEN_TESTING, LAB_MODELS, type PublicAgent } from "./catalog";
 import { AgentCard } from "./AgentCard";
 import { Eyebrow } from "./Eyebrow";
 import { TestConsole } from "./TestConsole";
+import { useLang } from "./i18n";
+import type { CopyKey } from "./strings";
 
 export function HomePage() {
   const [testing, setTesting] = useState<PublicAgent | null>(null);
+  const { t, isRtl } = useLang();
+
+  /* The arrow is a direction cue, not decoration: it has to point the way the
+     text runs or it reads as "back" in Arabic. */
+  const Arrow = () => (
+    <ArrowRight className={`h-4 w-4 ${isRtl ? "rotate-180" : ""}`} />
+  );
 
   return (
     <>
@@ -31,20 +40,17 @@ export function HomePage() {
           <div className="site-rise max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#232b40] bg-[#0a0d16]/70 px-3.5 py-1.5 text-[12.5px] font-medium text-[#98a0bb]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]" />
-              31 AI agents open for public testing
+              {t("home.badge")}
             </span>
 
             <h1 className="mt-7 font-brand text-[clamp(2.6rem,7vw,4.6rem)] font-extrabold leading-[0.98] tracking-[-0.03em] text-white">
-              Where your needs
+              {t("home.h1a")}
               <br />
-              <span className="text-[#6c7bf0]">meet reality.</span>
+              <span className="text-[#6c7bf0]">{t("home.h1b")}</span>
             </h1>
 
             <p className="mt-7 max-w-2xl text-[17px] leading-relaxed text-[#a4abc4] md:text-[18px]">
-              CoreOs builds business AI that small and mid-sized companies can
-              actually afford to run. Not a per-seat licence. Not a six-figure
-              pilot. A configurable AI agent shaped around what your business
-              already does — priced by what it actually uses.
+              {t("home.lede")}
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -52,8 +58,8 @@ export function HomePage() {
                 to="/testing"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
               >
-                Try the 11 open agents
-                <ArrowRight className="h-4 w-4" />
+                {t("home.ctaTest")}
+                <Arrow />
               </Link>
               <Link
                 to="/coreos-ai"
@@ -61,24 +67,32 @@ export function HomePage() {
               >
                 {/* One flex child: the parent's gap must not split the word. */}
                 <span>
-                  Explore CoreOs<span className="text-[#1878dc]">.ai</span>
+                  {t("home.ctaExplore")}{" "}
+                  <span dir="ltr">
+                    CoreOs<span className="text-[#1878dc]">.ai</span>
+                  </span>
                 </span>
               </Link>
             </div>
 
             <dl className="mt-14 grid max-w-2xl grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
-              {[
-                ["31", "Agents in testing"],
-                ["3", "Languages served"],
-                ["0", "Per-seat fees"],
-                ["100%", "Human-in-the-loop"],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <dt className="font-display text-[26px] font-bold text-white">
+              {(
+                [
+                  ["31", "home.stat1"],
+                  ["3", "home.stat2"],
+                  ["0", "home.stat3"],
+                  ["100%", "home.stat4"],
+                ] as Array<[string, CopyKey]>
+              ).map(([value, key]) => (
+                <div key={key}>
+                  <dt
+                    dir="ltr"
+                    className="font-display text-[26px] font-bold text-white rtl:text-end"
+                  >
                     {value}
                   </dt>
                   <dd className="mt-0.5 text-[12.5px] text-[#7d859e]">
-                    {label}
+                    {t(key)}
                   </dd>
                 </div>
               ))}
@@ -92,50 +106,45 @@ export function HomePage() {
         <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
           <div className="grid gap-12 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
             <div>
-              <Eyebrow>Our mission</Eyebrow>
+              <Eyebrow>{t("home.missionEyebrow")}</Eyebrow>
               <h2 className="mt-4 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
-                B2B AI, priced so a real business can say yes.
+                {t("home.missionH2")}
               </h2>
               <p className="mt-5 text-[15.5px] leading-relaxed text-[#a4abc4]">
-                Enterprise AI is priced for enterprises. A twelve-person
-                logistics firm, a family wholesaler, a regional clinic — they get
-                quoted the same platform fee as a multinational, told to buy a
-                seat for every employee, then asked to sign for a year before
-                anything works.
+                {t("home.missionP1")}
               </p>
               <p className="mt-4 text-[15.5px] leading-relaxed text-[#a4abc4]">
-                CoreOs exists to break that. We meter usage, not headcount. You
-                set the ceiling before you spend a thing.
+                {t("home.missionP2")}
               </p>
               <Link
                 to="/mission"
                 className="mt-7 inline-flex items-center gap-2 text-[14.5px] font-semibold text-[#6c7bf0] hover:text-[#8390f4]"
               >
-                Read the full mission
-                <ArrowRight className="h-4 w-4" />
+                {t("home.missionLink")}
+                <Arrow />
               </Link>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Pillar
                 icon={<Wallet className="h-5 w-5" />}
-                title="Metered, not licensed"
-                body="Quotas are set per customer in sentences and characters. You cap the spend before the first message, and the cap holds."
+                title={t("home.pillar1T")}
+                body={t("home.pillar1B")}
               />
               <Pillar
                 icon={<SlidersHorizontal className="h-5 w-5" />}
-                title="Configured, not custom-built"
-                body="Your agent is tuned at runtime — instructions, tone, limits, variables. No six-month engagement to change a sentence."
+                title={t("home.pillar2T")}
+                body={t("home.pillar2B")}
               />
               <Pillar
                 icon={<Languages className="h-5 w-5" />}
-                title="Serves your actual customers"
-                body="English, Arabic and Kurdish out of the box, with the same brand voice in each. Regional business is not an afterthought."
+                title={t("home.pillar3T")}
+                body={t("home.pillar3B")}
               />
               <Pillar
                 icon={<Gauge className="h-5 w-5" />}
-                title="Switchable underneath"
-                body="Models change monthly. Yours updates without a migration project, because the engine is ours to swap, not yours to manage."
+                title={t("home.pillar4T")}
+                body={t("home.pillar4B")}
               />
             </div>
           </div>
@@ -148,41 +157,30 @@ export function HomePage() {
           <div className="mx-auto max-w-3xl text-center">
             <HeartHandshake className="mx-auto h-8 w-8 text-[#1878dc]" />
             <h2 className="mt-6 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
-              We build AI to help people work — not to work instead of them.
+              {t("home.humanH2")}
             </h2>
             <p className="mt-6 text-[16px] leading-relaxed text-[#a4abc4]">
-              This is not a marketing line we soften later. It is a design
-              constraint. Every CoreOs agent is built to take the repetitive
-              third of a job — the same twenty questions, the copy-paste, the
-              after-hours holding pattern — and hand the judgement back to the
-              person whose name is on the reply.
+              {t("home.humanP")}
             </p>
           </div>
 
           <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-3">
-            {[
-              {
-                title: "Drafts, not decisions",
-                body: "Agents prepare the reply. A human reviews it, edits it, and sends it.",
-              },
-              {
-                title: "Escalation by default",
-                body: "When an agent is unsure, it stops and routes to a colleague instead of inventing an answer.",
-              },
-              {
-                title: "Nobody is measured out of a job",
-                body: "We report on tickets deflected and hours returned — never on headcount you could cut.",
-              },
-            ].map((c) => (
+            {(
+              [
+                ["home.human1T", "home.human1B"],
+                ["home.human2T", "home.human2B"],
+                ["home.human3T", "home.human3B"],
+              ] as Array<[CopyKey, CopyKey]>
+            ).map(([title, body]) => (
               <div
-                key={c.title}
+                key={title}
                 className="rounded-2xl border border-[#171d2d] bg-[#0a0d16] p-5"
               >
                 <h3 className="font-display text-[15.5px] font-semibold text-white">
-                  {c.title}
+                  {t(title)}
                 </h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-[#98a0bb]">
-                  {c.body}
+                  {t(body)}
                 </p>
               </div>
             ))}
@@ -195,22 +193,20 @@ export function HomePage() {
         <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="max-w-2xl">
-              <Eyebrow>Open testing</Eyebrow>
+              <Eyebrow>{t("home.testEyebrow")}</Eyebrow>
               <h2 className="mt-4 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
-                Eleven business agents. Free to test, right now.
+                {t("home.testH2")}
               </h2>
               <p className="mt-4 text-[15.5px] leading-relaxed text-[#a4abc4]">
-                These are the agents CoreOs deploys for clients, opened up so you
-                can put your own questions to them before you talk to anyone.
-                No signup, no card, no call.
+                {t("home.testP")}
               </p>
             </div>
             <Link
               to="/testing"
               className="inline-flex items-center gap-2 rounded-xl border border-[#232b40] px-4 py-2.5 text-[13.5px] font-semibold text-[#c3c9dd] hover:border-[#3a4460] hover:text-white"
             >
-              See all 11
-              <ArrowRight className="h-4 w-4" />
+              {t("home.testAll")}
+              <Arrow />
             </Link>
           </div>
 
@@ -230,25 +226,25 @@ export function HomePage() {
               <div className="max-w-2xl">
                 <div className="flex items-center gap-3">
                   <CoreOsMark size={34} />
-                  <span className="font-brand text-[26px] font-extrabold tracking-[-0.02em] text-[#6c7bf0]">
+                  <span
+                    dir="ltr"
+                    className="font-brand text-[26px] font-extrabold tracking-[-0.02em] text-[#6c7bf0]"
+                  >
                     coreOs<span className="text-[#1878dc]">.ai</span>
                   </span>
                 </div>
                 <h2 className="mt-6 font-display text-[clamp(1.7rem,3.6vw,2.4rem)] font-bold leading-tight tracking-[-0.02em] text-white">
-                  Twenty models. Twenty codenames. No badges to bias you.
+                  {t("home.labH2")}
                 </h2>
                 <p className="mt-4 text-[15.5px] leading-relaxed text-[#a4abc4]">
-                  CoreOs.ai is our open model lab. Each of the {LAB_MODELS.length}{" "}
-                  models is published under a CoreOs codename with a plain
-                  description of what it's good for — so you pick on results,
-                  not on whose logo is attached.
+                  {t("home.labP")}
                 </p>
                 <Link
                   to="/coreos-ai"
                   className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
                 >
                   <Sparkles className="h-4 w-4" />
-                  Enter the model lab
+                  {t("home.labCta")}
                 </Link>
               </div>
 
