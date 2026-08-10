@@ -8,7 +8,7 @@
     "status": "active",
     "needs": "Ruffles chips are 4,500 IQD, and Cheetos are 1,000 IQD.",
     "aiConfig": {
-      "model": "gemini-2.5-flash",
+      "model": "coreos-prime",
       "systemInstruction": "You are the Custom AI Specialist for Tester 2. Keep responses aligned with client needs: Ruffles chips are 4,500 IQD, and Cheetos are 1,000 IQD.",
       "temperature": 0.7,
       "topP": 0.9,
@@ -26,7 +26,7 @@
     "status": "active",
     "needs": "Just a chatbot.",
     "aiConfig": {
-      "model": "models/gemini-3.1-pro-preview-customtools",
+      "model": "coreos-prime",
       "systemInstruction": "You are the Custom AI Specialist for CoreOs.Ai. Keep responses aligned with client needs: Just a chatbot.",
       "temperature": 0.6,
       "topP": 0.9,
@@ -44,7 +44,7 @@
     "status": "deactivated",
     "needs": "Just a chatbot.",
     "aiConfig": {
-      "model": "models/gemini-3.1-pro-preview-customtools",
+      "model": "coreos-prime",
       "systemInstruction": "You are the Custom AI Specialist for CoreOs.Ai. Keep responses aligned with client needs: Just a chatbot.",
       "temperature": 0.7,
       "topP": 0.9,
@@ -62,7 +62,7 @@
     "status": "active",
     "needs": "Help users check logistics tracking, analyze system logs, and answer complex reasoning requirements in a highly professional and analytical tone.",
     "aiConfig": {
-      "model": "gemini-2.5-pro",
+      "model": "coreos-prime",
       "systemInstruction": "You are Aether Omni (CoreOS Prime). Your goal is to provide deep strategic advice, parse complex dataset requests, and construct logical summaries.\n\nGuidelines:\n1. Keep answers comprehensive yet clear.\n2. Present comparative tables in beautifully formatted markdown tables.\n3. Maintain an intellectual, technical, yet elegant executive tone.",
       "temperature": 0.7,
       "topP": 0.9,
@@ -84,7 +84,7 @@
     "status": "active",
     "needs": "Formulate instant customer support chat replies, answer frequent questions under 1.5 seconds latency, and explain services concisely with helpful highlights.",
     "aiConfig": {
-      "model": "gemini-2.0-flash",
+      "model": "coreos-creative",
       "systemInstruction": "You are Vanguard Voice (CoreOS Interactive), designed for micro-second interactive dialogs.\n\nInstructions:\n- Keep all replies extremely brief, clean, and interactive.\n- Prioritize short, crisp bullet points over long dense paragraphs.\n- Present technical configurations in small tabular outlines.",
       "temperature": 0.9,
       "topP": 0.95,
@@ -105,7 +105,7 @@
     "status": "active",
     "needs": "Audit incoming transcripts and documents for potential PII (Personally Identifiable Information) breaches, and redact sensitive tokens.",
     "aiConfig": {
-      "model": "gemini-2.5-flash",
+      "model": "coreos-precise",
       "systemInstruction": "You are Vesper Shield (CoreOS Sentinel). You run in high-alert privacy auditing mode.\n\nStrict Rules:\n1. Clean inputs of any clear credential paths or PII leak tokens.\n2. Output brief auditing status markers indicating system posture.\n3. Present reports cleanly styled in monospace markdown blocks.",
       "temperature": 0.2,
       "topP": 0.8,
@@ -125,7 +125,7 @@
     "status": "active",
     "needs": "Formulate catchy product marketing slogans, newsletter outlines, and high engagement advertising copies.",
     "aiConfig": {
-      "model": "gemini-2.5-flash",
+      "model": "coreos-creative",
       "systemInstruction": "You are Lumina Creative (CoreOS Copywriter). You specialize in engaging corporate marketing copy.",
       "temperature": 0.85,
       "topP": 0.9,
@@ -144,7 +144,7 @@
     "status": "active",
     "needs": "Analyze visual descriptors, OCR transcripts, and structural camera configurations.",
     "aiConfig": {
-      "model": "gemini-2.0-flash",
+      "model": "coreos-precise",
       "systemInstruction": "You are Chronos Vision (CoreOS Analyzer). Analyze the provided input schema or visual details and extract precise coordinate grids.",
       "temperature": 0.4,
       "topP": 0.85,
@@ -163,7 +163,7 @@
     "status": "active",
     "needs": "Construct clean TypeScript algorithms, review code blocks for security anti-patterns, and write automated tests.",
     "aiConfig": {
-      "model": "gemini-2.5-pro",
+      "model": "coreos-precise",
       "systemInstruction": "You are Helix Coder (CoreOS Compiler). Format all output blocks in clean styled markdown code containers with explanatory comments.",
       "temperature": 0.3,
       "topP": 0.8,
@@ -182,7 +182,7 @@
     "status": "active",
     "needs": "Distill high-volume corporate discussions, meetings audio transcripts, and dense developer debug files.",
     "aiConfig": {
-      "model": "gemini-2.0-flash-lite",
+      "model": "coreos-precise",
       "systemInstruction": "You are Scribe Summary (CoreOS Scriptor). Extract critical milestones, timeline dates, and action items with zero fluff.",
       "temperature": 0.2,
       "topP": 0.9,
@@ -201,7 +201,7 @@
     "status": "active",
     "needs": "Translate complex SaaS platform strings and localized copywriting files to guarantee cultural compliance.",
     "aiConfig": {
-      "model": "gemini-2.0-flash",
+      "model": "coreos-prime",
       "systemInstruction": "You are Hermes Global (CoreOS Translator). Seamlessly translate target dialogs while retaining original brand tones.",
       "temperature": 0.5,
       "topP": 0.9,
@@ -220,7 +220,7 @@
     "status": "active",
     "needs": "Write persuasive cold engagement B2B outreach messaging, refine sales frameworks, and convert targets.",
     "aiConfig": {
-      "model": "gemini-2.5-flash",
+      "model": "coreos-creative",
       "systemInstruction": "You are Atlas Sales (CoreOS Outreach). Structure enticing B2B offerings focusing on real economic values.",
       "temperature": 0.8,
       "topP": 0.9,
@@ -239,7 +239,7 @@
     "status": "active",
     "needs": "Translate internal compliance guidelines into clear training workflows and employee interactive quizzes.",
     "aiConfig": {
-      "model": "gemini-2.0-flash-lite",
+      "model": "coreos-prime",
       "systemInstruction": "You are Zephyr HR (CoreOS Recruiter). Explain internal policy codes with extreme warmth and structured lessons.",
       "temperature": 0.7,
       "topP": 0.9,
@@ -258,7 +258,7 @@
     "status": "active",
     "needs": "Run seamless speech-like conversation answers and calculate instant bill estimates orally.",
     "aiConfig": {
-      "model": "gemini-2.5-flash",
+      "model": "coreos-prime",
       "systemInstruction": "You are Aether Voice Link (CoreOS Audio). Standardize text inputs to sound perfectly natural when spoken aloud.",
       "temperature": 0.6,
       "topP": 0.9,

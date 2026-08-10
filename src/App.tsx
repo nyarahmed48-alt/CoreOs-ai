@@ -59,6 +59,24 @@ function getCountedCharacters(text: string, limitType: 'all' | 'specific' | unde
   return count;
 }
 
+/* Every agent runs on one model now, so a client's "model" is a capability
+   tier. These labels mirror what GET /api/models publishes and are used until
+   that call resolves. */
+const TIER_LABELS: Record<string, string> = {
+  "coreos-prime": "CoreOS AI Prime (Balanced)",
+  "coreos-precise": "CoreOS AI Precise (Literal)",
+  "coreos-creative": "CoreOS AI Creative (Expressive)",
+};
+
+/* Profiles saved before the migration still carry a Gemini engine id. Resolve
+   those onto the nearest tier — most specific match first — so historical rows
+   stay readable. */
+const LEGACY_ENGINE_TIERS: [string, string][] = [
+  ["flash-lite", "coreos-precise"],
+  ["pro", "coreos-prime"],
+  ["flash", "coreos-prime"],
+];
+
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("theme");
@@ -121,7 +139,7 @@ export default function App() {
   const [newClientNeeds, setNewClientNeeds] = useState("");
   const [newClientDesc, setNewClientDesc] = useState("");
   const [newClientWeb, setNewClientWeb] = useState("");
-  const [newClientModel, setNewClientModel] = useState("gemini-2.5-flash");
+  const [newClientModel, setNewClientModel] = useState("coreos-prime");
   const [newClientLanguage, setNewClientLanguage] = useState<"english" | "arabic" | "kurdish">("english");
   const [newClientSentenceLimit, setNewClientSentenceLimit] = useState<number>(70);
   const [newClientCharLimitPerSentence, setNewClientCharLimitPerSentence] = useState<number>(115);
@@ -477,14 +495,14 @@ export default function App() {
 
   const getModelDisplayName = (modelId: string) => {
     if (!modelId) return "Unknown Model";
-    const cleanId = modelId.toLowerCase().trim();
-    if (cleanId.includes("gemini-2.5-flash") || cleanId.includes("gemini-3.5-flash")) return "CoreOS AI Prime (High-Speed)";
-    if (cleanId.includes("gemini-2.5-pro") || cleanId.includes("gemini-3.1-pro-preview")) return "CoreOS AI Max (Reasoning)";
-    if (cleanId.includes("gemini-2.0-flash-lite") || cleanId.includes("gemini-3.1-flash-lite")) return "CoreOS AI Lite (Low-Latency)";
-    if (cleanId.includes("gemini-2.0-flash")) return "CoreOS AI Flash (Interactive)";
-    
-    const found = models.find(m => m.name === modelId || m.name.replace("models/", "") === modelId.replace("models/", ""));
-    return found ? found.displayName : modelId;
+    const cleanId = modelId.toLowerCase().trim().replace("models/", "");
+
+    const tier = cleanId.startsWith("gemini")
+      ? LEGACY_ENGINE_TIERS.find(([needle]) => cleanId.includes(needle))?.[1] ?? "coreos-prime"
+      : cleanId;
+
+    const found = models.find(m => m.name.replace("models/", "") === tier);
+    return found ? found.displayName : (TIER_LABELS[tier] ?? modelId);
   };
 
   const syncModelsList = async () => {
@@ -954,7 +972,7 @@ Thank you for choosing CoreOS AI Integration. Below are the technical credential
 ------------------------------------------------------------
 Client Application Name : ${client.name}
 Unique Node Identifier  : ${client.id}
-Allocated LLM Model     : ${client.aiConfig?.model || "gemini-2.5-flash"}
+Allocated LLM Model     : ${getModelDisplayName(client.aiConfig?.model || "coreos-prime")}
 Target Dialect          : ${client.language || "english"}
 
 ------------------------------------------------------------
@@ -2836,9 +2854,21 @@ CoreOS AI Integrations System Core.
                               onChange={(e) => handleFieldChange("model", e.target.value, true)}
                               className="bg-slate-50 text-slate-750 text-slate-700 rounded px-1.5 py-0.5 border border-slate-200 font-bold"
                             >
-                              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                              {(() => {
+                                const tiers: [string, string][] = models.length
+                                  ? models.map(m => [m.name, m.displayName])
+                                  : Object.entries(TIER_LABELS);
+                                /* A profile saved before the migration can hold a
+                                   retired engine id. Keep it selectable so opening
+                                   this panel does not silently reassign the client. */
+                                const current = activeClientState.aiConfig.model;
+                                if (current && !tiers.some(([name]) => name === current)) {
+                                  tiers.unshift([current, getModelDisplayName(current)]);
+                                }
+                                return tiers.map(([name, label]) => (
+                                  <option key={name} value={name}>{label}</option>
+                                ));
+                              })()}
                             </select>
                           </div>
 

@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Mail, Copy, Check, Send, MessageSquare, Building2 } from "lucide-react";
+import { Mail, Copy, Check, Send, MessageSquare, Building2, Phone } from "lucide-react";
 import { CONTACT_EMAIL, mailto } from "./contact";
 import { Eyebrow } from "./Eyebrow";
 
@@ -19,6 +19,7 @@ const TOPICS = [
 export function ContactPage() {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  const [phone, setPhone] = useState("");
   const [topic, setTopic] = useState(TOPICS[0]);
   const [details, setDetails] = useState("");
   const [copied, setCopied] = useState(false);
@@ -27,6 +28,7 @@ export function ContactPage() {
     const body = [
       name ? `Name: ${name}` : "",
       company ? `Business: ${company}` : "",
+      `Phone: ${phone}`,
       `Topic: ${topic}`,
       "",
       details || "(Tell us what you need here.)",
@@ -36,7 +38,11 @@ export function ContactPage() {
       .filter(Boolean)
       .join("\n");
     return mailto(`CoreOs enquiry — ${topic}`, body);
-  }, [name, company, topic, details]);
+  }, [name, company, phone, topic, details]);
+
+  // The whole reason for this form is getting a number to call back on, so the
+  // send button stays disabled until there is one.
+  const hasPhone = phone.trim().length >= 6;
 
   async function copyEmail() {
     try {
@@ -162,6 +168,26 @@ export function ContactPage() {
               </div>
 
               <div className="mt-4">
+                <Field label="Phone number (required)">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="+964 750 123 4567"
+                    aria-label="Phone number"
+                    className={`w-full rounded-xl border bg-[#0d1220] px-3.5 py-2.5 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677] ${
+                      phone.trim() && !hasPhone ? "border-[#5b2434]" : "border-[#232b40]"
+                    }`}
+                  />
+                  <p className="mt-2 text-[12.5px] text-[#7d859e]">
+                    We call rather than trade emails — it is faster for both of us.
+                  </p>
+                </Field>
+              </div>
+
+              <div className="mt-4">
                 <Field label="What's this about?">
                   <div className="flex flex-wrap gap-1.5">
                     {TOPICS.map((t) => (
@@ -195,15 +221,26 @@ export function ContactPage() {
                 </Field>
               </div>
 
-              <a
-                href={href}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3.5 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
-              >
-                <Mail className="h-4 w-4" />
-                Open this in my email app
-              </a>
+              {hasPhone ? (
+                <a
+                  href={href}
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3.5 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
+                >
+                  <Mail className="h-4 w-4" />
+                  Open this in my email app
+                </a>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  className="mt-6 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[#232b40] bg-[#0d1220] px-5 py-3.5 text-[14.5px] font-semibold text-[#5e677f]"
+                >
+                  <Phone className="h-4 w-4" />
+                  Add your phone number to continue
+                </span>
+              )}
               <p className="mt-3 text-center text-[12px] text-[#5e677f]">
-                No mail app? Copy the address above and write to us directly.
+                No mail app? Copy the address above and write to us directly —
+                include your number so we can call you back.
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 {
   "name": "CoreOS AI SaaS Manager",
-  "description": "Manage, configure, and customize tailored Gemini AI models to fill and adjust your SaaS client needs with dynamic runtime model updates.",
+  "description": "Manage, configure, and customize tailored CoreOS AI agents to fit and adjust your SaaS client needs with dynamic runtime configuration updates.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
