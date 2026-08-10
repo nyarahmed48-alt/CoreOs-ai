@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { handleLabChat, initGemini, publicAgentList } from "./lab/agents";
+import { getAvailableModels, handleLabChat, initGemini, publicAgentList, resolveModel } from "./lab/agents";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -1031,8 +1031,12 @@ app.post("/api/chat/simulate", async (req, res) => {
 
     contentHistory.push({ role: 'user', parts: [{ text: message }] });
 
+    // Same 404 risk as the testing lab: saved client configs name model ids
+    // that Google may since have retired.
+    const model = resolveModel(processedModel, await getAvailableModels(ai));
+
     const response = await ai.models.generateContent({
-      model: processedModel,
+      model,
       contents: contentHistory,
       config: {
         systemInstruction: compiledInstruction,
