@@ -77,6 +77,87 @@ const authUrl =
     state,
   });
 
+/* ------------------------------------------------------------ manual mode --
+
+   The loopback flow above needs the browser and this script on one machine.
+   That is not always true — approving from a phone while the code lives on a
+   server is the ordinary case, not the exotic one.
+
+   So: --manual prints the URL and waits for you to paste back what Google
+   redirected to. The redirect itself fails ("this site can't be reached",
+   because nothing is listening on localhost over there) and that does not
+   matter at all — the authorization code is sitting in the address bar, and
+   copying the URL is enough. The exchange that follows is server-to-server. */
+
+if (process.argv.includes("--manual")) {
+  console.log(`
+1. Open this on any device, signed in as the mailbox you want answered:
+
+${authUrl}
+
+2. Approve it. The browser will then fail to load a localhost page — expected,
+   and not a problem. Copy the whole URL out of the address bar; it looks like
+
+     http://localhost:5788/?state=…&code=4/0AX4…&scope=…
+
+3. Paste it here and press enter:
+`);
+
+  const pasted = await new Promise((resolve) => {
+    process.stdin.setEncoding("utf8");
+    let buffer = "";
+    process.stdin.on("data", (chunk) => {
+      buffer += chunk;
+      if (buffer.includes("\n")) resolve(buffer.trim());
+    });
+  });
+
+  // Accept the whole URL or just the code, since which one is easier to copy
+  // depends on the browser.
+  let code = pasted;
+  if (pasted.includes("code=")) {
+    try {
+      code = new URL(pasted.replace(/^["']|["']$/g, "")).searchParams.get("code") || "";
+    } catch {
+      code = decodeURIComponent((pasted.match(/[?&]code=([^&\s]+)/) || [, ""])[1]);
+    }
+  }
+  if (!code) {
+    console.error("\nNo authorization code in that. Paste the whole redirected URL.");
+    process.exit(1);
+  }
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: REDIRECT,
+      grant_type: "authorization_code",
+    }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok || !payload.refresh_token) {
+    console.error("\nToken exchange failed:", payload);
+    if (payload.error === "invalid_grant") {
+      console.error("\nAuthorization codes are single-use and expire in minutes. Run this again.");
+    }
+    process.exit(1);
+  }
+
+  console.log(`
+─────────────────────────────────────────────────────────────
+GOOGLE_REFRESH_TOKEN=${payload.refresh_token}
+─────────────────────────────────────────────────────────────
+
+Publish the OAuth app if you have not — in "Testing" this token dies in 7 days.
+`);
+  process.exit(0);
+}
+
 const page = (title, body) =>
   `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#05060a;color:#e7eaf6;

@@ -180,6 +180,18 @@ the rest of the site is unaffected until you finish this.
    [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
    if it leaks.
 
+   That flow needs the browser and the terminal on one machine. When they are
+   not — approving from a phone, running the script on a server — use:
+
+   ```bash
+   npm run inbox:auth -- --manual
+   ```
+
+   It prints the URL, you approve it anywhere, and the browser then fails to
+   load a `localhost` page. That failure is expected and harmless: the
+   authorization code is in the address bar. Copy the whole URL, paste it back,
+   and the exchange happens server-to-server.
+
 3. **A secret for the one-click links**: `openssl rand -hex 32` into
    `INBOX_ACTION_SECRET`. Without it the notification still arrives, just
    without buttons.
