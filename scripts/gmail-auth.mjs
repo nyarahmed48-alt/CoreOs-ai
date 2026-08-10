@@ -13,8 +13,8 @@
  * Google's consent screen, catches the redirect on localhost, and prints the
  * refresh token — which you then paste into your host's environment settings.
  *
- * The token is printed and never written to disk. Treat it like a password:
- * it grants full access to the mailbox until you revoke it at
+ * The token is printed and never written to disk. Treat it like a password: it
+ * can read, label, draft and send mail as this account until you revoke it at
  * https://myaccount.google.com/permissions.
  */
 
@@ -43,17 +43,24 @@ Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET first.
 
   1. https://console.cloud.google.com/ → create or pick a project
   2. APIs & Services → Library → enable "Gmail API"
-  3. APIs & Services → OAuth consent screen → External, add yourself as a
-     test user (the app does not need verifying for your own mailbox)
-  4. Credentials → Create credentials → OAuth client ID → Desktop app
-  5. Put the id and secret in .env.local, then run this again
+  3. APIs & Services → OAuth consent screen → External
+  4. PUBLISH the app: Audience → Publish app → confirm "In production".
+     Leave it in "Testing" and Google revokes the refresh token after 7 days,
+     which stops the responder dead. Publishing unverified is fine for your
+     own mailbox — you will see an "unverified app" warning during consent,
+     and clicking Advanced → Continue is the expected path.
+  5. Credentials → Create credentials → OAuth client ID → Desktop app
+  6. Put the id and secret in .env.local, then run this again
 `);
   process.exit(1);
 }
 
 const PORT = 5788;
 const REDIRECT = `http://localhost:${PORT}`;
-const SCOPE = "https://mail.google.com/";
+/* gmail.modify, not the full https://mail.google.com/. It covers everything the
+   responder does — read, label, draft, send — and withholds the one thing it
+   should never be able to do: permanently delete mail. */
+const SCOPE = "https://www.googleapis.com/auth/gmail.modify";
 const state = crypto.randomBytes(16).toString("hex");
 
 const authUrl =
@@ -134,8 +141,13 @@ GOOGLE_REFRESH_TOKEN=${payload.refresh_token}
 ─────────────────────────────────────────────────────────────
 
 Set that in your host's environment variables (Netlify: Site configuration →
-Environment variables). Keep it secret — it grants full access to the mailbox
-until revoked at https://myaccount.google.com/permissions.
+Environment variables). Keep it secret — it can read, label, draft and send
+mail as this account until revoked at
+https://myaccount.google.com/permissions.
+
+If the app's publishing status is still "Testing", this token dies in 7 days.
+Publish it: Google Cloud Console → APIs & Services → OAuth consent screen →
+Audience → Publish app.
 `);
   server.close();
   process.exit(0);

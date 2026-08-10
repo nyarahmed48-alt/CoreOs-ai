@@ -154,9 +154,19 @@ the rest of the site is unaffected until you finish this.
 
 1. **A Google OAuth client.** At
    [console.cloud.google.com](https://console.cloud.google.com/): make a
-   project, enable the **Gmail API**, set the OAuth consent screen to External
-   and add yourself as a test user, then create credentials → **OAuth client
-   ID** → **Desktop app**. Put the id and secret in `.env.local`.
+   project, enable the **Gmail API**, set the OAuth consent screen to
+   **External**, then create credentials → **OAuth client ID** → **Desktop
+   app**. Put the id and secret in `.env.local`.
+
+   **Publish the app** — Audience → *Publish app* → "In production". This is
+   not optional: while the consent screen sits in **Testing**, Google revokes
+   the refresh token after **7 days** and the responder stops with an
+   `invalid_grant`. Publishing without verification is fine for your own
+   mailbox; you'll see an "unverified app" warning at the consent screen and
+   Advanced → Continue is the expected path.
+
+   The scope is `gmail.modify` — read, label, draft and send, but never
+   permanently delete.
 
 2. **A refresh token**, granted once for the mailbox being answered:
 
