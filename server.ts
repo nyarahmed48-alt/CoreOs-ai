@@ -7,7 +7,8 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { getAvailableModels, handleLabChat, initGemini, publicAgentList, resolveModel } from "./lab/agents";
+import Anthropic from "@anthropic-ai/sdk";
+import { handleLabChat, initClaude, publicAgentList } from "./lab/agents";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -18,6 +19,9 @@ const app = express();
 // health-check the container against it. Falling back to 3000 keeps local
 // development unchanged.
 const PORT = Number(process.env.PORT) || 3000;
+
+/** The console's own AI features run on the same model as the agents. */
+const CONSOLE_MODEL = "claude-haiku-4-5";
 
 app.use(express.json());
 
@@ -505,7 +509,7 @@ function recordChatInteraction(clientId: string, clientName: string, modelUsed: 
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    hasApiKey: !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY",
+    hasApiKey: initClaude() !== null,
     timestamp: new Date().toISOString()
   });
 });
@@ -541,50 +545,38 @@ app.get("/api/clients", (req, res) => {
 });
 
 // POST dynamic model list from real Gemini API or list up-to-date models
-app.get("/api/models", async (req, res) => {
-  const ai = initGemini();
-
-  // Baseline standard models we offer in the app
-  const defaultModels = [
+app.get("/api/models", (req, res) => {
+  // CoreOS publishes capability tiers, not engine names. Every tier runs the
+  // same model; the tier sets how much latitude the agent is given.
+  const models = [
     {
-      name: "gemini-2.5-flash",
-      displayName: "CoreOS AI Prime (High-Speed)",
-      version: "2.5",
-      description: "Recommended by default. Ultra-fast, smart processing, ideal for high speed client chats with 1M tokens capacity.",
-      supportedFeatures: ["Text Generation", "Multimodal", "Streaming", "Fast Inference"],
-      inputTypes: ["Text", "Image", "Audio"],
+      name: "coreos-prime",
+      displayName: "CoreOS AI Prime (Balanced)",
+      version: "1",
+      description: "Recommended by default. Fast, capable responses for everyday client chat.",
+      supportedFeatures: ["Text Generation", "System Instructions", "Fast Inference"],
+      inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "24/7 Active Stable",
       isCustom: false
     },
     {
-      name: "gemini-2.5-pro",
-      displayName: "CoreOS AI Max (Reasoning)",
-      version: "2.5",
-      description: "Ultimate reasoning, advanced coding, complex mathematical/logical constraints.",
-      supportedFeatures: ["Advanced Reasoning", "System Instructions", "High Fidelity Text"],
-      inputTypes: ["Text", "Image"],
-      outputTypes: ["Text"],
-      releaseDate: "Released Q1 2026",
-      isCustom: false
-    },
-    {
-      name: "gemini-2.0-flash",
-      displayName: "CoreOS AI Flash (Interactive)",
-      version: "2.0",
-      description: "Fast, response-driven responsive multitasking node.",
-      supportedFeatures: ["High Speed", "Dynamic Code Execution"],
-      inputTypes: ["Text", "Image", "Audio"],
+      name: "coreos-precise",
+      displayName: "CoreOS AI Precise (Literal)",
+      version: "1",
+      description: "Lowest variation. Best where wording and figures must stay consistent.",
+      supportedFeatures: ["Deterministic Tone", "System Instructions"],
+      inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "Active Stable",
       isCustom: false
     },
     {
-      name: "gemini-2.0-flash-lite",
-      displayName: "CoreOS AI Lite (Low-Latency)",
-      version: "2.0",
-      description: "Highly cost-efficient, ultra low latency structured execution node.",
-      supportedFeatures: ["Strict JSON", "Basic Instruction Following"],
+      name: "coreos-creative",
+      displayName: "CoreOS AI Creative (Expressive)",
+      version: "1",
+      description: "More varied phrasing, for marketing copy and brainstorming.",
+      supportedFeatures: ["High Variation", "System Instructions"],
       inputTypes: ["Text"],
       outputTypes: ["Text"],
       releaseDate: "Active Stable",
@@ -592,72 +584,7 @@ app.get("/api/models", async (req, res) => {
     }
   ];
 
-  if (!ai) {
-    return res.json({ models: defaultModels, isLive: false });
-  }
-
-  try {
-    // If key is set, attempt to list real models dynamically to include newer release models
-    const realModelsList = await ai.models.list();
-    
-    // Custom robust iteration supporting array, sync iterable, async iterable, and properties
-    const listArray: any[] = [];
-    if (Array.isArray(realModelsList)) {
-      listArray.push(...realModelsList);
-    } else if (realModelsList && typeof (realModelsList as any)[Symbol.iterator] === "function") {
-      for (const m of (realModelsList as any)) {
-        listArray.push(m);
-      }
-    } else if (realModelsList && typeof (realModelsList as any)[Symbol.asyncIterator] === "function") {
-      for await (const m of (realModelsList as any)) {
-        listArray.push(m);
-      }
-    } else if (realModelsList && (realModelsList as any).models) {
-      listArray.push(...(realModelsList as any).models);
-    }
-
-    // Transform real list to highlight any newly released models
-    const fetchedModels = listArray.map(m => {
-      const isNew = !defaultModels.some(dm => dm.name === m.name);
-      return {
-        name: m.name || "",
-        displayName: m.displayName || m.name || "Unnamed Model",
-        version: m.version || "Unknown",
-        description: m.description || "Dynamically loaded through live Gemini API updates.",
-        supportedFeatures: m.supportedGenerationMethods || m.supportedActions || ["Text Generation"],
-        inputTypes: m.inputFormats || ["Text"],
-        outputTypes: m.outputFormats || ["Text"],
-        isCustom: isNew
-      };
-    });
-
-    // Merge default lists with any unique dynamic ones
-    const merged = [...defaultModels];
-    fetchedModels.forEach(fm => {
-      // Avoid duplicate standard names, but append any newly found release models
-      if (fm.name.startsWith("models/")) {
-        const cleanedName = fm.name.replace("models/", "");
-        if (!merged.some(m => m.name === cleanedName || m.name === fm.name)) {
-          merged.push({
-            name: fm.name,
-            displayName: fm.displayName,
-            version: fm.version,
-            description: fm.description,
-            supportedFeatures: fm.supportedFeatures,
-            inputTypes: fm.inputTypes,
-            outputTypes: fm.outputTypes,
-            releaseDate: "Active Live Release",
-            isCustom: true
-          });
-        }
-      }
-    });
-
-    res.json({ models: merged, isLive: true });
-  } catch (err: any) {
-    console.error("Failed to list active Gemini models dynamically, using fallbacks:", err.message);
-    res.json({ models: defaultModels, isLive: false, error: err.message });
-  }
+  res.json({ models, isLive: initClaude() !== null });
 });
 
 // CREATE a new client AI profile
@@ -816,7 +743,7 @@ app.post("/api/generate-instruction", async (req, res) => {
     return res.status(400).json({ error: "Needs statement is required to build instructions" });
   }
 
-  const ai = initGemini();
+  const ai = initClaude();
 
   const prompt = `Write a professional system instruction/persona prompt for a customized Gemini AI chatbot integration.
 The target website is CoreOS SaaS. The client is:
@@ -848,18 +775,23 @@ Respond ONLY with the complete, fully written system instruction text block. Do 
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        systemInstruction: "You are an expert prompt engineering systems architect. You generate structured, rich, and highly effective persona system instructions."
-      }
+    const response = await ai.messages.create({
+      model: CONSOLE_MODEL,
+      max_tokens: 4096,
+      temperature: 0.7,
+      system: "You are an expert prompt engineering systems architect. You generate structured, rich, and highly effective persona system instructions.",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    res.json({ instruction: response.text || "", isFallback: false });
+    const instruction = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+
+    res.json({ instruction, isFallback: false });
   } catch (error: any) {
-    console.error("Failed to generate instructions via Gemini:", error);
+    console.error("Failed to generate instructions:", error?.message || error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -944,21 +876,14 @@ app.post("/api/chat/simulate", async (req, res) => {
   const clientLanguage = (activeClient && activeClient.language) ? activeClient.language : "english";
 
   const config = aiConfig || {};
-  const rawModel = config.model || "gemini-2.5-flash";
   const systemInstruction = config.systemInstruction || "You are a helpful assistant.";
   const temperature = Number(config.temperature ?? 0.7);
-  const topP = Number(config.topP ?? 0.9);
   const customVariables = config.customVariables || {};
 
-  // Model ID Routing/Adapter for SDK alignment
-  let processedModel = rawModel;
-  if (processedModel === "gemini-3.5-flash") {
-    processedModel = "gemini-2.5-flash";
-  } else if (processedModel === "gemini-3.1-pro-preview") {
-    processedModel = "gemini-2.5-pro";
-  } else if (processedModel === "gemini-3.1-flash-lite") {
-    processedModel = "gemini-2.0-flash-lite";
-  }
+  /* Every agent now runs on one model, so the client's configured tier is a
+     label rather than a route. It is kept for the audit log so historical
+     entries stay meaningful, including ones naming long-retired engines. */
+  const configuredTier = config.model || "coreos-prime";
 
   // Inject custom variables and brand details
   let compiledInstruction = `Your brand name/agent identity is: "${clientName}". ${systemInstruction}`;
@@ -970,18 +895,18 @@ app.post("/api/chat/simulate", async (req, res) => {
   // Inject Language restriction into Gemini prompt instructions
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
-  const ai = initGemini();
+  const ai = initClaude();
 
   if (!ai) {
     // Simulate responses translated or formatted based on chosen Language
     setTimeout(() => {
-      let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${processedModel.toUpperCase()} (Tuned Temp: ${temperature}, TopP: ${topP})\n\n`;
+      let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${configuredTier.toUpperCase()} (Tuned Temp: ${temperature})\n\n`;
       let bodyText = "";
       const msgLower = message.toLowerCase();
 
       // Translate headings/replies based on configured language
       if (clientLanguage === "kurdish") {
-        greeting = `🤖 **[سیستەمی ناوەکی ئەکتیڤە]**\n**ناوی براند**: ${clientName}\n**مۆدێلی کارا**: ${processedModel.toUpperCase()}\n\n`;
+        greeting = `🤖 **[سیستەمی ناوەکی ئەکتیڤە]**\n**ناوی براند**: ${clientName}\n**مۆدێلی کارا**: ${configuredTier.toUpperCase()}\n\n`;
         
         if (msgLower.includes("track") || msgLower.includes("where") || msgLower.includes("package") || msgLower.includes("ناردن")) {
           bodyText = `### 📦 زانیاری گواستنەوەی بار بە زمانی کوردی\nوەک براندی **${clientName}**، لێرە زانیاری بارەکانت بۆ پیشان دەدەین:\n\n- **کۆدی بار**: AERO-928-X\n- **بار**: کەرەستەی بازرگانی\n- **دۆخ**: 🟢 لە ڕێگادایە - دەگاتە کاتژمێر ١٨:٣٠\n\n*ئایا دەتەوێت بیمە بکەیت یان شوێنەکە بگۆڕیت کاروان؟*`;
@@ -989,7 +914,7 @@ app.post("/api/chat/simulate", async (req, res) => {
           bodyText = `سڵاو و بەخێربێن! من یاریدەدەری زیرەکی براندی **${clientName}**م بۆ خزمەتگوزارییەکانتان.\n\nمن یارمەتیت دەدەم لەم بوارانەدا:\n١. چارەسەرکردنی کێشەکان بە شێوازێکی خێرا\n٢. پێدانی ڕاپۆرت لەسەر بنەمای زانیارییەکان\n\nچۆن دەتوانم ئەمڕۆ یارمەتیت بدەم؟`;
         }
       } else if (clientLanguage === "arabic") {
-        greeting = `🤖 **[بروتوكول النظام الأساسي نشط]**\n**هوية العميل**: ${clientName}\n**النموذج المستخدم**: ${processedModel.toUpperCase()}\n\n`;
+        greeting = `🤖 **[بروتوكول النظام الأساسي نشط]**\n**هوية العميل**: ${clientName}\n**النموذج المستخدم**: ${configuredTier.toUpperCase()}\n\n`;
         
         if (msgLower.includes("track") || msgLower.includes("where") || msgLower.includes("أين") || msgLower.includes("شحن")) {
           bodyText = `### 📦 الاستعلام عن تتبع الشحنات اللوجستية باللغة العربية\nبصفتي متخصص **${clientName}**، قمت بالاستعلام لك عن الشحنة:\n\n- **رمز التتبع**: AERO-928-X\n- **حالة الشحنة**: 🟢 في الطريق - ميعاد الوصول المتوقع 18:30\n\n*هل تود حجز مساحة شحن جديدة مع منصة CoreOS اليوم؟*`;
@@ -1010,43 +935,42 @@ app.post("/api/chat/simulate", async (req, res) => {
       }
 
       let reply = `${greeting}${bodyText}\n\n---\n*💡 Developer Notice: Save your GEMINI_API_KEY as a secret to run real live conversations in ${clientLanguage.toUpperCase()} using actual Gemini model reasoning.*`;
-      recordChatInteraction(id, clientName, processedModel, message, reply, req.body.channel || "Sandbox Simulator");
+      recordChatInteraction(id, clientName, configuredTier, message, reply, req.body.channel || "Sandbox Simulator");
       res.json({ text: reply, isFallback: true, customerUsage: customer });
     }, 750);
     return;
   }
 
   try {
-    const contentHistory: any[] = [];
-    
+    const contentHistory: Anthropic.MessageParam[] = [];
+
     if (history && history.length > 0) {
       history.forEach((h: any) => {
-        if (h.sender === 'user') {
-          contentHistory.push({ role: 'user', parts: [{ text: h.text }] });
-        } else if (h.sender === 'assistant') {
-          contentHistory.push({ role: 'model', parts: [{ text: h.text }] });
+        if (!h || typeof h.text !== "string" || !h.text.trim()) return;
+        if (h.sender === "user") {
+          contentHistory.push({ role: "user", content: h.text });
+        } else if (h.sender === "assistant") {
+          contentHistory.push({ role: "assistant", content: h.text });
         }
       });
     }
 
-    contentHistory.push({ role: 'user', parts: [{ text: message }] });
+    contentHistory.push({ role: "user", content: message });
 
-    // Same 404 risk as the testing lab: saved client configs name model ids
-    // that Google may since have retired.
-    const model = resolveModel(processedModel, await getAvailableModels(ai));
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: contentHistory,
-      config: {
-        systemInstruction: compiledInstruction,
-        temperature: temperature,
-        topP: topP,
-      }
+    const response = await ai.messages.create({
+      model: CONSOLE_MODEL,
+      max_tokens: 2048,
+      temperature,
+      system: compiledInstruction,
+      messages: contentHistory,
     });
 
-    const replyText = response.text || "";
-    recordChatInteraction(id, clientName, processedModel, message, replyText, req.body.channel || "Sandbox Simulator");
+    const replyText = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    recordChatInteraction(id, clientName, configuredTier, message, replyText, req.body.channel || "Sandbox Simulator");
     res.json({ text: replyText, isFallback: false, customerUsage: customer });
   } catch (err: any) {
     console.error("Gemini simulation error:", err);
@@ -1064,7 +988,7 @@ app.post("/api/chat/simulate", async (req, res) => {
    ========================================================================= */
 
 app.get("/api/lab/agents", (req, res) => {
-  res.json({ agents: publicAgentList(), live: initGemini() !== null });
+  res.json({ agents: publicAgentList(), live: initClaude() !== null });
 });
 
 /* Coarse per-IP throttle. The endpoint is unauthenticated by design, so it

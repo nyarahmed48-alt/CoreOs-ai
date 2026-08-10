@@ -27,7 +27,7 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
-lab/agents.ts         shared agent runtime — roster, charter, Gemini calls
+lab/agents.ts         shared agent runtime — roster, charter, Claude calls
 api/lab/chat.ts       Vercel serverless entry point for the sandbox
 netlify/functions/    Netlify entry point for the sandbox
 public/_redirects     SPA + function routing for Netlify
@@ -82,7 +82,7 @@ uncertainty, and decline to help plan staff reductions.
 ```
 
 Messages are capped at 500 characters and throttled to 60 per IP per hour. With
-no `GEMINI_API_KEY` configured the endpoint says so plainly rather than
+no `ANTHROPIC_API_KEY` configured the endpoint says so plainly rather than
 pretending to answer.
 
 ## Run locally
@@ -91,7 +91,7 @@ pretending to answer.
 
 ```bash
 npm install
-# optional: set GEMINI_API_KEY in .env.local for live agent responses
+# optional: set ANTHROPIC_API_KEY in .env.local for live agent responses
 npm run dev     # http://localhost:3000
 ```
 
@@ -102,15 +102,28 @@ npm run build:web  # vite build only — for Vercel / Netlify / static hosts
 npm start          # serve the production build
 ```
 
-## The API key
+## The AI behind CoreOS
 
-Live answers need a Gemini API key. **Free keys:
-https://aistudio.google.com/apikey** — the free tier is generous enough for a
-public demo sandbox.
+Every agent — all 31 in the testing programme, plus the console's simulator and
+instruction generator — runs on **Claude Haiku 4.5** (`claude-haiku-4-5`)
+through the official `@anthropic-ai/sdk`. Fast and inexpensive, which is what a
+public sandbox anyone can hammer actually needs.
 
-Set it as `GEMINI_API_KEY`, in `.env.local` locally or in the hosting
-provider's environment settings. Without a key the site still runs and every
-page works; the agents reply saying no key is configured.
+Agents differ by persona brief and `temperature`, not by model. Two API notes
+for anyone changing the calls:
+
+- **Haiku 4.5 accepts `temperature`.** Newer Claude models reject sampling
+  parameters, so this does not port upward unchanged.
+- **Do not send `output_config.effort`** — it errors on Haiku 4.5.
+
+### The API key
+
+Set `ANTHROPIC_API_KEY`, from https://console.anthropic.com — in `.env.local`
+locally, or in the hosting provider's environment settings.
+
+Anthropic is pay-as-you-go with no free tier, but Haiku is cheap: a sandbox
+exchange costs a fraction of a cent. Without a key the site still runs and
+every page works; the agents reply saying no key is configured.
 
 ## Deploying
 
@@ -119,11 +132,11 @@ The server honours `$PORT`, so it runs on any Node host with no extra config.
 **Vercel or Netlify**: `vercel.json` and `netlify.toml` are both in the repo.
 Import the repository on either platform and it picks up the build command, the
 SPA rewrite, and the sandbox function (`api/lab/chat.ts` on Vercel,
-`netlify/functions/lab-chat.ts` on Netlify). Add `GEMINI_API_KEY` in the
+`netlify/functions/lab-chat.ts` on Netlify). Add `ANTHROPIC_API_KEY` in the
 project's environment variables.
 
 **Render**: `render.yaml` is a blueprint — connect the repository at
-render.com and set `GEMINI_API_KEY` in the dashboard.
+render.com and set `ANTHROPIC_API_KEY` in the dashboard.
 
 **Google Cloud Run**:
 
