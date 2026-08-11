@@ -58,6 +58,33 @@ src/
     CoreOsAiPage.tsx  ContactPage.tsx  Eyebrow.tsx  contact.ts
 ```
 
+## Languages
+
+The site is **Arabic first**, with an English toggle in the nav. The choice is
+remembered in `localStorage`, so it is a one-time press.
+
+- `src/site/strings.ts` — every UI string, in both languages. One file, so the
+  Arabic can be proofread in one sitting.
+- `src/site/catalog.ts` — agent copy is bilingual inline, so adding an agent is
+  still one edit in one place and the languages cannot drift apart.
+- `src/site/i18n.tsx` — the provider. Sets `lang` and `dir` on `<html>`;
+  `index.html` ships `lang="ar" dir="rtl"` so there is no flash of LTR before
+  React mounts.
+
+**Layout is direction-agnostic**: the site uses logical CSS properties (`ps-`,
+`me-`, `start-`, `rounded-es-`) rather than physical ones, so RTL is a `dir`
+flip rather than a second stylesheet. Chat bubbles carry `dir="auto"` so a
+conversation can mix languages without punctuation jumping ends.
+
+Brand names, agent codenames and monograms stay in Latin script — they are
+names, and the codenames are the point of the testing programme. The manager
+console at `/manager` is pinned `dir="ltr"`: it is an internal English tool and
+was never laid out for RTL.
+
+The visitor's language is sent to `/api/lab/chat` as `lang`, and the charter
+tells the agent to answer in it — unless the visitor writes in a third
+language, in which case the agent follows the visitor.
+
 ## The open testing programme
 
 31 agents are published: 11 CoreOs business agents (`/testing`) and 20 CoreOs.ai

@@ -7,38 +7,43 @@ import { useMemo, useState } from "react";
 import { Mail, Copy, Check, Send, MessageSquare, Building2, Phone } from "lucide-react";
 import { CONTACT_EMAIL, mailto } from "./contact";
 import { Eyebrow } from "./Eyebrow";
+import { useLang } from "./i18n";
+import type { CopyKey } from "./strings";
 
-const TOPICS = [
-  "Set up an AI agent for my business",
-  "Pricing and affordability",
-  "Feedback on an agent I tested",
-  "Partnership or reseller enquiry",
-  "Something else",
+const TOPIC_KEYS: CopyKey[] = [
+  "contact.topic1",
+  "contact.topic2",
+  "contact.topic3",
+  "contact.topic4",
+  "contact.topic5",
 ];
 
 export function ContactPage() {
+  const { t } = useLang();
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
-  const [topic, setTopic] = useState(TOPICS[0]);
+  const [topicKey, setTopicKey] = useState<CopyKey>(TOPIC_KEYS[0]);
   const [details, setDetails] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const topic = t(topicKey);
+
   const href = useMemo(() => {
     const body = [
-      name ? `Name: ${name}` : "",
-      company ? `Business: ${company}` : "",
-      `Phone: ${phone}`,
-      `Topic: ${topic}`,
+      name ? `${t("contact.mailName")}: ${name}` : "",
+      company ? `${t("contact.mailBusiness")}: ${company}` : "",
+      `${t("contact.mailPhone")}: ${phone}`,
+      `${t("contact.mailTopic")}: ${topic}`,
       "",
-      details || "(Tell us what you need here.)",
+      details || t("contact.mailBody"),
       "",
-      "— Sent from coreos.ai",
+      t("contact.mailFrom"),
     ]
       .filter(Boolean)
       .join("\n");
-    return mailto(`CoreOs enquiry — ${topic}`, body);
-  }, [name, company, phone, topic, details]);
+    return mailto(`${t("contact.mailSubject")}${topic}`, body);
+  }, [name, company, phone, topic, details, t]);
 
   // The whole reason for this form is getting a number to call back on, so the
   // send button stays disabled until there is one.
@@ -59,14 +64,12 @@ export function ContactPage() {
       <section className="site-grain border-b border-[#12172a]">
         <div className="mx-auto max-w-6xl px-5 pb-14 pt-20 md:pb-16 md:pt-28">
           <div className="site-rise max-w-3xl">
-            <Eyebrow>Contact</Eyebrow>
+            <Eyebrow>{t("contact.eyebrow")}</Eyebrow>
             <h1 className="mt-5 font-brand text-[clamp(2.2rem,5.5vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-0.03em] text-white">
-              Tell us what your business needs.
+              {t("contact.h1")}
             </h1>
             <p className="mt-6 max-w-2xl text-[16.5px] leading-relaxed text-[#a4abc4]">
-              One address, read by us. Describe the job you want handled — the
-              repeated questions, the inbox, the paperwork — and we'll tell you
-              honestly whether CoreOs is the right fit and what it would cost.
+              {t("contact.lede")}
             </p>
           </div>
         </div>
@@ -82,21 +85,23 @@ export function ContactPage() {
                   <Mail className="h-5 w-5" />
                 </div>
                 <h2 className="mt-4 font-display text-[18px] font-semibold text-white">
-                  Email CoreOs
+                  {t("contact.emailH2")}
                 </h2>
                 <p className="mt-2 text-[14px] leading-relaxed text-[#98a0bb]">
-                  The fastest route. We answer enquiries ourselves — there is no
-                  ticket queue between you and the people who build this.
+                  {t("contact.emailB")}
                 </p>
 
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
                   className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[#232b40] bg-[#0d1220] px-4 py-3.5 transition-colors hover:border-[#6c7bf0]"
                 >
-                  <span className="break-all font-mono text-[13.5px] text-[#e7eaf6]">
+                  <span
+                    dir="ltr"
+                    className="break-all font-mono text-[13.5px] text-[#e7eaf6]"
+                  >
                     {CONTACT_EMAIL}
                   </span>
-                  <Send className="h-4 w-4 shrink-0 text-[#6c7bf0]" />
+                  <Send className="h-4 w-4 shrink-0 text-[#6c7bf0] rtl:-scale-x-100" />
                 </a>
 
                 <button
@@ -107,12 +112,12 @@ export function ContactPage() {
                   {copied ? (
                     <>
                       <Check className="h-3.5 w-3.5 text-[#4ade80]" />
-                      Address copied
+                      {t("contact.copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="h-3.5 w-3.5" />
-                      Copy address
+                      {t("contact.copy")}
                     </>
                   )}
                 </button>
@@ -121,13 +126,13 @@ export function ContactPage() {
               <div className="mt-4 grid gap-4">
                 <SideNote
                   icon={<MessageSquare className="h-4 w-4" />}
-                  title="Testing feedback is welcome"
-                  body="If one of the open agents answered badly, send us the exchange. That feedback goes straight into how the agent is configured."
+                  title={t("contact.note1T")}
+                  body={t("contact.note1B")}
                 />
                 <SideNote
                   icon={<Building2 className="h-4 w-4" />}
-                  title="Small businesses first"
-                  body="You do not need a procurement process or an IT department to work with us. Most of our clients have neither."
+                  title={t("contact.note2T")}
+                  body={t("contact.note2B")}
                 />
               </div>
             </div>
@@ -135,73 +140,76 @@ export function ContactPage() {
             {/* ------------------------------------------------ Brief builder */}
             <div className="rounded-2xl border border-[#1c2337] bg-[#0a0d16] p-6 md:p-8">
               <h2 className="font-display text-[18px] font-semibold text-white">
-                Send us a brief
+                {t("contact.briefH2")}
               </h2>
               <p className="mt-2 text-[14px] leading-relaxed text-[#98a0bb]">
-                Fill this in and it opens a pre-written email to{" "}
-                <span className="break-all font-mono text-[13px] text-[#c3c9dd]">
+                {t("contact.briefP1")}{" "}
+                <span
+                  dir="ltr"
+                  className="break-all font-mono text-[13px] text-[#c3c9dd]"
+                >
                   {CONTACT_EMAIL}
                 </span>{" "}
-                in your own mail app. Nothing is submitted to a server, and we
-                store nothing until you press send.
+                {t("contact.briefP2")}
               </p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <Field label="Your name">
+                <Field label={t("contact.name")}>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Jane Okafor"
-                    aria-label="Your name"
+                    placeholder={t("contact.namePh")}
+                    aria-label={t("contact.name")}
                     className="w-full rounded-xl border border-[#232b40] bg-[#0d1220] px-3.5 py-2.5 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677]"
                   />
                 </Field>
-                <Field label="Business">
+                <Field label={t("contact.business")}>
                   <input
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Okafor Logistics"
-                    aria-label="Business name"
+                    placeholder={t("contact.businessPh")}
+                    aria-label={t("contact.business")}
                     className="w-full rounded-xl border border-[#232b40] bg-[#0d1220] px-3.5 py-2.5 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677]"
                   />
                 </Field>
               </div>
 
               <div className="mt-4">
-                <Field label="Phone number (required)">
+                <Field label={t("contact.phone")}>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     type="tel"
                     inputMode="tel"
                     autoComplete="tel"
+                    dir="ltr"
                     placeholder="+964 750 123 4567"
-                    aria-label="Phone number"
-                    className={`w-full rounded-xl border bg-[#0d1220] px-3.5 py-2.5 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677] ${
+                    aria-label={t("contact.phone")}
+                    className={`w-full rounded-xl border bg-[#0d1220] px-3.5 py-2.5 text-start text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677] ${
                       phone.trim() && !hasPhone ? "border-[#5b2434]" : "border-[#232b40]"
                     }`}
                   />
                   <p className="mt-2 text-[12.5px] text-[#7d859e]">
-                    We call rather than trade emails — it is faster for both of us.
+                    {t("contact.phoneHelp")}
                   </p>
                 </Field>
               </div>
 
               <div className="mt-4">
-                <Field label="What's this about?">
+                <Field label={t("contact.topic")}>
                   <div className="flex flex-wrap gap-1.5">
-                    {TOPICS.map((t) => (
+                    {TOPIC_KEYS.map((key) => (
                       <button
-                        key={t}
+                        key={key}
                         type="button"
-                        onClick={() => setTopic(t)}
+                        onClick={() => setTopicKey(key)}
                         className={`rounded-lg px-3 py-2 text-[12.5px] font-medium transition-colors ${
-                          topic === t
+                          topicKey === key
                             ? "bg-[#6c7bf0] text-[#05060a]"
                             : "border border-[#232b40] text-[#98a0bb] hover:border-[#3a4460] hover:text-white"
                         }`}
                       >
-                        {t}
+                        {t(key)}
                       </button>
                     ))}
                   </div>
@@ -209,13 +217,13 @@ export function ContactPage() {
               </div>
 
               <div className="mt-4">
-                <Field label="Details">
+                <Field label={t("contact.details")}>
                   <textarea
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
                     rows={6}
-                    aria-label="Details"
-                    placeholder="We get around 60 of the same delivery questions a day and two people spend their mornings answering them…"
+                    aria-label={t("contact.details")}
+                    placeholder={t("contact.detailsPh")}
                     className="w-full resize-y rounded-xl border border-[#232b40] bg-[#0d1220] px-3.5 py-3 text-[14px] leading-relaxed text-[#e7eaf6] outline-none placeholder:text-[#4d556b] focus:border-[#4a5677]"
                   />
                 </Field>
@@ -227,7 +235,7 @@ export function ContactPage() {
                   className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3.5 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
                 >
                   <Mail className="h-4 w-4" />
-                  Open this in my email app
+                  {t("contact.send")}
                 </a>
               ) : (
                 <span
@@ -235,12 +243,11 @@ export function ContactPage() {
                   className="mt-6 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[#232b40] bg-[#0d1220] px-5 py-3.5 text-[14.5px] font-semibold text-[#5e677f]"
                 >
                   <Phone className="h-4 w-4" />
-                  Add your phone number to continue
+                  {t("contact.needPhone")}
                 </span>
               )}
               <p className="mt-3 text-center text-[12px] text-[#5e677f]">
-                No mail app? Copy the address above and write to us directly —
-                include your number so we can call you back.
+                {t("contact.noMail")}
               </p>
             </div>
           </div>

@@ -10,29 +10,48 @@ import { LAB_MODELS, type PublicAgent } from "./catalog";
 import { AgentCard } from "./AgentCard";
 import { TestConsole } from "./TestConsole";
 import { Eyebrow } from "./Eyebrow";
+import { useLang } from "./i18n";
+import { fill } from "./strings";
+import type { Copy } from "./strings";
+
+/** Sentinel for the unfiltered chip. Not a category name, so it cannot collide
+ *  with one in either language. */
+const ALL = "__all";
 
 export function CoreOsAiPage() {
   const [testing, setTesting] = useState<PublicAgent | null>(null);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("All");
+  const [category, setCategory] = useState<string>(ALL);
+  const { t, pick } = useLang();
 
-  const categories = useMemo(
-    () => ["All", ...Array.from(new Set(LAB_MODELS.map((m) => m.category)))],
-    [],
-  );
+  /* Filtering is keyed on the English category, which is stable, while the
+     chip renders in whichever language is active. Switching language must not
+     silently drop the active filter. */
+  const categories = useMemo(() => {
+    const seen = new Map<string, Copy>();
+    for (const m of LAB_MODELS) seen.set(m.category.en, m.category);
+    return [...seen.entries()];
+  }, []);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return LAB_MODELS.filter((m) => {
-      if (category !== "All" && m.category !== category) return false;
+      if (category !== ALL && m.category.en !== category) return false;
       if (!q) return true;
-      return (
-        m.name.toLowerCase().includes(q) ||
-        m.tagline.toLowerCase().includes(q) ||
-        m.category.toLowerCase().includes(q) ||
-        m.uses.some((u) => u.toLowerCase().includes(q)) ||
-        m.traits.some((t) => t.toLowerCase().includes(q))
-      );
+      // Search both languages: a visitor may know the English term for a task
+      // while reading the Arabic page, or the reverse.
+      const haystack = [
+        m.name,
+        m.tagline.ar,
+        m.tagline.en,
+        m.category.ar,
+        m.category.en,
+        ...m.uses.flatMap((u) => [u.ar, u.en]),
+        ...m.traits.flatMap((tr) => [tr.ar, tr.en]),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
     });
   }, [query, category]);
 
@@ -43,45 +62,44 @@ export function CoreOsAiPage() {
           <div className="site-rise max-w-3xl">
             <div className="flex items-center gap-3">
               <CoreOsMark size={40} />
-              <span className="font-brand text-[34px] font-extrabold leading-none tracking-[-0.03em] text-[#6c7bf0]">
+              <span
+                dir="ltr"
+                className="font-brand text-[34px] font-extrabold leading-none tracking-[-0.03em] text-[#6c7bf0]"
+              >
                 coreOs<span className="text-[#1878dc]">.ai</span>
               </span>
             </div>
 
             <div className="mt-7">
-              <Eyebrow>The open model lab</Eyebrow>
+              <Eyebrow>{t("lab.eyebrow")}</Eyebrow>
             </div>
 
             <h1 className="mt-4 font-brand text-[clamp(2.1rem,5.2vw,3.4rem)] font-extrabold leading-[1.03] tracking-[-0.03em] text-white">
-              Twenty models to test.
+              {t("lab.h1a")}
               <br />
-              Twenty names you've never heard.
+              {t("lab.h1b")}
             </h1>
 
             <p className="mt-6 max-w-2xl text-[16.5px] leading-relaxed text-[#a4abc4]">
-              Every model in this lab runs under a CoreOs codename. We publish
-              what each one is good at, in plain language, and nothing about
-              what's underneath — because the moment you see a familiar badge
-              you stop reading the answer and start trusting the brand. Pick on
-              output. That's the whole point.
+              {t("lab.lede")}
             </p>
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             <Note
               icon={<EyeOff className="h-4 w-4" />}
-              title="Codenames, not badges"
-              body="The engine behind each name is deliberately withheld so testing stays honest."
+              title={t("lab.n1T")}
+              body={t("lab.n1B")}
             />
             <Note
               icon={<Scale className="h-4 w-4" />}
-              title="Described by use, not by spec"
-              body="No parameter counts or benchmark tables — just what each model is genuinely good for."
+              title={t("lab.n2T")}
+              body={t("lab.n2B")}
             />
             <Note
               icon={<Shuffle className="h-4 w-4" />}
-              title="Same prompt, several models"
-              body="Run one question through three codenames and keep whichever answers it best."
+              title={t("lab.n3T")}
+              body={t("lab.n3B")}
             />
           </div>
         </div>
@@ -92,37 +110,39 @@ export function CoreOsAiPage() {
           {/* Filters */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-xs">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5e677f]" />
+              <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5e677f]" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name or task…"
-                aria-label="Search models"
-                className="w-full rounded-xl border border-[#232b40] bg-[#0a0d16] py-2.5 pl-10 pr-3 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#5e677f] focus:border-[#4a5677]"
+                placeholder={t("lab.search")}
+                aria-label={t("lab.searchAria")}
+                className="w-full rounded-xl border border-[#232b40] bg-[#0a0d16] py-2.5 pe-3 ps-10 text-[14px] text-[#e7eaf6] outline-none placeholder:text-[#5e677f] focus:border-[#4a5677]"
               />
             </div>
 
             <div className="flex flex-wrap gap-1.5">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={`rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
-                    category === c
-                      ? "bg-[#6c7bf0] text-[#05060a]"
-                      : "border border-[#232b40] text-[#98a0bb] hover:border-[#3a4460] hover:text-white"
-                  }`}
-                >
-                  {c}
-                </button>
+              <Chip
+                active={category === ALL}
+                onClick={() => setCategory(ALL)}
+                label={t("lab.all")}
+              />
+              {categories.map(([key, copy]) => (
+                <Chip
+                  key={key}
+                  active={category === key}
+                  onClick={() => setCategory(key)}
+                  label={pick(copy)}
+                />
               ))}
             </div>
           </div>
 
           <p className="mt-5 text-[13px] text-[#5e677f]">
-            Showing {visible.length} of {LAB_MODELS.length} models
+            {fill(t("lab.showing"), {
+              shown: visible.length,
+              total: LAB_MODELS.length,
+            })}
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -134,8 +154,7 @@ export function CoreOsAiPage() {
           {visible.length === 0 ? (
             <div className="rounded-2xl border border-[#171d2d] bg-[#0a0d16] px-6 py-16 text-center">
               <p className="text-[14.5px] text-[#98a0bb]">
-                No model matches “{query}”. Try a task instead of a name — for
-                example “translate”, “contract” or “spreadsheet”.
+                {fill(t("lab.empty"), { query })}
               </p>
             </div>
           ) : null}
@@ -146,26 +165,12 @@ export function CoreOsAiPage() {
       <section className="border-t border-[#12172a] bg-[#07090f]">
         <div className="mx-auto max-w-4xl px-5 py-16 md:py-20">
           <h2 className="font-display text-[clamp(1.6rem,3.4vw,2.2rem)] font-bold tracking-[-0.02em] text-white">
-            Why we hide which model is which
+            {t("lab.whyH2")}
           </h2>
           <div className="mt-6 space-y-5 text-[15.5px] leading-[1.75] text-[#a4abc4]">
-            <p>
-              Model names carry reputation, and reputation biases judgement. Show
-              a business owner two identical answers and label one with a famous
-              badge, and the badge wins — even when the other answer is better
-              for their use case, faster, and a fraction of the cost.
-            </p>
-            <p>
-              That bias costs our clients money. So CoreOs.ai strips the labels
-              off. You test Aurelis against Nimbex on your own question and pick
-              the one that answered it properly. We then run your production
-              agent on whatever that was, and keep it current as models change —
-              without you having to re-evaluate the market every six months.
-            </p>
-            <p className="text-[#e7eaf6]">
-              It also means an upgrade underneath your agent is a non-event. The
-              codename stays; the engine gets better.
-            </p>
+            <p>{t("lab.whyP1")}</p>
+            <p>{t("lab.whyP2")}</p>
+            <p className="text-[#e7eaf6]">{t("lab.whyP3")}</p>
           </div>
         </div>
       </section>
@@ -174,6 +179,30 @@ export function CoreOsAiPage() {
         <TestConsole agent={testing} onClose={() => setTesting(null)} />
       ) : null}
     </>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+        active
+          ? "bg-[#6c7bf0] text-[#05060a]"
+          : "border border-[#232b40] text-[#98a0bb] hover:border-[#3a4460] hover:text-white"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

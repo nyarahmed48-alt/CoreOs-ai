@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en">
+<!--
+  Arabic is the site default. Declaring it here rather than waiting for React
+  avoids a flash of left-to-right layout on first paint; src/site/i18n.tsx
+  takes over and switches both attributes for a visitor who chooses English.
+-->
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
