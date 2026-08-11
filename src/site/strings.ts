@@ -84,8 +84,8 @@ export const COPY = {
   },
   "build.c1T": { ar: "المواقع الإلكترونية", en: "Websites" },
   "build.c1B": {
-    ar: "أكثر ما نبنيه. مواقع تعريفية وصفحات هبوط ومواقع أعمال كاملة — مصمَّمة ومنشورة، عادةً خلال أسبوع.",
-    en: "The bulk of what we build. Brochure sites, landing pages and full business sites — designed and deployed, usually inside a week.",
+    ar: "أكثر ما نبنيه. مواقع تعريفية وصفحات هبوط ومواقع أعمال كاملة — مصمَّمة ومنشورة بسرعة، ضمن جدول زمني نتفق عليه معك مسبقًا.",
+    en: "The bulk of what we build. Brochure sites, landing pages and full business sites — designed and deployed quickly, on a timeline we agree with you up front.",
   },
   "build.c2T": { ar: "التطبيقات", en: "Apps" },
   "build.c2B": {
