@@ -39,8 +39,8 @@ export const COPY = {
   "nav.langAria": { ar: "تغيير اللغة", en: "Change language" },
 
   "footer.blurb": {
-    ar: "تبني CoreOs ذكاءً اصطناعيًا مرنًا وبتكلفة في متناول الشركات الصغيرة والمتوسطة — ومصمَّمًا ليعمل إلى جانب الموظفين الذين لديك بالفعل.",
-    en: "CoreOs builds affordable, configurable AI for small and mid-sized businesses — and builds it to work alongside the people you already employ.",
+    ar: "تبني CoreOs المواقع والتطبيقات والأنظمة ووكلاء الذكاء الاصطناعي للشركات الصغيرة والمتوسطة — بتكلفة في المتناول، ومصمَّمة لتعمل إلى جانب الموظفين الذين لديك بالفعل.",
+    en: "CoreOs builds websites, apps, systems and AI agents for small and mid-sized businesses — affordably, and built to work alongside the people you already employ.",
   },
   "footer.product": { ar: "المنتج", en: "Product" },
   "footer.agents": { ar: "11 وكيلًا في الاختبار المفتوح", en: "11 agents in open testing" },
@@ -71,6 +71,38 @@ export const COPY = {
   "home.stat2": { ar: "لغات مدعومة", en: "Languages served" },
   "home.stat3": { ar: "رسوم لكل مستخدم", en: "Per-seat fees" },
   "home.stat4": { ar: "بإشراف بشري", en: "Human-in-the-loop" },
+
+  /* ------------------------------------------------------ what we build */
+  "build.eyebrow": { ar: "ما نبنيه", en: "What we build" },
+  "build.h2": {
+    ar: "من أصغر احتياج تقني إلى أكبر نظام.",
+    en: "From the smallest tech need to the biggest system.",
+  },
+  "build.lede": {
+    ar: "معظم عملائنا يأتون من أجل موقع. وكثير منهم يبقى من أجل ما بعده — تطبيق، أو نظام داخلي، أو وكيل يتولّى العمل المتكرر. نبنيها جميعًا، ونبنيها بسرعة.",
+    en: "Most of our clients come to us for a website. A lot of them stay for what comes after it — an app, an internal system, an agent that takes the repetitive work. We build all of it, and we build it fast.",
+  },
+  "build.c1T": { ar: "المواقع الإلكترونية", en: "Websites" },
+  "build.c1B": {
+    ar: "أكثر ما نبنيه. مواقع تعريفية وصفحات هبوط ومواقع أعمال كاملة — مصمَّمة ومنشورة بسرعة، ضمن جدول زمني نتفق عليه معك مسبقًا.",
+    en: "The bulk of what we build. Brochure sites, landing pages and full business sites — designed and deployed quickly, on a timeline we agree with you up front.",
+  },
+  "build.c2T": { ar: "التطبيقات", en: "Apps" },
+  "build.c2B": {
+    ar: "تطبيقات تعمل على الهاتف والحاسوب، من أداة داخلية صغيرة إلى منتج كامل يستخدمه عملاؤك يوميًا.",
+    en: "Apps that work on a phone and a desktop, from a small internal tool to a full product your customers use daily.",
+  },
+  "build.c3T": { ar: "الأنظمة والأتمتة", en: "Systems and automation" },
+  "build.c3B": {
+    ar: "أنظمة تتبّع ولوحات تحكم وأدوات داخلية وسير عمل يزيل الخطوات اليدوية من يومك.",
+    en: "Tracking systems, dashboards, internal tools and workflows that take the manual steps out of your day.",
+  },
+  "build.c4T": { ar: "وكلاء الذكاء الاصطناعي", en: "AI agents" },
+  "build.c4B": {
+    ar: "الوكلاء الذين يمكنك اختبارهم على هذا الموقع، مهيَّئون حول مستنداتك وسياساتك ونبرتك.",
+    en: "The agents you can test on this site, configured around your own documents, policies and tone.",
+  },
+  "build.cta": { ar: "تحدّث إلينا عن مشروعك", en: "Talk to us about your project" },
 
   "home.missionEyebrow": { ar: "رسالتنا", en: "Our mission" },
   "home.missionH2": {
@@ -395,6 +427,7 @@ export const COPY = {
     en: "We call rather than trade emails — it is faster for both of us.",
   },
   "contact.topic": { ar: "ما موضوع الطلب؟", en: "What's this about?" },
+  "contact.topicBuild": { ar: "موقع أو تطبيق أو نظام", en: "A website, app or system" },
   "contact.topic1": { ar: "إعداد وكيل ذكاء اصطناعي لشركتي", en: "Set up an AI agent for my business" },
   "contact.topic2": { ar: "التسعير والتكلفة", en: "Pricing and affordability" },
   "contact.topic3": { ar: "ملاحظات على وكيل اختبرته", en: "Feedback on an agent I tested" },

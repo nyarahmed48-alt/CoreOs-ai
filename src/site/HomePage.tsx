@@ -12,6 +12,10 @@ import {
   Gauge,
   HeartHandshake,
   Sparkles,
+  Globe,
+  Smartphone,
+  Workflow,
+  Bot,
 } from "lucide-react";
 import { CoreOsMark } from "./Logo";
 import { Link } from "./router";
@@ -98,6 +102,57 @@ export function HomePage() {
               ))}
             </dl>
           </div>
+        </div>
+      </section>
+
+      {/* -------------------------------------------------------- What we build
+
+          Sits directly under the hero on purpose. The hero leads on AI, but
+          most enquiries are website builds — a visitor should not have to
+          scroll past three AI sections to learn we do the thing they came for.
+      */}
+      <section className="border-b border-[#12172a]">
+        <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
+          <div className="max-w-2xl">
+            <Eyebrow>{t("build.eyebrow")}</Eyebrow>
+            <h2 className="mt-4 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
+              {t("build.h2")}
+            </h2>
+            <p className="mt-5 text-[15.5px] leading-relaxed text-[#a4abc4]">
+              {t("build.lede")}
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Craft
+              icon={<Globe className="h-5 w-5" />}
+              title={t("build.c1T")}
+              body={t("build.c1B")}
+            />
+            <Craft
+              icon={<Smartphone className="h-5 w-5" />}
+              title={t("build.c2T")}
+              body={t("build.c2B")}
+            />
+            <Craft
+              icon={<Workflow className="h-5 w-5" />}
+              title={t("build.c3T")}
+              body={t("build.c3B")}
+            />
+            <Craft
+              icon={<Bot className="h-5 w-5" />}
+              title={t("build.c4T")}
+              body={t("build.c4B")}
+            />
+          </div>
+
+          <Link
+            to="/contact"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
+          >
+            {t("build.cta")}
+            <Arrow />
+          </Link>
         </div>
       </section>
 
@@ -268,6 +323,29 @@ export function HomePage() {
         <TestConsole agent={testing} onClose={() => setTesting(null)} />
       ) : null}
     </>
+  );
+}
+
+/** Compact capability tile. Four across on desktop, so the copy stays short. */
+function Craft({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#171d2d] bg-[#0a0d16] p-5">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#141a2c] text-[#1878dc]">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-display text-[15.5px] font-semibold text-white">
+        {title}
+      </h3>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-[#98a0bb]">{body}</p>
+    </div>
   );
 }
 

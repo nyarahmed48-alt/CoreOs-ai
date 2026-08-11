@@ -10,7 +10,10 @@ import { Eyebrow } from "./Eyebrow";
 import { useLang } from "./i18n";
 import type { CopyKey } from "./strings";
 
+/* Website and app builds are the most common enquiry, so that chip leads and
+   is the default selection. */
 const TOPIC_KEYS: CopyKey[] = [
+  "contact.topicBuild",
   "contact.topic1",
   "contact.topic2",
   "contact.topic3",
