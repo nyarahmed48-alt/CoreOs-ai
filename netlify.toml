@@ -10,6 +10,24 @@
   to = "/.netlify/functions/lab-chat"
   status = 200
 
+# What the responder thinks it is configured to do. Worth having on Netlify
+# and not only on the Express server: without it the URL falls through to the
+# SPA catch-all and answers with the site's 404 page, which reads as a broken
+# deploy rather than a missing route.
+[[redirects]]
+  from = "/api/inbox/status"
+  to = "/.netlify/functions/inbox-status"
+  status = 200
+
+# The "Stop it" / "Send now" links in the inbox responder's notification email.
+# Its sibling, inbox-scan, is deliberately absent: it declares a schedule in
+# code, and Netlify does not expose scheduled functions over HTTP in
+# production. The cron is its only trigger.
+[[redirects]]
+  from = "/api/inbox/action"
+  to = "/.netlify/functions/inbox-action"
+  status = 200
+
 # Client-side routing: every other path serves the app shell so /mission,
 # /coreos-ai, /contact and friends survive a refresh or a shared link.
 [[redirects]]

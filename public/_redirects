@@ -1,2 +1,4 @@
-/api/lab/chat  /.netlify/functions/lab-chat  200
-/*             /index.html                   200
+/api/lab/chat      /.netlify/functions/lab-chat     200
+/api/inbox/status  /.netlify/functions/inbox-status  200
+/api/inbox/action  /.netlify/functions/inbox-action  200
+/*                 /index.html                       200
