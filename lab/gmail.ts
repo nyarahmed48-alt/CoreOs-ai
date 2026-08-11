@@ -21,6 +21,10 @@
  * Nothing in this file is bundled into the browser build.
  */
 
+import { base64url, type GmailMessage } from "./mail-format";
+
+export type { GmailMessage };
+
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -110,25 +114,6 @@ async function gmail<T = any>(path: string, init: RequestInit = {}): Promise<T> 
 
 /* ------------------------------------------------------------- messages -- */
 
-export interface GmailHeader {
-  name: string;
-  value: string;
-}
-
-export interface GmailMessage {
-  id: string;
-  threadId: string;
-  labelIds?: string[];
-  snippet?: string;
-  internalDate?: string;
-  payload?: {
-    headers?: GmailHeader[];
-    mimeType?: string;
-    body?: { data?: string; size?: number };
-    parts?: any[];
-  };
-}
-
 /** Message ids matching a Gmail search query, newest first. */
 export async function searchMessages(query: string, maxResults = 25): Promise<Array<{ id: string; threadId: string }>> {
   const params = new URLSearchParams({ q: query, maxResults: String(maxResults) });
@@ -188,13 +173,6 @@ async function loadLabels(): Promise<Map<string, string>> {
 let labelWrites: Promise<unknown> = Promise.resolve();
 
 /**
- * The id of a label, creating it if the mailbox does not have it yet.
- *
- * Nested names ("CoreOs-Auto/Pending") need their parent to exist first or
- * Gmail shows them as one flat label with a slash in the name, so parents are
- * created on the way down.
- */
-/**
  * Forgets the cached access token and label ids.
  *
  * The caches assume one mailbox for the life of the process, which is true in
@@ -208,6 +186,13 @@ export function resetGmailCaches(): void {
   labelWrites = Promise.resolve();
 }
 
+/**
+ * The id of a label, creating it if the mailbox does not have it yet.
+ *
+ * Nested names ("CoreOs-Auto/Pending") need their parent to exist first or
+ * Gmail shows them as one flat label with a slash in the name, so parents are
+ * created on the way down.
+ */
 export async function ensureLabel(name: string): Promise<string> {
   const cached = (await loadLabels()).get(name);
   if (cached) return cached;
@@ -296,150 +281,4 @@ export async function sendRaw(raw: string): Promise<GmailMessage> {
 export async function mailboxAddress(): Promise<string> {
   const profile = await gmail<{ emailAddress: string }>("/profile");
   return profile.emailAddress;
-}
-
-/* ------------------------------------------------------------ MIME bits -- */
-
-/** Gmail's API takes and returns base64url, not standard base64. */
-export function base64url(input: string | Buffer): string {
-  return Buffer.from(input as any)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function fromBase64url(input: string): string {
-  return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
-}
-
-export function header(message: GmailMessage, name: string): string {
-  const headers = message.payload?.headers || [];
-  const match = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
-  return match?.value || "";
-}
-
-/** Every value for a header that can legitimately repeat (Received, etc.). */
-export function headers(message: GmailMessage, name: string): string[] {
-  return (message.payload?.headers || [])
-    .filter((h) => h.name.toLowerCase() === name.toLowerCase())
-    .map((h) => h.value);
-}
-
-/** The bare address out of `Jane Okafor <jane@example.com>`. */
-export function parseAddress(value: string): { name: string; email: string } {
-  const angled = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
-  if (angled) {
-    return { name: angled[1].replace(/^"|"$/g, "").trim(), email: angled[2].trim().toLowerCase() };
-  }
-  return { name: "", email: value.trim().toLowerCase() };
-}
-
-/**
- * The readable body of a message.
- *
- * Walks the MIME tree preferring text/plain, and falls back to stripping tags
- * out of text/html — plenty of senders' clients only produce HTML. Attachments
- * are skipped: they have a filename and we only want prose.
- */
-export function messageText(message: GmailMessage, limit = 6000): string {
-  const plain: string[] = [];
-  const html: string[] = [];
-
-  const walk = (part: any) => {
-    if (!part) return;
-    const mime = String(part.mimeType || "");
-    if (Array.isArray(part.parts)) {
-      part.parts.forEach(walk);
-      return;
-    }
-    if (part.filename) return;
-    const data = part.body?.data;
-    if (!data) return;
-    if (mime === "text/plain") plain.push(fromBase64url(data));
-    else if (mime === "text/html") html.push(fromBase64url(data));
-  };
-
-  walk(message.payload);
-
-  let text = plain.join("\n").trim();
-  if (!text && html.length) {
-    text = html
-      .join("\n")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/[ \t]+/g, " ")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  }
-  if (!text) text = message.snippet || "";
-  return text.slice(0, limit);
-}
-
-/** Drops the quoted history so the model reads the new text, not the thread. */
-export function withoutQuotedReply(text: string): string {
-  const lines = text.split("\n");
-  const out: string[] = [];
-  for (const line of lines) {
-    if (/^\s*(On .{10,80}wrote:|-{2,}\s*Original Message\s*-{2,}|_{10,})\s*$/i.test(line)) break;
-    if (/^\s*>/.test(line)) continue;
-    out.push(line);
-  }
-  const trimmed = out.join("\n").trim();
-  return trimmed || text.trim();
-}
-
-/** RFC 2047 encoding, so non-ASCII subjects survive the wire intact. */
-function encodeHeaderValue(value: string): string {
-  // eslint-disable-next-line no-control-regex
-  if (/^[\x00-\x7F]*$/.test(value)) return value;
-  return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
-}
-
-export interface OutgoingMail {
-  to: string;
-  from?: string;
-  subject: string;
-  text: string;
-  html?: string;
-  inReplyTo?: string;
-  references?: string;
-}
-
-/** Builds an RFC 822 message, base64url-encoded the way Gmail wants it. */
-export function buildRaw(mail: OutgoingMail): string {
-  const boundary = `coreos-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-  const lines: string[] = [];
-
-  if (mail.from) lines.push(`From: ${mail.from}`);
-  lines.push(`To: ${mail.to}`);
-  lines.push(`Subject: ${encodeHeaderValue(mail.subject)}`);
-  if (mail.inReplyTo) {
-    lines.push(`In-Reply-To: ${mail.inReplyTo}`);
-    lines.push(`References: ${mail.references || mail.inReplyTo}`);
-  }
-  lines.push("MIME-Version: 1.0");
-
-  if (mail.html) {
-    lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`, "");
-    lines.push(`--${boundary}`, 'Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64", "");
-    lines.push(Buffer.from(mail.text, "utf8").toString("base64"));
-    lines.push(`--${boundary}`, 'Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "");
-    lines.push(Buffer.from(mail.html, "utf8").toString("base64"));
-    lines.push(`--${boundary}--`, "");
-  } else {
-    lines.push('Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64", "");
-    lines.push(Buffer.from(mail.text, "utf8").toString("base64"));
-  }
-
-  return base64url(lines.join("\r\n"));
 }

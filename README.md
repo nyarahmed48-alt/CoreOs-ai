@@ -29,12 +29,15 @@ refreshes work.
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
 lab/agents.ts         shared agent runtime — roster, charter, provider calls
-lab/gmail.ts          small Gmail REST client, fetch only, no SDK
+lab/mailbox.ts        picks a mailbox backend; one surface for both
+lab/gmail.ts            …over the Gmail REST API, with OAuth
+lab/gmail-imap.ts       …over IMAP and SMTP, with an app password
+lab/mail-format.ts    building and reading messages, transport-agnostic
 lab/inbox.ts          the inbox responder — triage, drafting, hold, notify
 api/lab/chat.ts       Vercel serverless entry point for the sandbox
 api/inbox/            Vercel entry points for the responder
 netlify/functions/    Netlify entry points (the responder's scan is scheduled)
-scripts/              one-shot tooling: Gmail auth, manual scan, self-test
+scripts/              tooling: Gmail auth, manual scan, self-test, doctor
 public/_redirects     SPA + function routing for Netlify
 vercel.json           Vercel build + rewrite config
 netlify.toml          Netlify build + redirect config
@@ -149,63 +152,78 @@ the same person inside a week.
 
 ### Setting it up
 
-It stays completely switched off until the three Google variables are set, so
-the rest of the site is unaffected until you finish this.
+It stays completely switched off until a mailbox is configured, so the rest of
+the site is unaffected until you finish this. There are two ways in, and the
+first is much shorter.
 
-1. **A Google OAuth client.** At
-   [console.cloud.google.com](https://console.cloud.google.com/): make a
-   project, enable the **Gmail API**, set the OAuth consent screen to
-   **External**, then create credentials → **OAuth client ID** → **Desktop
-   app**. Put the id and secret in `.env.local`.
+**Either — an app password.** Two pages, no Google Cloud project:
 
-   **Publish the app** — Audience → *Publish app* → "In production". This is
-   not optional: while the consent screen sits in **Testing**, Google revokes
-   the refresh token after **7 days** and the responder stops with an
-   `invalid_grant`. Publishing without verification is fine for your own
-   mailbox; you'll see an "unverified app" warning at the consent screen and
-   Advanced → Continue is the expected path.
-
-   The scope is `gmail.modify` — read, label, draft and send, but never
-   permanently delete.
-
-2. **A refresh token**, granted once for the mailbox being answered:
-
-   ```bash
-   npm run inbox:auth
-   ```
-
-   It opens Google's consent screen, catches the redirect, and prints
-   `GOOGLE_REFRESH_TOKEN`. Nothing is written to disk — treat it like a
-   password, and revoke it at
-   [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
-   if it leaks.
-
-   That flow needs the browser and the terminal on one machine. When they are
-   not — approving from a phone, running the script on a server — use:
-
-   ```bash
-   npm run inbox:auth -- --manual
-   ```
-
-   It prints the URL, you approve it anywhere, and the browser then fails to
-   load a `localhost` page. That failure is expected and harmless: the
-   authorization code is in the address bar. Copy the whole URL, paste it back,
-   and the exchange happens server-to-server.
-
-3. **A secret for the one-click links**: `openssl rand -hex 32` into
-   `INBOX_ACTION_SECRET`. Without it the notification still arrives, just
-   without buttons.
-
-4. **Set them on the host.** On Netlify: Site configuration → Environment
-   variables. The full list is in `.env.example`.
-
-Watch it work before trusting it. With `INBOX_AUTOSEND=false` it drafts and
-notifies but never sends on its own — a drafting assistant rather than an
-auto-responder:
+1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification)
+   for the mailbox. App passwords do not exist until you do; Google hides the
+   page entirely.
+2. Generate one at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
+   That link is not in any menu — it only opens directly. Copy the 16
+   characters; Google shows them once.
 
 ```bash
-npm run inbox:test   # the full self-test, against a fake Gmail and a fake model
-npm run inbox:scan   # one real cycle, printed to the terminal
+GMAIL_ADDRESS=you@gmail.com
+GMAIL_APP_PASSWORD=abcd efgh ijkl mnop   # spaces are fine
+```
+
+**Or — OAuth**, if you would rather grant a scope than a whole mailbox. At
+[console.cloud.google.com](https://console.cloud.google.com/): make a project,
+enable the **Gmail API**, set the consent screen to **External**, then create
+credentials → **OAuth client ID** → **Desktop app**.
+
+**Publish the app** — Audience → *Publish app* → "In production". Not optional:
+while the consent screen sits in **Testing**, Google revokes the refresh token
+after **7 days** and the responder stops with an `invalid_grant`. Publishing
+unverified is fine for your own mailbox; Advanced → Continue past the warning.
+
+Then mint the token:
+
+```bash
+npm run inbox:auth              # opens a browser, catches the redirect
+npm run inbox:auth -- --manual  # when the browser is on another device
+```
+
+The scope is `gmail.modify` — read, label, draft and send, never permanently
+delete.
+
+**Which to pick.** The app password is far quicker and it is one string to
+rotate. It is also the whole mailbox rather than a scope, and it travels over
+IMAP on port 993, which some networks block. OAuth is more work up front,
+narrower, revocable on its own, and speaks ordinary HTTPS. Both are supported
+and the app password wins if both are set.
+
+**Then, whichever you chose:**
+
+```bash
+INBOX_ACTION_SECRET=$(openssl rand -hex 32)   # signs the Stop it / Send now links
+```
+
+and set everything on the host — Netlify: Site configuration → Environment
+variables. The full list is in `.env.example`.
+
+### Check it before you trust it
+
+```bash
+npm run inbox:doctor
+```
+
+This is the one that matters. It signs in to your actual mailbox and verifies
+each thing the responder depends on: reading the inbox, running a Gmail search
+query, creating the five labels, writing a draft, reading it back, finding it
+in the list, deleting it, and sending one message — to you. Everything it
+creates it removes, and it never touches mail you have received.
+
+Run it before the first real scan. `npm run inbox:test` proves the decision
+logic against a fake Gmail; only the doctor proves *your* setup.
+
+Then watch one real cycle, with `INBOX_AUTOSEND=false` so nothing can leave:
+
+```bash
+npm run inbox:scan
 ```
 
 ### How it runs on a schedule
@@ -252,9 +270,10 @@ npm run build      # vite build + bundle the Express server to dist/
 npm run build:web  # vite build only — for Vercel / Netlify / static hosts
 npm start          # serve the production build
 
-npm run inbox:test # the responder's self-test — no real mailbox involved
-npm run inbox:auth # mint a Gmail refresh token (once, on your own machine)
-npm run inbox:scan # run one inbox cycle and print what it decided
+npm run inbox:test   # the decision logic, against a fake Gmail — no mailbox involved
+npm run inbox:doctor # check the real mailbox: sign in, label, draft, send
+npm run inbox:auth   # mint a Gmail refresh token (OAuth route only)
+npm run inbox:scan   # run one inbox cycle and print what it decided
 ```
 
 ## The AI behind CoreOS

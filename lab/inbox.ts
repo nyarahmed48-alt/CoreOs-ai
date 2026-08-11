@@ -35,7 +35,9 @@ import crypto from "crypto";
 import { generateReply, isConfigured } from "./agents";
 import {
   buildRaw,
+  closeMailbox,
   countMessages,
+  describeBackend,
   createDraft,
   deleteDraft,
   ensureLabel,
@@ -54,7 +56,7 @@ import {
   sendRaw,
   withoutQuotedReply,
   type GmailMessage,
-} from "./gmail";
+} from "./mailbox";
 
 /* ================================================================ config === */
 
@@ -107,7 +109,10 @@ export function inboxSettings() {
 /** Everything the responder needs before it can run. */
 export function inboxReadiness(): { ready: boolean; missing: string[] } {
   const missing: string[] = [];
-  if (!isGmailConfigured()) missing.push("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN");
+  if (!isGmailConfigured()) {
+    // Either backend will do, so name the shorter one first.
+    missing.push("GMAIL_ADDRESS + GMAIL_APP_PASSWORD (or GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN)");
+  }
   if (!isConfigured()) missing.push("OPENROUTER_API_KEY / OPENROUTER_MODEL");
   return { ready: missing.length === 0, missing };
 }
@@ -498,6 +503,17 @@ const emptyReport = (reason: string): ScanReport => ({
  * outage, a malformed message — replies you already approved still go out.
  */
 export async function runInboxScan(): Promise<ScanReport> {
+  try {
+    return await scanOnce();
+  } finally {
+    // IMAP holds a socket open. On a scheduled function that keeps the
+    // invocation billing until it times out; in a script it stops the process
+    // exiting. The REST backend has nothing to release and no-ops here.
+    await closeMailbox().catch(() => undefined);
+  }
+}
+
+async function scanOnce(): Promise<ScanReport> {
   const readiness = inboxReadiness();
   if (!readiness.ready) return emptyReport(`not configured: ${readiness.missing.join("; ")}`);
 
@@ -779,6 +795,14 @@ export interface ActionOutcome {
 
 /** Handles a click on the "Stop it" or "Send now" link in a notification. */
 export async function handleInboxAction(draftId: unknown, action: unknown, token: unknown): Promise<ActionOutcome> {
+  try {
+    return await performInboxAction(draftId, action, token);
+  } finally {
+    await closeMailbox().catch(() => undefined);
+  }
+}
+
+async function performInboxAction(draftId: unknown, action: unknown, token: unknown): Promise<ActionOutcome> {
   if (typeof draftId !== "string" || !draftId) {
     return { status: 400, title: "Nothing to do", message: "That link is missing the draft it refers to." };
   }
@@ -876,6 +900,7 @@ export async function inboxStatus(): Promise<Record<string, unknown>> {
   const base = {
     ready: readiness.ready,
     missing: readiness.missing,
+    backend: describeBackend(),
     autoSend: settings.autoSend,
     holdMinutes: settings.holdMinutes,
     maxPerDay: settings.maxPerDay,
@@ -883,10 +908,15 @@ export async function inboxStatus(): Promise<Record<string, unknown>> {
   };
   if (!readiness.ready) return base;
 
-  const [pending, repliedToday, needsYou] = await Promise.all([
-    countMessages(`label:"${LABELS.pending}"`, 50),
-    countMessages(`label:"${LABELS.replied}" newer_than:1d`, 50),
-    countMessages(`label:"${LABELS.needsYou}" newer_than:14d`, 50),
-  ]);
-  return { ...base, mailbox: await mailboxAddress(), pending, repliedToday, needsYou };
+  // Sequential rather than parallel: the IMAP backend runs one command at a
+  // time on one connection, so overlapping these just queues them anyway.
+  try {
+    const mailbox = await mailboxAddress();
+    const pending = await countMessages(`label:"${LABELS.pending}"`, 50);
+    const repliedToday = await countMessages(`label:"${LABELS.replied}" newer_than:1d`, 50);
+    const needsYou = await countMessages(`label:"${LABELS.needsYou}" newer_than:14d`, 50);
+    return { ...base, mailbox, pending, repliedToday, needsYou };
+  } finally {
+    await closeMailbox().catch(() => undefined);
+  }
 }

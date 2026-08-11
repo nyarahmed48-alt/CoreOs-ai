@@ -15,6 +15,7 @@
 
 import dotenv from "dotenv";
 import { inboxSettings, inboxReadiness, runInboxScan } from "../lab/inbox";
+import { closeMailbox, describeBackend } from "../lab/mailbox";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -38,7 +39,7 @@ async function main() {
 
   const settings = inboxSettings();
   console.log(
-    `Scanning — autosend ${settings.autoSend ? `on, ${settings.holdMinutes}m hold` : "OFF (drafts only)"}, ` +
+    `Scanning via ${describeBackend()} — autosend ${settings.autoSend ? `on, ${settings.holdMinutes}m hold` : "OFF (drafts only)"}, ` +
       `cap ${settings.maxPerDay}/day, looking back ${settings.lookbackDays}d\n`,
   );
 
@@ -57,7 +58,10 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error("Scan failed:", err?.message || err);
-  process.exit(1);
-});
+main()
+  .then(() => closeMailbox())
+  .catch(async (err) => {
+    console.error("Scan failed:", err?.message || err);
+    await closeMailbox().catch(() => undefined);
+    process.exit(1);
+  });

@@ -42,14 +42,18 @@ import {
   verifyAction,
 } from "../lab/inbox";
 import {
+  backendName,
   base64url,
   buildRaw,
+  describeBackend,
+  envelopeFromRaw,
+  fromBase64url,
   messageText,
   parseAddress,
   resetGmailCaches,
   withoutQuotedReply,
   type GmailMessage,
-} from "../lab/gmail";
+} from "../lab/mailbox";
 
 /* ============================================================ the harness = */
 
@@ -479,6 +483,56 @@ async function main() {
     check("the token is not reusable for the other action", !verifyAction("draft123", "cancel", token));
     check("the token is not reusable for another draft", !verifyAction("draft999", "send", token));
     check("a wrong-length token is rejected without throwing", !verifyAction("draft123", "send", "short"));
+  }
+
+  scenario("Choosing a mailbox backend");
+  {
+    // The OAuth variables are set at the top of this file; an app password is
+    // not, so OAuth should be what answers.
+    check("uses OAuth when only OAuth is configured", backendName() === "oauth", describeBackend());
+
+    process.env.GMAIL_ADDRESS = "coreos@example.com";
+    process.env.GMAIL_APP_PASSWORD = "abcd efgh ijkl mnop";
+    check("an app password takes precedence once set", backendName() === "app-password", describeBackend());
+
+    delete process.env.GMAIL_ADDRESS;
+    delete process.env.GMAIL_APP_PASSWORD;
+    check("falls back to OAuth when the app password is removed", backendName() === "oauth");
+
+    const saved = process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_CLIENT_ID;
+    check("reports nothing configured when neither is set", backendName() === "none");
+    process.env.GOOGLE_CLIENT_ID = saved;
+  }
+
+  scenario("Addressing an outgoing message");
+  {
+    // SMTP needs an envelope, and IMAP hands over raw bytes rather than a
+    // parsed object — so the recipients get read back off the message itself.
+    const raw = fromBase64url(
+      buildRaw({ to: "jane@okaforlogistics.com", from: "CoreOs <coreos@example.com>", subject: "Re: hello", text: "hi" }),
+    );
+    const envelope = envelopeFromRaw(raw);
+    check("finds the recipient", envelope.to.includes("jane@okaforlogistics.com"), JSON.stringify(envelope));
+    check("finds the sender", envelope.from === "coreos@example.com", envelope.from);
+
+    const multi = envelopeFromRaw(
+      ["From: a@b.test", "To: one@x.test, Two Person <two@x.test>", "Cc: three@x.test", "", "body"].join("\r\n"),
+    );
+    check("collects To and Cc together", multi.to.length === 3, JSON.stringify(multi.to));
+    check("unwraps display names", multi.to.includes("two@x.test"));
+
+    const none = envelopeFromRaw(["From: a@b.test", "Subject: nobody", "", "body"].join("\r\n"));
+    check("reports no recipient rather than inventing one", none.to.length === 0);
+  }
+
+  scenario("Body text supplied by the backend");
+  {
+    // The IMAP backend parses MIME itself and hands over the text directly,
+    // rather than rebuilding the API's payload tree for messageText to walk.
+    const parsed: GmailMessage = { id: "m", threadId: "t", bodyText: "Already extracted by the backend." };
+    check("is used as-is", messageText(parsed) === "Already extracted by the backend.");
+    check("is still truncated to the limit", messageText(parsed, 7) === "Already");
   }
 
   /* ------------------------------------------------- the pipeline, end to end */
