@@ -196,14 +196,30 @@ export interface LabChatRequest {
   lang?: unknown;
 }
 
+/** The three languages the site is read in. Anything unrecognised — an old
+ *  cached bundle, a hand-rolled request — falls back to the site default. */
+type ReplyLang = "ar" | "ckb" | "en";
+const replyLang = (lang: unknown): ReplyLang =>
+  lang === "en" || lang === "ckb" ? lang : "ar";
+
+const LANG_LABEL: Record<ReplyLang, string> = {
+  ar: "Arabic",
+  ckb: "Sorani Kurdish (Central Kurdish, written in the Arabic script)",
+  en: "English",
+};
+
 /** Reply-language rule, appended to the charter per request.
  *
  *  The site defaults to Arabic, so without this an Arabic visitor reads an
  *  Arabic page, asks a question, and gets English back. The user's own message
  *  still wins — someone browsing in Arabic who writes in Kurdish should be
- *  answered in Kurdish. */
+ *  answered in Kurdish.
+ *
+ *  Sorani is spelled out rather than named alone because "Kurdish" on its own
+ *  leaves the model to choose between Sorani and Kurmanji, and Kurmanji in
+ *  Latin script would be unreadable to the visitor who picked this option. */
 function languageRule(lang: unknown): string {
-  const label = lang === "en" ? "English" : "Arabic";
+  const label = LANG_LABEL[replyLang(lang)];
   return `\nThe visitor is reading the site in ${label}. Reply in ${label} unless they write to you in a different language, in which case reply in the language they used. Use the correct script for whichever language you answer in.`;
 }
 
@@ -221,8 +237,8 @@ export const LAB_MAX_MESSAGE_CHARS = 500;
 export async function handleLabChat({ slug, message, history, lang }: LabChatRequest): Promise<LabChatOutcome> {
   /* Messages from this endpoint are read by the visitor, so they follow the
      language the site is being read in — the same default as the UI. */
-  const ar = lang !== "en";
-  const say = (arabic: string, english: string) => (ar ? arabic : english);
+  const active = replyLang(lang);
+  const say = (choices: Record<ReplyLang, string>) => choices[active];
 
   const agent = typeof slug === "string" ? LAB_ENGINES[slug] : undefined;
   if (!agent) {
@@ -230,10 +246,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       status: 404,
       body: {
         error: "UNKNOWN_AGENT",
-        message: say(
-          "هذا الوكيل ليس ضمن برنامج الاختبار المفتوح.",
-          "That agent is not part of the open testing programme.",
-        ),
+        message: say({
+          ar: "هذا الوكيل ليس ضمن برنامج الاختبار المفتوح.",
+          ckb: "ئەم بریکارە بەشێک نییە لە پڕۆگرامی تاقیکردنەوەی کراوە.",
+          en: "That agent is not part of the open testing programme.",
+        }),
       },
     };
   }
@@ -243,7 +260,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       status: 400,
       body: {
         error: "EMPTY_MESSAGE",
-        message: say("اكتب رسالة أولًا.", "Type a message first."),
+        message: say({
+          ar: "اكتب رسالة أولًا.",
+          ckb: "سەرەتا نامەیەک بنووسە.",
+          en: "Type a message first.",
+        }),
       },
     };
   }
@@ -252,10 +273,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       status: 400,
       body: {
         error: "MESSAGE_TOO_LONG",
-        message: say(
-          `رسائل بيئة الاختبار محدودة بـ ${LAB_MAX_MESSAGE_CHARS} حرفًا.`,
-          `Sandbox messages are capped at ${LAB_MAX_MESSAGE_CHARS} characters.`,
-        ),
+        message: say({
+          ar: `رسائل بيئة الاختبار محدودة بـ ${LAB_MAX_MESSAGE_CHARS} حرفًا.`,
+          ckb: `نامەکانی ژینگەی تاقیکردنەوە بە ${LAB_MAX_MESSAGE_CHARS} پیت سنووردارن.`,
+          en: `Sandbox messages are capped at ${LAB_MAX_MESSAGE_CHARS} characters.`,
+        }),
       },
     };
   }
@@ -265,10 +287,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
     return {
       status: 200,
       body: {
-        text: say(
-          `[لا يوجد مفتاح ذكاء اصطناعي مُهيَّأ على هذا النشر، لذلك لا يستطيع ${agent.name} الإجابة بعد.]\n\nسؤالك كان: «${message}»\n\nبمجرد ضبط المفتاح، يجيب ${agent.name} مباشرة. لتجربة النسخة الحقيقية، أو لتهيئة وكيل حول مستنداتك وسياساتك، راسلنا على coreosgmail.com@gmail.com.`,
-          `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
-        ),
+        text: say({
+          ar: `[لا يوجد مفتاح ذكاء اصطناعي مُهيَّأ على هذا النشر، لذلك لا يستطيع ${agent.name} الإجابة بعد.]\n\nسؤالك كان: «${message}»\n\nبمجرد ضبط المفتاح، يجيب ${agent.name} مباشرة. لتجربة النسخة الحقيقية، أو لتهيئة وكيل حول مستنداتك وسياساتك، راسلنا على coreosgmail.com@gmail.com.`,
+          ckb: `[هیچ کلیلێکی زیرەکیی دەستکرد لەسەر ئەم بڵاوکردنەوەیە ڕێک نەخراوە، بۆیە ${agent.name} هێشتا ناتوانێت وەڵام بداتەوە.]\n\nپرسیارەکەت ئەمە بوو: «${message}»\n\nهەرکە کلیلەکە دانرا، ${agent.name} ڕاستەوخۆ وەڵام دەداتەوە. بۆ تاقیکردنەوەی ڕاستەقینەکەی، یان بۆ ڕێکخستنی بریکارێک لەسەر بەڵگەنامە و سیاسەتەکانی خۆت، لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.`,
+          en: `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
+        }),
         fallback: true,
       },
     };
@@ -297,10 +320,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       return {
         status: 200,
         body: {
-          text: say(
-            `لا يستطيع ${agent.name} المساعدة في هذا الطلب. جرّب سؤالًا من عملك أنت — ${agent.name} مبني لغرض محدد.`,
-            `${agent.name} isn't able to help with that one. Try a question from your own business — ${agent.name} is built for ${agent.brief.split(".")[0].toLowerCase()}.`,
-          ),
+          text: say({
+            ar: `لا يستطيع ${agent.name} المساعدة في هذا الطلب. جرّب سؤالًا من عملك أنت — ${agent.name} مبني لغرض محدد.`,
+            ckb: `${agent.name} ناتوانێت لەم داواکارییەدا یارمەتی بدات. پرسیارێک لە کاری خۆتەوە تاقی بکەرەوە — ${agent.name} بۆ مەبەستێکی دیاریکراو دروستکراوە.`,
+            en: `${agent.name} isn't able to help with that one. Try a question from your own business — ${agent.name} is built for ${agent.brief.split(".")[0].toLowerCase()}.`,
+          }),
           fallback: false,
         },
       };
@@ -311,10 +335,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       body: {
         text:
           text ||
-          say(
-            "لم تُنتَج أي إجابة. جرّب إعادة صياغة السؤال.",
-            "No response was produced. Try rephrasing the question.",
-          ),
+          say({
+            ar: "لم تُنتَج أي إجابة. جرّب إعادة صياغة السؤال.",
+            ckb: "هیچ وەڵامێک بەرهەم نەهێنرا. هەوڵ بدە پرسیارەکە بە شێوەیەکی تر دابڕێژیتەوە.",
+            en: "No response was produced. Try rephrasing the question.",
+          }),
         fallback: false,
       },
     };
@@ -325,10 +350,11 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       status: 502,
       body: {
         error: "AGENT_UNAVAILABLE",
-        message: say(
-          `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على coreosgmail.com@gmail.com إن تكرّر الأمر.`,
-          `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
-        ),
+        message: say({
+          ar: `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على coreosgmail.com@gmail.com إن تكرّر الأمر.`,
+          ckb: `لەم ساتەدا نەتوانرا بگەیت بە ${agent.name}. دوای کەمێک دووبارە هەوڵ بدەرەوە، یان ئەگەر دووبارە بووەوە لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.`,
+          en: `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
+        }),
       },
     };
   }

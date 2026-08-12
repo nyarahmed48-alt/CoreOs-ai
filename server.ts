@@ -1006,12 +1006,15 @@ app.post("/api/lab/chat", async (req, res) => {
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress || "unknown";
   const limit = labRateLimit(ip);
   if (!limit.ok) {
-    const arabic = req.body?.lang !== "en";
+    const lang = req.body?.lang;
+    const message = {
+      ar: `لقد بلغت حد بيئة الاختبار وهو ${LAB_MAX_PER_WINDOW} رسالة في الساعة. حاول بعد نحو ${limit.retryInMin} دقيقة، أو تواصل معنا لنفتح لك تجربة كاملة.`,
+      ckb: `گەیشتوویتە سنووری ژینگەی تاقیکردنەوە کە ${LAB_MAX_PER_WINDOW} نامەیە لە کاتژمێرێکدا. دوای نزیکەی ${limit.retryInMin} خولەک دووبارە هەوڵ بدەرەوە، یان پەیوەندیمان پێوە بکە تا تاقیکردنەوەیەکی تەواوت بۆ بکەینەوە.`,
+      en: `You've reached the sandbox limit of ${LAB_MAX_PER_WINDOW} messages an hour. Try again in about ${limit.retryInMin} minutes, or get in touch and we'll open a proper trial.`,
+    };
     return res.status(429).json({
       error: "RATE_LIMITED",
-      message: arabic
-        ? `لقد بلغت حد بيئة الاختبار وهو ${LAB_MAX_PER_WINDOW} رسالة في الساعة. حاول بعد نحو ${limit.retryInMin} دقيقة، أو تواصل معنا لنفتح لك تجربة كاملة.`
-        : `You've reached the sandbox limit of ${LAB_MAX_PER_WINDOW} messages an hour. Try again in about ${limit.retryInMin} minutes, or get in touch and we'll open a proper trial.`,
+      message: lang === "en" || lang === "ckb" ? message[lang] : message.ar,
     });
   }
 

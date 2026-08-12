@@ -8,7 +8,7 @@ import { Menu, X, ArrowUpRight, Mail, MessageCircle } from "lucide-react";
 import { CoreOsLockup, CoreOsMark } from "./Logo";
 import { Link, useRouter } from "./router";
 import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, whatsapp } from "./contact";
-import { useLang } from "./i18n";
+import { LANGS, LANG_NAMES, LANG_SHORT, useLang } from "./i18n";
 import type { CopyKey } from "./strings";
 
 const NAV: Array<{ to: string; key: CopyKey }> = [
@@ -19,24 +19,53 @@ const NAV: Array<{ to: string; key: CopyKey }> = [
   { to: "/contact", key: "nav.contact" },
 ];
 
-/** Two-state switch. The inactive language is always shown in its own script,
- *  so a visitor who cannot read the active one can still find the way out. */
+/**
+ * Segmented switch across the three languages.
+ *
+ * A two-state toggle worked while there were two languages; with three, the
+ * only honest control is one that shows all of them at once. Every option is
+ * labelled in its own script, never translated — a switch that writes
+ * "Kurdish" in Arabic is no use to the person who needs to press it.
+ *
+ * The header is tight, so it shows one-letter labels there and the full names
+ * in the mobile menu, where there is room. `dir="ltr"` pins the order so the
+ * buttons don't reshuffle when the page direction flips.
+ */
 function LangToggle({ compact = false }: { compact?: boolean }) {
   const { lang, setLang, t } = useLang();
-  const next = lang === "ar" ? "en" : "ar";
 
   return (
-    <button
-      type="button"
-      onClick={() => setLang(next)}
+    <div
+      role="group"
       aria-label={t("nav.langAria")}
-      lang={next}
-      className={`rounded-lg border border-[#232b40] font-medium text-[#c3c9dd] transition-colors hover:border-[#3a4460] hover:text-white ${
-        compact ? "w-full px-3 py-2.5 text-[15px]" : "px-3 py-2 text-[13.5px]"
+      dir="ltr"
+      className={`flex items-center gap-0.5 rounded-lg border border-[#232b40] p-0.5 ${
+        compact ? "w-full" : ""
       }`}
     >
-      {next === "ar" ? "العربية" : "English"}
-    </button>
+      {LANGS.map((code) => {
+        const active = code === lang;
+        return (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLang(code)}
+            lang={code}
+            aria-pressed={active}
+            title={LANG_NAMES[code]}
+            className={`rounded-md font-medium transition-colors ${
+              compact ? "flex-1 px-2 py-2 text-[14px]" : "px-2.5 py-1.5 text-[13px]"
+            } ${
+              active
+                ? "bg-[#6c7bf0] text-[#05060a]"
+                : "text-[#c3c9dd] hover:bg-[#141a29] hover:text-white"
+            }`}
+          >
+            {compact ? LANG_NAMES[code] : LANG_SHORT[code]}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
