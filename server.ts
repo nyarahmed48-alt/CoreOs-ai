@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { generateReply, handleLabChat, isConfigured, publicAgentList } from "./lab/agents";
+import { checkLabHealth, generateReply, handleLabChat, isConfigured, publicAgentList } from "./lab/agents";
 import type { ChatTurn } from "./lab/agents";
 import dotenv from "dotenv";
 
@@ -972,6 +972,15 @@ app.post("/api/chat/simulate", async (req, res) => {
 
 app.get("/api/lab/agents", (req, res) => {
   res.json({ agents: publicAgentList(), live: isConfigured() });
+});
+
+/* Why the sandbox is quiet, as a URL. Makes one real call through the same
+   path the agents use, so it reflects the running deployment rather than the
+   configuration it was meant to have. Reports states and status codes only —
+   no key, no model ids, no provider error strings. */
+app.get("/api/lab/health", async (_req, res) => {
+  const health = await checkLabHealth();
+  res.status(health.probe.ok ? 200 : 503).set("cache-control", "no-store").json(health);
 });
 
 /* Coarse per-IP throttle. The endpoint is unauthenticated by design, so it
