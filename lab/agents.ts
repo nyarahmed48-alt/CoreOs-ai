@@ -34,6 +34,10 @@
 /** Short replies keep the sandbox cheap; most models allow far higher. */
 const MAX_TOKENS = 2048;
 
+/* Kept here rather than imported from src/site/contact.ts: nothing under src/
+   belongs in a server bundle. If the number changes, it changes in both. */
+const CONTACT_WHATSAPP = "+964 770 609 4646";
+
 /** Overridable so the path can be exercised against a stand-in endpoint, and
  *  so anyone fronting OpenRouter with their own proxy can point at it. */
 const openRouterUrl = () =>
@@ -42,23 +46,75 @@ const openRouterUrl = () =>
 /** Optional attribution header OpenRouter uses for its rankings. */
 const OPENROUTER_SITE = process.env.OPENROUTER_SITE_URL || "https://coreosai.netlify.app";
 
+/* Serverless platforms kill a function without warning at their own ceiling —
+   30s on Netlify — and what comes back to the browser is an HTML error page,
+   not JSON. The console reads that as "no sandbox on this deployment", which
+   is how a plain slow model once looked like a broken deployment. So we own
+   the deadline: abort first, and return real JSON explaining what happened. */
+const ATTEMPT_TIMEOUT_MS = 15_000;
+const TOTAL_BUDGET_MS = 24_000;
+
 /* OPENROUTER_MODEL is deliberately required rather than defaulted. Model ids
    on aggregators are renamed and retired constantly, and a hardcoded one that
    quietly 404s is exactly the failure that cost this project two releases on
-   Gemini. Better to be unconfigured and say so. */
+   Gemini. Better to be unconfigured and say so.
+
+   It accepts a comma-separated list, tried in order. Free models carry a daily
+   cap, and when the sandbox hits it every agent goes silent at once — with a
+   second id listed, the site rides that out instead of going dark until
+   someone notices. First one that answers wins. */
 const openRouterConfig = () => {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL;
+  const models = (process.env.OPENROUTER_MODEL || "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
   if (!apiKey) return null;
-  if (!model) {
+  if (!models.length) {
     console.warn("OPENROUTER_API_KEY is set but OPENROUTER_MODEL is not — pick an id from https://openrouter.ai/models");
     return null;
   }
-  return { apiKey, model };
+  return { apiKey, models };
 };
 
-/** True once a key and a model are both configured. */
+/** True once a key and at least one model are configured. */
 export const isConfigured = (): boolean => openRouterConfig() !== null;
+
+/** Why a call failed, in terms a caller can act on. Never the provider's own
+ *  error text — that can quote the prompt back and must not reach a browser. */
+export type FailureKind =
+  | "quota" // 402/429: out of credit or over the free daily cap
+  | "auth" // 401/403: key missing, revoked, or not permitted
+  | "model" // 404/400 on the model id: renamed or retired
+  | "timeout" // we gave up before the platform could kill us
+  | "network"
+  | "other";
+
+export class ProviderError extends Error {
+  constructor(
+    readonly kind: FailureKind,
+    /** HTTP status, when there was one. */
+    readonly status: number | null,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProviderError";
+  }
+}
+
+function classify(status: number, body: string): FailureKind {
+  if (status === 429 || status === 402) return "quota";
+  if (status === 401 || status === 403) return "auth";
+  if (status === 404) return "model";
+  // OpenRouter answers 400 for an unknown or malformed model id.
+  if (status === 400 && /model/i.test(body)) return "model";
+  return "other";
+}
+
+/** A failure worth trying the next model for. An exhausted or retired model is
+ *  exactly that; a bad key or our own timeout would fail identically again. */
+const worthFallingBackFrom = (kind: FailureKind) =>
+  kind === "quota" || kind === "model" || kind === "other";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -78,51 +134,108 @@ export interface ReplyResult {
   refused: boolean;
 }
 
-/**
- * One reply from the configured model. Throws on transport or provider errors
- * so callers can log the detail and show their own message — provider error
- * strings must never reach the browser.
- *
- * OpenRouter speaks the OpenAI chat-completions shape: the system prompt is
- * the first message rather than its own field, and there is no SDK to add —
- * Node 20+ has fetch built in.
- */
-export async function generateReply({ system, messages, temperature, maxTokens }: ReplyRequest): Promise<ReplyResult> {
-  const config = openRouterConfig();
-  if (!config) throw new Error("No AI provider configured");
+/** One attempt against one model id. Throws ProviderError on any failure. */
+async function callModel(
+  model: string,
+  { system, messages, temperature, maxTokens }: ReplyRequest,
+  apiKey: string,
+  timeoutMs: number,
+): Promise<ReplyResult> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), timeoutMs);
 
-  const max_tokens = maxTokens ?? MAX_TOKENS;
-  const { apiKey, model } = config;
-  const response = await fetch(openRouterUrl(), {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-      "http-referer": OPENROUTER_SITE,
-      "x-title": "CoreOs",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens,
-      temperature,
-      messages: [{ role: "system", content: system }, ...messages],
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(openRouterUrl(), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        "http-referer": OPENROUTER_SITE,
+        "x-title": "CoreOs",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens ?? MAX_TOKENS,
+        temperature,
+        messages: [{ role: "system", content: system }, ...messages],
+      }),
+      signal: abort.signal,
+    });
+  } catch (err: any) {
+    if (abort.signal.aborted) {
+      throw new ProviderError("timeout", null, `${model} did not answer within ${timeoutMs}ms`);
+    }
+    throw new ProviderError("network", null, `${model}: ${err?.message || "fetch failed"}`);
+  } finally {
+    clearTimeout(timer);
+  }
 
-  const payload: any = await response.json().catch(() => null);
+  const raw = await response.text();
+  let payload: any = null;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    /* A gateway in front of the provider can answer HTML. Fall through and let
+       the status decide, rather than crashing on the parse. */
+  }
 
   if (!response.ok) {
-    throw new Error(`OpenRouter ${response.status}: ${payload?.error?.message || response.statusText}`);
+    throw new ProviderError(
+      classify(response.status, raw),
+      response.status,
+      `${model} → ${response.status}: ${payload?.error?.message || response.statusText}`,
+    );
   }
   // OpenRouter can report a provider-side failure inside a 200.
   if (payload?.error) {
-    throw new Error(`OpenRouter: ${payload.error.message || "unknown error"}`);
+    const status = Number(payload.error.code) || 0;
+    throw new ProviderError(
+      classify(status, raw),
+      status || null,
+      `${model}: ${payload.error.message || "unknown error"}`,
+    );
   }
 
   const choice = payload?.choices?.[0];
   if (choice?.finish_reason === "content_filter") return { text: "", refused: true };
 
   return { text: String(choice?.message?.content ?? "").trim(), refused: false };
+}
+
+/**
+ * One reply from the configured model, falling back through the rest of the
+ * list if the first cannot answer. Throws ProviderError so callers can log the
+ * detail and show their own message — provider error strings must never reach
+ * the browser, and neither must the model ids.
+ *
+ * OpenRouter speaks the OpenAI chat-completions shape: the system prompt is
+ * the first message rather than its own field, and there is no SDK to add —
+ * Node 20+ has fetch built in.
+ */
+export async function generateReply(request: ReplyRequest): Promise<ReplyResult> {
+  const config = openRouterConfig();
+  if (!config) throw new ProviderError("auth", null, "No AI provider configured");
+
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  let last: ProviderError | null = null;
+
+  for (const model of config.models) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 1_000) break; // No room for a real attempt; stop honestly.
+
+    try {
+      return await callModel(model, request, config.apiKey, Math.min(ATTEMPT_TIMEOUT_MS, remaining));
+    } catch (err) {
+      const error = err instanceof ProviderError ? err : new ProviderError("other", null, String(err));
+      last = error;
+      if (!worthFallingBackFrom(error.kind)) throw error;
+      // Log each skipped model: this is the breadcrumb that explains an outage.
+      console.warn(`Falling back past ${model} (${error.kind}): ${error.message}`);
+    }
+  }
+
+  throw last ?? new ProviderError("timeout", null, "Ran out of time before any model answered");
 }
 
 export interface LabEngine {
@@ -344,18 +457,132 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
       },
     };
   } catch (err: any) {
-    // Log the detail; never surface provider error strings to the browser.
-    console.error(`Lab chat error for agent "${slug}" (status ${err?.status ?? "?"}):`, err?.message || err);
+    /* Log the detail, including which model and why; never surface provider
+       error strings to the browser — they can quote the prompt back. */
+    const kind: FailureKind = err instanceof ProviderError ? err.kind : "other";
+    console.error(`Lab chat error for agent "${slug}" [${kind}]:`, err?.message || err);
+
+    /* A sandbox that has run out of free calls for the day is not a broken
+       site, and saying so keeps a prospect on the page — the honest version
+       still leads somewhere they can reach a human. */
+    if (kind === "quota") {
+      return {
+        status: 503,
+        body: {
+          error: "SANDBOX_LIMIT",
+          reason: kind,
+          message: say({
+            ar: `بلغت بيئة الاختبار حدّها المجاني لهذا اليوم، لذلك لا يستطيع ${agent.name} الرد الآن. حاول غدًا، أو راسلنا على واتساب ${CONTACT_WHATSAPP} ونعرض لك الوكيل مباشرة.`,
+            ckb: `ژینگەی تاقیکردنەوە گەیشتووەتە سنووری بەخۆڕایی ئەمڕۆ، بۆیە ${agent.name} ئێستا ناتوانێت وەڵام بداتەوە. سبەینێ هەوڵ بدەرەوە، یان لە واتساپ ${CONTACT_WHATSAPP} نامەمان بۆ بنێرە و ڕاستەوخۆ بریکارەکەت نیشان دەدەین.`,
+            en: `The sandbox has used up today's free calls, so ${agent.name} can't reply right now. Try tomorrow, or message us on WhatsApp ${CONTACT_WHATSAPP} and we'll demo it live.`,
+          }),
+        },
+      };
+    }
+
+    if (kind === "timeout") {
+      return {
+        status: 504,
+        body: {
+          error: "AGENT_TIMEOUT",
+          reason: kind,
+          message: say({
+            ar: `استغرق ${agent.name} وقتًا أطول من اللازم. جرّب سؤالًا أقصر، أو راسلنا على واتساب ${CONTACT_WHATSAPP}.`,
+            ckb: `${agent.name} زیاتر لە پێویست خایاند. پرسیارێکی کورتتر تاقی بکەرەوە، یان لە واتساپ ${CONTACT_WHATSAPP} نامەمان بۆ بنێرە.`,
+            en: `${agent.name} took too long to answer. Try a shorter question, or message us on WhatsApp ${CONTACT_WHATSAPP}.`,
+          }),
+        },
+      };
+    }
+
     return {
       status: 502,
       body: {
         error: "AGENT_UNAVAILABLE",
+        reason: kind,
         message: say({
           ar: `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على coreosgmail.com@gmail.com إن تكرّر الأمر.`,
           ckb: `لەم ساتەدا نەتوانرا بگەیت بە ${agent.name}. دوای کەمێک دووبارە هەوڵ بدەرەوە، یان ئەگەر دووبارە بووەوە لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.`,
           en: `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
         }),
       },
+    };
+  }
+}
+
+/* ================================================================ health ===
+
+   Diagnosing a dead sandbox from the outside used to mean guessing: the
+   browser shows one message for a timeout, a dead key, an exhausted free
+   tier and a retired model id. This makes the actual reason a URL you can
+   open.
+
+   It reports states and status codes only — never the key, and never a
+   provider error string, since those can echo the prompt back.
+=========================================================================== */
+
+export interface LabHealth {
+  configured: boolean;
+  /** How many model ids are listed, not which — the roster stays private. */
+  modelsConfigured: number;
+  /** Result of one real call against the configured models. */
+  probe: {
+    ok: boolean;
+    kind?: FailureKind;
+    status?: number | null;
+    /** Which position in the fallback list answered, 1-based. */
+    answeredBy?: number;
+    ms: number;
+  };
+  hint: string;
+}
+
+const HINTS: Record<FailureKind, string> = {
+  quota: "Out of credit or over the free daily cap. Add a model to OPENROUTER_MODEL as a fallback, or top up at openrouter.ai/credits.",
+  auth: "OPENROUTER_API_KEY is missing, revoked, or not permitted for this model. Reissue at openrouter.ai/keys.",
+  model: "A model id in OPENROUTER_MODEL is unknown or retired. Check it against openrouter.ai/models.",
+  timeout: "The model answered too slowly for a serverless function. Put a faster model first in OPENROUTER_MODEL.",
+  network: "Could not reach OpenRouter at all. Usually transient; check status.openrouter.ai.",
+  other: "Unrecognised provider failure. The function log has the detail.",
+};
+
+/** One real round trip, so the answer reflects the deployment rather than the
+ *  configuration it was supposed to have. */
+export async function checkLabHealth(): Promise<LabHealth> {
+  const config = openRouterConfig();
+  const started = Date.now();
+
+  if (!config) {
+    return {
+      configured: false,
+      modelsConfigured: 0,
+      probe: { ok: false, kind: "auth", ms: 0 },
+      hint: "Set OPENROUTER_API_KEY and OPENROUTER_MODEL in the hosting environment, then redeploy.",
+    };
+  }
+
+  try {
+    await generateReply({
+      system: "Reply with the single word OK.",
+      messages: [{ role: "user", content: "ping" }],
+      temperature: 0,
+      maxTokens: 8,
+    });
+    return {
+      configured: true,
+      modelsConfigured: config.models.length,
+      probe: { ok: true, ms: Date.now() - started },
+      hint: "Working.",
+    };
+  } catch (err) {
+    const kind: FailureKind = err instanceof ProviderError ? err.kind : "other";
+    const status = err instanceof ProviderError ? err.status : null;
+    console.error(`Lab health probe failed [${kind}]:`, err instanceof Error ? err.message : err);
+    return {
+      configured: true,
+      modelsConfigured: config.models.length,
+      probe: { ok: false, kind, status, ms: Date.now() - started },
+      hint: HINTS[kind],
     };
   }
 }

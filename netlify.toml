@@ -10,6 +10,13 @@
   to = "/.netlify/functions/lab-chat"
   status = 200
 
+# Open this when the agents go quiet: it says why, rather than leaving the
+# browser's one generic message to cover every possible cause.
+[[redirects]]
+  from = "/api/lab/health"
+  to = "/.netlify/functions/lab-health"
+  status = 200
+
 # Client-side routing: every other path serves the app shell so /mission,
 # /coreos-ai, /contact and friends survive a refresh or a shared link.
 [[redirects]]
