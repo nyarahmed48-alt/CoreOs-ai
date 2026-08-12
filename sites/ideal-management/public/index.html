@@ -316,8 +316,16 @@
 
                 <div class="form__row">
                   <label class="field">
-                    <span class="field__label">Phone</span>
-                    <input name="phone" type="tel" autocomplete="tel" placeholder="+964 770 000 0000" />
+                    <span class="field__label">Phone <em>*</em></span>
+                    <input
+                      name="phone"
+                      type="tel"
+                      required
+                      autocomplete="tel"
+                      inputmode="tel"
+                      minlength="7"
+                      placeholder="+964 7XX XXX XXXX"
+                    />
                   </label>
                   <label class="field">
                     <span class="field__label">Location</span>
