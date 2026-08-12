@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "types": ["@netlify/functions"],
+    "strict": true,
+    "noEmit": true,
+    // Netlify bundles these with esbuild, which resolves the .mts specifier the
+    // functions actually import. This just stops tsc from objecting to it.
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["netlify/functions/**/*.mts", "lib/**/*.mts"]
+}

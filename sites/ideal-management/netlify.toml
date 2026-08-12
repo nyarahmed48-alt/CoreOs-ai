@@ -1,0 +1,34 @@
+# Ideal Management — a standalone static site with two serverless functions.
+#
+# On Netlify this project's *base directory* is `sites/ideal-management`, which
+# makes every path below relative to this file. Nothing here is built: the HTML,
+# CSS and JS ship as written.
+#
+# `publish = "public"` rather than "." on purpose — it keeps the function
+# source, package.json and README out of the deployed site.
+#
+# The functions declare their own routes in code (`export const config.path`),
+# so /api/ideal-chat and /api/ideal-health need no redirects.
+
+[build]
+  publish = "public"
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Fingerprint-free asset names, so cache for an hour rather than a year: an
+# edit to the CSS should reach visitors the same day, not next month.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
