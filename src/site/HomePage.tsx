@@ -16,6 +16,7 @@ import {
   Smartphone,
   Workflow,
   Bot,
+  Tag,
 } from "lucide-react";
 import { CoreOsMark } from "./Logo";
 import { Link } from "./router";
@@ -146,6 +147,21 @@ export function HomePage() {
             />
           </div>
 
+          {/* Price sits with the work rather than on its own page: the question
+              lands the moment someone reads what we build, and silence on it
+              makes small businesses assume they cannot afford us. */}
+          <div className="mt-8 rounded-2xl border border-[#1c2337] bg-[#0a0d16] p-6">
+            <div className="flex items-center gap-2 text-[#1878dc]">
+              <Tag className="h-4 w-4" />
+              <h3 className="font-display text-[15px] font-semibold text-white">
+                {t("build.priceT")}
+              </h3>
+            </div>
+            <p className="mt-2 max-w-3xl text-[14.5px] leading-relaxed text-[#a4abc4]">
+              {t("build.priceB")}
+            </p>
+          </div>
+
           <Link
             to="/contact"
             className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
@@ -153,6 +169,59 @@ export function HomePage() {
             {t("build.cta")}
             <Arrow />
           </Link>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- Demos
+
+          Follows "what we build" for a reason: the claim comes first, then the
+          proof. A prospect can click into a finished site rather than taking
+          our word for the standard.
+      */}
+      <section className="border-b border-[#12172a] bg-[#07090f]">
+        <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
+          <div className="max-w-2xl">
+            <Eyebrow>{t("demos.eyebrow")}</Eyebrow>
+            <h2 className="mt-4 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
+              {t("demos.h2")}
+            </h2>
+            <p className="mt-5 text-[15.5px] leading-relaxed text-[#a4abc4]">
+              {t("demos.lede")}
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <DemoCard
+              to="/demos/barber"
+              scale={t("demos.scaleS")}
+              title={t("demos.barberT")}
+              body={t("demos.barberB")}
+              from="#c9a227"
+              to2="#12100e"
+              cta={t("demos.view")}
+              rtl={isRtl}
+            />
+            <DemoCard
+              to="/demos/nails"
+              scale={t("demos.scaleM")}
+              title={t("demos.nailsT")}
+              body={t("demos.nailsB")}
+              from="#f2d3d8"
+              to2="#c2708a"
+              cta={t("demos.view")}
+              rtl={isRtl}
+            />
+            <DemoCard
+              to="/demos/restaurant"
+              scale={t("demos.scaleL")}
+              title={t("demos.restT")}
+              body={t("demos.restB")}
+              from="#3d5c4a"
+              to2="#0f1512"
+              cta={t("demos.view")}
+              rtl={isRtl}
+            />
+          </div>
         </div>
       </section>
 
@@ -346,6 +415,57 @@ function Craft({
       </h3>
       <p className="mt-2 text-[13.5px] leading-relaxed text-[#98a0bb]">{body}</p>
     </div>
+  );
+}
+
+function DemoCard({
+  to,
+  scale,
+  title,
+  body,
+  from,
+  to2,
+  cta,
+  rtl,
+}: {
+  to: string;
+  scale: string;
+  title: string;
+  body: string;
+  /** Gradient endpoints, lifted from the demo's own palette so the tile
+   *  previews the site it links to rather than being decoration. */
+  from: string;
+  to2: string;
+  cta: string;
+  rtl: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[#171d2d] bg-[#0a0d16] transition-colors hover:border-[#2c3550]"
+    >
+      <div
+        className="aspect-[16/9] w-full"
+        style={{ background: `linear-gradient(135deg, ${from}, ${to2})` }}
+      >
+        <div className="h-full w-full bg-[radial-gradient(120%_90%_at_20%_10%,rgba(255,255,255,0.18),transparent_60%)]" />
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#1878dc]">
+          {scale}
+        </span>
+        <h3 className="mt-2 font-display text-[17px] font-semibold text-white">
+          {title}
+        </h3>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-[#98a0bb]">
+          {body}
+        </p>
+        <span className="mt-auto pt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-[#6c7bf0] group-hover:text-[#8390f4]">
+          {cta}
+          <ArrowRight className={`h-3.5 w-3.5 ${rtl ? "rotate-180" : ""}`} />
+        </span>
+      </div>
+    </Link>
   );
 }
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactElement } from "react";
 import { RouterProvider, useRouter, Link } from "./site/router";
 import { LangProvider, useLang } from "./site/i18n";
 import { Layout } from "./site/Layout";
@@ -12,6 +12,18 @@ import { MissionPage } from "./site/MissionPage";
 import { TestingPage } from "./site/TestingPage";
 import { CoreOsAiPage } from "./site/CoreOsAiPage";
 import { ContactPage } from "./site/ContactPage";
+import { BarberDemo } from "./site/demos/BarberDemo";
+import { NailsDemo } from "./site/demos/NailsDemo";
+import { RestaurantDemo } from "./site/demos/RestaurantDemo";
+
+/* The demos are whole sites of their own, so they render outside <Layout> —
+   CoreOs nav and footer around a barbershop would undercut the point. Each
+   carries its own DemoBar back to the site instead. */
+const DEMOS: Record<string, () => ReactElement> = {
+  "/demos/barber": BarberDemo,
+  "/demos/nails": NailsDemo,
+  "/demos/restaurant": RestaurantDemo,
+};
 
 // The SaaS manager is a large bundle and is only reached from /manager, so it
 // is split out and never downloaded by ordinary site visitors.
@@ -49,6 +61,9 @@ function Routes() {
       </div>
     );
   }
+
+  const Demo = DEMOS[path];
+  if (Demo) return <Demo />;
 
   return (
     <Layout>
