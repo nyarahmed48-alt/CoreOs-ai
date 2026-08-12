@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "../router";
 import { useLang } from "../i18n";
+import { LangSwitch } from "../LangSwitch";
 import type { Copy } from "../strings";
 
 /**
@@ -24,24 +25,34 @@ import type { Copy } from "../strings";
  * Deliberately unmissable and deliberately outside the demo's own palette: a
  * visitor must never be confused about whether this is a real business, and a
  * prospect looking at it should always have one tap back to the enquiry form.
+ *
+ * It carries the language switch too. A demo is usually opened straight from a
+ * link rather than reached through the site, so this bar is the only chrome
+ * that visitor ever sees — without the switch here they would be stuck in
+ * whichever language the site defaulted them to.
+ *
+ * The back link drops to an icon on narrow screens: the switch matters more
+ * than the words, and the demo badge on the left already goes home.
  */
 export function DemoBar() {
   const { t } = useLang();
 
   return (
     <div className="sticky top-0 z-50 border-b border-[#232b40] bg-[#05060a] text-[#e7eaf6]">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-2.5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[#98a0bb] transition-colors hover:text-white"
+          className="inline-flex min-w-0 items-center gap-2 text-[12.5px] font-medium text-[#98a0bb] transition-colors hover:text-white"
         >
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#6c7bf0]" />
-          {t("demos.badge")}
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#6c7bf0]" />
+          <span className="truncate">{t("demos.badge")}</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <LangSwitch size="sm" />
           <Link
             to="/"
-            className="rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-[#98a0bb] transition-colors hover:text-white"
+            aria-label={t("demos.back")}
+            className="hidden rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-[#98a0bb] transition-colors hover:text-white sm:inline-block"
           >
             {t("demos.back")}
           </Link>
