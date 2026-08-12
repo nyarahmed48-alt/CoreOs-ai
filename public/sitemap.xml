@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Every public page, so a search engine finds them without having to crawl
+  its way in from the homepage.
+
+  The site is one app that renders in three languages from the same URL, so
+  there is one entry per page rather than one per language. The hreflang
+  alternates tell a search engine that a single URL serves all three.
+
+  If CoreOs moves to its own domain, the host changes here, in robots.txt,
+  and in the canonical and og:url tags in index.html.
+-->
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+>
+  <url>
+    <loc>https://coreosai.netlify.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://coreosai.netlify.app/" />
+    <xhtml:link rel="alternate" hreflang="ckb" href="https://coreosai.netlify.app/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://coreosai.netlify.app/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://coreosai.netlify.app/" />
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/testing</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/coreos-ai</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/mission</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Demo work. Real pages, fictional businesses — each carries a CoreOs bar
+       saying so, so nobody mistakes one for a shop they can walk into. -->
+  <url>
+    <loc>https://coreosai.netlify.app/demos/barber</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/demos/nails</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://coreosai.netlify.app/demos/restaurant</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>

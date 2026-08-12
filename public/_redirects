@@ -1,2 +1,10 @@
-/api/lab/chat  /.netlify/functions/lab-chat  200
-/*             /index.html                   200
+# Mirrors the redirects in netlify.toml. Both files ship, so they have to
+# agree — a rule added to one and not the other is a route that works on some
+# deploys and not others.
+#
+# Order matters: the SPA catch-all is last, or it would swallow the API paths
+# and answer them with index.html.
+
+/api/lab/chat    /.netlify/functions/lab-chat    200
+/api/lab/health  /.netlify/functions/lab-health  200
+/*               /index.html                     200
