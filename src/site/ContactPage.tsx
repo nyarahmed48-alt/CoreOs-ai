@@ -4,8 +4,8 @@
  */
 
 import { useMemo, useState } from "react";
-import { Mail, Copy, Check, Send, MessageSquare, Building2, Phone } from "lucide-react";
-import { CONTACT_EMAIL, mailto } from "./contact";
+import { Mail, Copy, Check, Send, MessageSquare, Building2, Phone, MessageCircle } from "lucide-react";
+import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, mailto, whatsapp } from "./contact";
 import { Eyebrow } from "./Eyebrow";
 import { useLang } from "./i18n";
 import type { CopyKey } from "./strings";
@@ -83,6 +83,38 @@ export function ContactPage() {
           <div className="grid gap-8 lg:grid-cols-[1fr_1.15fr] lg:gap-12">
             {/* ------------------------------------------------ Direct email */}
             <div>
+              {/* WhatsApp leads: this page says we would rather call than trade
+                  emails, so the first action on it should start a conversation
+                  rather than open a mail client. */}
+              <div className="mb-4 rounded-2xl border border-[#1d3a2a] bg-[#0a1410] p-6">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#12241a] text-[#4ade80]">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <h2 className="mt-4 font-display text-[18px] font-semibold text-white">
+                  {t("contact.waH2")}
+                </h2>
+                <p className="mt-2 text-[14px] leading-relaxed text-[#98a0bb]">
+                  {t("contact.waB")}
+                </p>
+
+                <a
+                  href={whatsapp(t("contact.waPrefill"))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25d366] px-5 py-3.5 text-[14.5px] font-semibold text-[#04140b] transition-colors hover:bg-[#4ae57f]"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {t("contact.waCta")}
+                </a>
+
+                <p
+                  dir="ltr"
+                  className="mt-3 text-center font-mono text-[13px] text-[#7d859e]"
+                >
+                  {CONTACT_PHONE_DISPLAY}
+                </p>
+              </div>
+
               <div className="rounded-2xl border border-[#1c2337] bg-[#0a0d16] p-6">
                 <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#141a2c] text-[#6c7bf0]">
                   <Mail className="h-5 w-5" />

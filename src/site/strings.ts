@@ -103,6 +103,54 @@ export const COPY = {
     en: "The agents you can test on this site, configured around your own documents, policies and tone.",
   },
   "build.cta": { ar: "تحدّث إلينا عن مشروعك", en: "Talk to us about your project" },
+  "build.priceT": { ar: "التسعير", en: "Pricing" },
+  "build.priceB": {
+    ar: "يُسعَّر كل مشروع بحسب ما يحتاجه فعلًا — موقع من صفحة واحدة ونظام حجوزات كامل ليسا العمل نفسه، ولا ندّعي غير ذلك. أخبرنا بما تريده ونعطيك سعرًا عادلًا في مكالمة واحدة، دون أن ندفعك نحو ما هو أكبر من حاجتك.",
+    en: "Every project is priced on what it actually needs. A one-page site and a full booking system are not the same job, and we don't pretend otherwise. Tell us what you're after and we'll price it fairly on a call — without pushing you toward something bigger than you need.",
+  },
+
+  /* ------------------------------------------------------------- demos */
+  "demos.eyebrow": { ar: "أعمال نموذجية", en: "Demo work" },
+  "demos.h2": { ar: "شاهد المستوى قبل أن تسأل عن السعر.", en: "See the standard before you ask the price." },
+  "demos.lede": {
+    ar: "ثلاثة مواقع نموذجية بنيناها لتوضيح النطاق — من صفحة واحدة بسيطة إلى موقع مطعم كامل. كلها قابلة للتصفّح، وكلها من صنعنا.",
+    en: "Three demo sites we built to show the range — from a simple one-pager to a full restaurant site. All of them are browsable, and all of them are ours.",
+  },
+  "demos.scaleS": { ar: "نطاق صغير", en: "Small" },
+  "demos.scaleM": { ar: "نطاق متوسط", en: "Medium" },
+  "demos.scaleL": { ar: "نطاق كبير", en: "Large" },
+  "demos.view": { ar: "افتح النموذج", en: "Open the demo" },
+  "demos.barberT": { ar: "صالون حلاقة", en: "Barbershop" },
+  "demos.barberB": {
+    ar: "صفحة واحدة: الخدمات والأسعار وأوقات العمل وزر حجز عبر واتساب. ما يحتاجه محل صغير، دون زيادة.",
+    en: "A single page: services, prices, hours and a WhatsApp booking button. What a small shop needs, and nothing it doesn't.",
+  },
+  "demos.nailsT": { ar: "صالون أظافر", en: "Nail salon" },
+  "demos.nailsB": {
+    ar: "قائمة خدمات مفصّلة، ومعرض أعمال، وآراء العميلات، ونموذج حجز — لنشاط يعيش على المظهر والحجوزات.",
+    en: "A detailed service menu, a gallery, client reviews and a booking form — for a business that lives on how it looks and how full the diary is.",
+  },
+  "demos.restT": { ar: "مطعم", en: "Restaurant" },
+  "demos.restB": {
+    ar: "قائمة طعام كاملة بأقسام، ومعرض، وقصة المكان، وحجز الطاولات، وروابط التوصيل، والفروع وأوقاتها.",
+    en: "A full menu by category, a gallery, the story of the place, table reservations, delivery links, and branches with their hours.",
+  },
+  "demos.badge": { ar: "نموذج من CoreOs", en: "A CoreOs demo" },
+  "demos.badgeCta": { ar: "اطلب واحدًا مثله", en: "Get one like this" },
+  "demos.back": { ar: "العودة إلى CoreOs", en: "Back to CoreOs" },
+
+  /* ---------------------------------------------------------- whatsapp */
+  "contact.waH2": { ar: "واتساب", en: "WhatsApp" },
+  "contact.waB": {
+    ar: "أسرع طريقة للوصول إلينا. اكتب لنا وسنرد، وغالبًا نتصل بك مباشرة لنفهم ما تحتاجه في دقيقتين بدل عشر رسائل.",
+    en: "The quickest way to reach us. Message us and we'll reply — usually with a call, so we can understand what you need in two minutes instead of ten emails.",
+  },
+  "contact.waCta": { ar: "راسلنا على واتساب", en: "Message us on WhatsApp" },
+  "contact.waPrefill": {
+    ar: "مرحبًا CoreOs، أود التحدث عن مشروع.",
+    en: "Hi CoreOs, I'd like to talk about a project.",
+  },
+  "footer.whatsapp": { ar: "واتساب", en: "WhatsApp" },
 
   "home.missionEyebrow": { ar: "رسالتنا", en: "Our mission" },
   "home.missionH2": {

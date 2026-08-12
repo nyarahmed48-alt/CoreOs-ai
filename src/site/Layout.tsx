@@ -4,10 +4,10 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Menu, X, ArrowUpRight, Mail } from "lucide-react";
+import { Menu, X, ArrowUpRight, Mail, MessageCircle } from "lucide-react";
 import { CoreOsLockup, CoreOsMark } from "./Logo";
 import { Link, useRouter } from "./router";
-import { CONTACT_EMAIL } from "./contact";
+import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, whatsapp } from "./contact";
 import { useLang } from "./i18n";
 import type { CopyKey } from "./strings";
 
@@ -200,6 +200,17 @@ function Footer() {
             {t("footer.contact")}
           </h4>
           <ul className="mt-4 space-y-2.5 text-[14px]">
+            <li>
+              <a
+                href={whatsapp()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-[#c3c9dd] hover:text-white"
+              >
+                <MessageCircle className="h-4 w-4 shrink-0 text-[#25d366]" />
+                <span dir="ltr">{CONTACT_PHONE_DISPLAY}</span>
+              </a>
+            </li>
             <li>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
