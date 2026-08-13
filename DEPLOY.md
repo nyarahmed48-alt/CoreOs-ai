@@ -36,9 +36,14 @@ Cloudflare dashboard → **Workers & Pages** → **coreos-ai** → **Settings** 
 
 | Setting | Value |
 |---|---|
-| Build command | `npm run build:web` |
-| Deploy command | `npx wrangler deploy` |
 | Branch | `main` |
+| Build command | *(leave empty)* |
+| Deploy command | `npm run deploy` |
+
+`npm run deploy` builds the site and then deploys it, in that order. Putting
+both in one command means a deploy can never run against a missing or stale
+`dist/`, which is the usual reason a first Cloudflare build fails with
+*"the directory specified by the assets.directory field does not exist"*.
 
 Every push to `main` then deploys on its own. `wrangler.toml` already carries
 the rest of the configuration.
