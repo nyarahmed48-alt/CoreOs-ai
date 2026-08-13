@@ -72,7 +72,7 @@ export function NailsDemo() {
               {c(NAILS.bookCta)}
             </a>
           </div>
-          <PhotoTile from="#f2d3d8" to="#c2708a" ratio="aspect-[4/5]" />
+          <PhotoTile from="#f2d3d8" to="#c2708a" ratio="aspect-[4/5]" photo={NAILS.heroPhoto} />
         </div>
       </header>
 
@@ -104,8 +104,10 @@ export function NailsDemo() {
           {c(NAILS.galleryNote)}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {TILES.map(([from, to]) => (
-            <PhotoTile key={from} from={from} to={to} ratio="aspect-square" />
+          {/* A real photo where one exists, the palette gradient where it does
+              not, so the grid stays full while photography is added piecemeal. */}
+          {TILES.map(([from, to], i) => (
+            <PhotoTile key={from} from={from} to={to} ratio="aspect-square" photo={NAILS.gallery[i]} />
           ))}
         </div>
       </DemoSection>

@@ -13,7 +13,7 @@
  * applies; use Netlify's own rate limiting if this endpoint gets abused.
  */
 
-import { handleLabChat } from "../../lab/agents";
+import { handleLabChat, settingsFromProcess } from "../../lab/agents";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -36,7 +36,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const { slug, message, history, lang } = payload ?? {};
-  const { status, body } = await handleLabChat({ slug, message, history, lang });
+  const { status, body } = await handleLabChat({ slug, message, history, lang, settings: settingsFromProcess() });
 
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }

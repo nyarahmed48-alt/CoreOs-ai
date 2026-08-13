@@ -14,7 +14,7 @@
 
 import { Scissors, Clock, MapPin, MessageCircle } from "lucide-react";
 import { BARBER } from "./content";
-import { DemoBar, DemoSection, PriceRow, useCopy } from "./shared";
+import { DemoBar, DemoSection, PhotoTile, PriceRow, useCopy } from "./shared";
 import { whatsapp } from "../contact";
 import { useLang } from "../i18n";
 
@@ -31,9 +31,19 @@ export function BarberDemo() {
     <div style={{ background: INK, color: CREAM }} className="min-h-[100dvh]">
       <DemoBar />
 
-      {/* ------------------------------------------------------------- Hero */}
+      {/* ------------------------------------------------------------- Hero
+          Text-only until a real shopfront photo exists. Rather than hold the
+          space open with a gradient, the hero stays one column and becomes two
+          the moment BARBER.heroPhoto is filled in — this is the small-scope
+          demo, and an empty placeholder block would make it look unfinished
+          rather than lean. */}
       <header className="border-b" style={{ borderColor: "#241f19" }}>
-        <div className="mx-auto max-w-5xl px-5 py-20 md:py-28">
+        <div
+          className={`mx-auto max-w-5xl px-5 py-20 md:py-28 ${
+            BARBER.heroPhoto ? "grid gap-10 md:grid-cols-[1.1fr_0.9fr] md:items-center" : ""
+          }`}
+        >
+        <div>
           <div className="flex items-center gap-2" style={{ color: GOLD }}>
             <Scissors className="h-5 w-5" />
             <span className="text-[12px] font-bold uppercase tracking-[0.24em]">
@@ -69,6 +79,15 @@ export function BarberDemo() {
           <p className="mt-3 text-[13.5px]" style={{ color: MUTED }}>
             {c(BARBER.walkIn)}
           </p>
+        </div>
+        {BARBER.heroPhoto ? (
+          <PhotoTile
+            from="#3a2f24"
+            to="#1a1512"
+            ratio="aspect-[4/5]"
+            photo={BARBER.heroPhoto}
+          />
+        ) : null}
         </div>
       </header>
 

@@ -113,7 +113,7 @@ export function RestaurantDemo() {
               </p>
             ))}
           </div>
-          <PhotoTile from="#3d5c4a" to="#1a2a22" ratio="aspect-[4/5]" />
+          <PhotoTile from="#3d5c4a" to="#1a2a22" ratio="aspect-[4/5]" photo={REST.storyPhoto} />
         </div>
       </DemoSection>
 
@@ -162,8 +162,10 @@ export function RestaurantDemo() {
           {c(REST.galleryTitle)}
         </h2>
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {TILES.map(([from, to]) => (
-            <PhotoTile key={from} from={from} to={to} ratio="aspect-square" />
+          {/* A real photo where one exists, the palette gradient where it does
+              not, so the grid stays full while photography is added piecemeal. */}
+          {TILES.map(([from, to], i) => (
+            <PhotoTile key={from} from={from} to={to} ratio="aspect-square" photo={REST.gallery[i]} />
           ))}
         </div>
       </DemoSection>
@@ -228,7 +230,7 @@ export function RestaurantDemo() {
       {/* ----------------------------------------------------------- Events */}
       <DemoSection className="border-b border-[#1e2a24]">
         <div className="grid gap-10 md:grid-cols-[0.85fr_1fr] md:items-center">
-          <PhotoTile from="#8a6a3a" to="#2a2116" ratio="aspect-[4/3]" />
+          <PhotoTile from="#8a6a3a" to="#2a2116" ratio="aspect-[4/3]" photo={REST.eventsPhoto} />
           <div>
             <h2 className="font-display text-[28px] font-bold">
               {c(REST.eventsTitle)}

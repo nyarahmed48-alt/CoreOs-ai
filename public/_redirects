@@ -1,6 +1,14 @@
-# Mirrors the redirects in netlify.toml. Both files ship, so they have to
-# agree — a rule added to one and not the other is a route that works on some
-# deploys and not others.
+# Read by BOTH hosts while the move to Cloudflare is in progress, so it has to
+# stay valid for each.
+#
+# Netlify: these are the live rules. netlify.toml carries the same ones, but
+# this file wins, so a rule missing here is a route that 404s — that is exactly
+# how /api/lab/health returned the SPA instead of JSON.
+#
+# Cloudflare: this file is honoured too, but wrangler.toml sets
+# run_worker_first for /api/*, and that runs before any asset logic. So the
+# Netlify function rule below never applies there — the Worker answers first.
+# The catch-all is correct on both.
 #
 # Order matters: the SPA catch-all is last, or it would swallow the API paths
 # and answer them with index.html.

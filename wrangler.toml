@@ -1,0 +1,46 @@
+# Cloudflare Workers deployment.
+#
+# Connect this repo under Workers & Pages → coreos-ai → Settings → Builds, and
+# every push to main deploys. Build command `npm run build:web`, which writes
+# the static site to dist/.
+#
+# Secrets are NOT set here — never commit a key. Set them in the dashboard
+# under Settings → Variables and Secrets:
+#
+#   OPENROUTER_API_KEY   secret    from openrouter.ai/keys
+#   OPENROUTER_MODEL     plain     one id, or several comma-separated
+#   ADMIN_TOKEN          secret    enables /admin; unset means /admin is off
+#
+# Optional: OPENROUTER_BASE_URL, OPENROUTER_SITE_URL.
+
+name = "coreos-ai"
+main = "./worker/index.ts"
+compatibility_date = "2026-08-13"
+
+[observability]
+enabled = true
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+# Unmatched paths return index.html so the hand-written router keeps working on
+# a refresh or a shared link — the job the /* rule did in netlify.toml.
+not_found_handling = "single-page-application"
+
+# Without this, a URL typed into the address bar counts as a navigation and
+# would be answered with the SPA shell before the Worker ever ran. That is the
+# bug that made /api/lab/health return a 404 page on Netlify, so the API and
+# admin paths are pinned to the Worker explicitly.
+run_worker_first = ["/api/*", "/admin", "/admin/"]
+
+# Runtime settings, so the model and key can be changed from /admin without a
+# redeploy. Optional: with no namespace bound the site falls back to the
+# environment variables above and /admin reports that plainly.
+#
+# Create one, then uncomment and paste the id:
+#   npx wrangler kv namespace create LAB_CONFIG
+#
+# [[kv_namespaces]]
+# binding = "LAB_CONFIG"
+# id = "paste-the-id-here"
