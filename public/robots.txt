@@ -1,0 +1,12 @@
+# CoreOs — https://coreosai.netlify.app
+#
+# Everything public is crawlable. The two paths below are not pages: /manager
+# is the client console behind a login, and /api is the agent sandbox, which
+# costs money per call and would burn quota on crawler traffic.
+
+User-agent: *
+Allow: /
+Disallow: /manager
+Disallow: /api/
+
+Sitemap: https://coreosai.netlify.app/sitemap.xml
