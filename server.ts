@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { checkLabHealth, generateReply, handleLabChat, isConfigured, publicAgentList } from "./lab/agents";
+import { checkLabHealth, generateReply, handleLabChat, isConfigured, publicAgentList, settingsFromProcess } from "./lab/agents";
 import type { ChatTurn } from "./lab/agents";
 import dotenv from "dotenv";
 
@@ -510,7 +510,7 @@ function recordChatInteraction(clientId: string, clientName: string, modelUsed: 
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    hasApiKey: isConfigured(),
+    hasApiKey: isConfigured(settingsFromProcess()),
     timestamp: new Date().toISOString()
   });
 });
@@ -585,7 +585,7 @@ app.get("/api/models", (req, res) => {
     }
   ];
 
-  res.json({ models, isLive: isConfigured() });
+  res.json({ models, isLive: isConfigured(settingsFromProcess()) });
 });
 
 // CREATE a new client AI profile
@@ -761,7 +761,7 @@ Focus strictly on:
 
 Respond ONLY with the complete, fully written system instruction text block. Do not write introductory words like "Here are the instructions:" or place markdown backticks around the instruction itself. Offer direct, high-quality content.`;
 
-  if (!isConfigured()) {
+  if (!isConfigured(settingsFromProcess())) {
     // Elegant fallback simulation is keys are not set
     const mockInstruction = `You are the specialized AI Assistant for ${clientName || 'our CoreOS Client'}.
 
@@ -779,7 +779,7 @@ Respond ONLY with the complete, fully written system instruction text block. Do 
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
       maxTokens: 4096,
-    });
+    }, settingsFromProcess());
 
     res.json({ instruction, isFallback: false });
   } catch (error: any) {
@@ -887,7 +887,7 @@ app.post("/api/chat/simulate", async (req, res) => {
   // Inject the language restriction into the compiled system instruction
   compiledInstruction += `\nStrict Constraint: You MUST communicate and reply exclusively in the ${clientLanguage.toUpperCase()} language. If Kurdish (Sorani/Kurmanji) is requested, use Kurdish characters. If Arabic is requested, use Arabic characters. Keep responses compliant.`;
 
-  if (!isConfigured()) {
+  if (!isConfigured(settingsFromProcess())) {
     // Simulate responses translated or formatted based on chosen Language
     setTimeout(() => {
       let greeting = `🤖 **[SYSTEM CORE PROTOCOL ACTIVE]**\n**Persona Node**: ${clientName}\n**Target Model Core**: ${configuredTier.toUpperCase()} (Tuned Temp: ${temperature})\n\n`;
@@ -951,7 +951,7 @@ app.post("/api/chat/simulate", async (req, res) => {
       system: compiledInstruction,
       messages: contentHistory,
       temperature,
-    });
+    }, settingsFromProcess());
 
     recordChatInteraction(id, clientName, configuredTier, message, replyText, req.body.channel || "Sandbox Simulator");
     res.json({ text: replyText, isFallback: false, customerUsage: customer });
@@ -971,7 +971,7 @@ app.post("/api/chat/simulate", async (req, res) => {
    ========================================================================= */
 
 app.get("/api/lab/agents", (req, res) => {
-  res.json({ agents: publicAgentList(), live: isConfigured() });
+  res.json({ agents: publicAgentList(), live: isConfigured(settingsFromProcess()) });
 });
 
 /* Why the sandbox is quiet, as a URL. Makes one real call through the same
@@ -979,7 +979,7 @@ app.get("/api/lab/agents", (req, res) => {
    configuration it was meant to have. Reports states and status codes only —
    no key, no model ids, no provider error strings. */
 app.get("/api/lab/health", async (_req, res) => {
-  const health = await checkLabHealth();
+  const health = await checkLabHealth(settingsFromProcess());
   res.status(health.probe.ok ? 200 : 503).set("cache-control", "no-store").json(health);
 });
 
@@ -1028,7 +1028,7 @@ app.post("/api/lab/chat", async (req, res) => {
   }
 
   const { slug, message, history, lang } = req.body || {};
-  const { status, body } = await handleLabChat({ slug, message, history, lang });
+  const { status, body } = await handleLabChat({ slug, message, history, lang, settings: settingsFromProcess() });
   res.status(status).json(body);
 });
 

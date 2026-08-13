@@ -15,7 +15,7 @@
  * put Vercel's own rate limiting in front of it rather than counting in code.
  */
 
-import { handleLabChat } from "../../lab/agents";
+import { handleLabChat, settingsFromProcess } from "../../lab/agents";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -34,6 +34,6 @@ export default async function handler(req: any, res: any) {
   }
 
   const { slug, message, history, lang } = payload;
-  const { status, body } = await handleLabChat({ slug, message, history, lang });
+  const { status, body } = await handleLabChat({ slug, message, history, lang, settings: settingsFromProcess() });
   return res.status(status).json(body);
 }

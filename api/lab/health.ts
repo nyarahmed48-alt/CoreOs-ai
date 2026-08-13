@@ -11,7 +11,7 @@
  * for what it reports and why none of it is sensitive.
  */
 
-import { checkLabHealth } from "../../lab/agents";
+import { checkLabHealth, settingsFromProcess } from "../../lab/agents";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -19,7 +19,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
   }
 
-  const health = await checkLabHealth();
+  const health = await checkLabHealth(settingsFromProcess());
   // A cached health check is a lie, so say so to every hop in between.
   res.setHeader("cache-control", "no-store");
   return res.status(health.probe.ok ? 200 : 503).json(health);

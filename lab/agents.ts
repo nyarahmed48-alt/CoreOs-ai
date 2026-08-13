@@ -38,13 +38,50 @@ const MAX_TOKENS = 2048;
    belongs in a server bundle. If the number changes, it changes in both. */
 const CONTACT_WHATSAPP = "+964 770 609 4646";
 
-/** Overridable so the path can be exercised against a stand-in endpoint, and
- *  so anyone fronting OpenRouter with their own proxy can point at it. */
-const openRouterUrl = () =>
-  `${(process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "")}/chat/completions`;
+/**
+ * Where the settings come from.
+ *
+ * Deliberately a plain object handed in by the caller rather than something
+ * this module reads for itself. Node has process.env; Cloudflare Workers do
+ * not — there the values arrive per request on the `env` binding. Taking
+ * settings as an argument is what lets one copy of this file run on Express,
+ * on Netlify and on a Worker without a branch anywhere in it.
+ *
+ * It also means settings can come from somewhere other than the environment —
+ * see resolveSettings(), which lets a stored value override a deployed one so
+ * the model can be changed without a redeploy.
+ */
+export interface LabSettings {
+  apiKey?: string;
+  /** One id, or several comma-separated and tried in order. */
+  model?: string;
+  /** Overridable so the path can be exercised against a stand-in endpoint, and
+   *  so anyone fronting OpenRouter with their own proxy can point at it. */
+  baseUrl?: string;
+  /** Optional attribution header OpenRouter uses for its rankings. */
+  siteUrl?: string;
+}
 
-/** Optional attribution header OpenRouter uses for its rankings. */
-const OPENROUTER_SITE = process.env.OPENROUTER_SITE_URL || "https://coreosai.netlify.app";
+/** Anything with the shape of an env bag: process.env, or a Worker binding. */
+export type EnvLike = Record<string, string | undefined>;
+
+/** Pull settings out of an environment. Works for both runtimes. */
+export const settingsFromEnv = (env: EnvLike): LabSettings => ({
+  apiKey: env.OPENROUTER_API_KEY,
+  model: env.OPENROUTER_MODEL,
+  baseUrl: env.OPENROUTER_BASE_URL,
+  siteUrl: env.OPENROUTER_SITE_URL,
+});
+
+/** Convenience for the Node runtimes, which do have a process. */
+export const settingsFromProcess = (): LabSettings =>
+  settingsFromEnv(typeof process === "undefined" ? {} : (process.env as EnvLike));
+
+const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_SITE_URL = "https://coreosai.netlify.app";
+
+const openRouterUrl = (settings: LabSettings) =>
+  `${(settings.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "")}/chat/completions`;
 
 /* Serverless platforms kill a function without warning at their own ceiling —
    30s on Netlify — and what comes back to the browser is an HTML error page,
@@ -63,9 +100,9 @@ const TOTAL_BUDGET_MS = 24_000;
    cap, and when the sandbox hits it every agent goes silent at once — with a
    second id listed, the site rides that out instead of going dark until
    someone notices. First one that answers wins. */
-const openRouterConfig = () => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const models = (process.env.OPENROUTER_MODEL || "")
+const openRouterConfig = (settings: LabSettings) => {
+  const apiKey = settings.apiKey;
+  const models = (settings.model || "")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
@@ -78,7 +115,8 @@ const openRouterConfig = () => {
 };
 
 /** True once a key and at least one model are configured. */
-export const isConfigured = (): boolean => openRouterConfig() !== null;
+export const isConfigured = (settings: LabSettings): boolean =>
+  openRouterConfig(settings) !== null;
 
 /** Why a call failed, in terms a caller can act on. Never the provider's own
  *  error text — that can quote the prompt back and must not reach a browser. */
@@ -140,18 +178,19 @@ async function callModel(
   { system, messages, temperature, maxTokens }: ReplyRequest,
   apiKey: string,
   timeoutMs: number,
+  settings: LabSettings,
 ): Promise<ReplyResult> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
 
   let response: Response;
   try {
-    response = await fetch(openRouterUrl(), {
+    response = await fetch(openRouterUrl(settings), {
       method: "POST",
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
-        "http-referer": OPENROUTER_SITE,
+        "http-referer": settings.siteUrl || DEFAULT_SITE_URL,
         "x-title": "CoreOs",
       },
       body: JSON.stringify({
@@ -213,8 +252,11 @@ async function callModel(
  * the first message rather than its own field, and there is no SDK to add —
  * Node 20+ has fetch built in.
  */
-export async function generateReply(request: ReplyRequest): Promise<ReplyResult> {
-  const config = openRouterConfig();
+export async function generateReply(
+  request: ReplyRequest,
+  settings: LabSettings,
+): Promise<ReplyResult> {
+  const config = openRouterConfig(settings);
   if (!config) throw new ProviderError("auth", null, "No AI provider configured");
 
   const deadline = Date.now() + TOTAL_BUDGET_MS;
@@ -225,7 +267,7 @@ export async function generateReply(request: ReplyRequest): Promise<ReplyResult>
     if (remaining <= 1_000) break; // No room for a real attempt; stop honestly.
 
     try {
-      return await callModel(model, request, config.apiKey, Math.min(ATTEMPT_TIMEOUT_MS, remaining));
+      return await callModel(model, request, config.apiKey, Math.min(ATTEMPT_TIMEOUT_MS, remaining), settings);
     } catch (err) {
       const error = err instanceof ProviderError ? err : new ProviderError("other", null, String(err));
       last = error;
@@ -307,6 +349,8 @@ export interface LabChatRequest {
   history?: unknown;
   /** UI language of the visitor, so the reply comes back in it. */
   lang?: unknown;
+  /** Provider settings for this request. See LabSettings. */
+  settings: LabSettings;
 }
 
 /** The three languages the site is read in. Anything unrecognised — an old
@@ -347,7 +391,7 @@ export const LAB_MAX_MESSAGE_CHARS = 500;
  * The whole /api/lab/chat behaviour, minus transport and rate limiting, so
  * Express and each serverless runtime can share it verbatim.
  */
-export async function handleLabChat({ slug, message, history, lang }: LabChatRequest): Promise<LabChatOutcome> {
+export async function handleLabChat({ slug, message, history, lang, settings }: LabChatRequest): Promise<LabChatOutcome> {
   /* Messages from this endpoint are read by the visitor, so they follow the
      language the site is being read in — the same default as the UI. */
   const active = replyLang(lang);
@@ -395,7 +439,7 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
     };
   }
 
-  if (!isConfigured()) {
+  if (!isConfigured(settings)) {
     // No key configured: say so plainly rather than pretending to answer.
     return {
       status: 200,
@@ -423,11 +467,14 @@ export async function handleLabChat({ slug, message, history, lang }: LabChatReq
     }
     conversation.push({ role: "user", content: message });
 
-    const { text, refused } = await generateReply({
-      system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}${languageRule(lang)}`,
-      messages: conversation,
-      temperature: agent.temperature,
-    });
+    const { text, refused } = await generateReply(
+      {
+        system: `You are "${agent.name}", a CoreOs agent.\n${agent.brief}\n\n${LAB_CHARTER}${languageRule(lang)}`,
+        messages: conversation,
+        temperature: agent.temperature,
+      },
+      settings,
+    );
 
     if (refused) {
       return {
@@ -548,8 +595,8 @@ const HINTS: Record<FailureKind, string> = {
 
 /** One real round trip, so the answer reflects the deployment rather than the
  *  configuration it was supposed to have. */
-export async function checkLabHealth(): Promise<LabHealth> {
-  const config = openRouterConfig();
+export async function checkLabHealth(settings: LabSettings): Promise<LabHealth> {
+  const config = openRouterConfig(settings);
   const started = Date.now();
 
   if (!config) {
@@ -562,12 +609,15 @@ export async function checkLabHealth(): Promise<LabHealth> {
   }
 
   try {
-    await generateReply({
-      system: "Reply with the single word OK.",
-      messages: [{ role: "user", content: "ping" }],
-      temperature: 0,
-      maxTokens: 8,
-    });
+    await generateReply(
+      {
+        system: "Reply with the single word OK.",
+        messages: [{ role: "user", content: "ping" }],
+        temperature: 0,
+        maxTokens: 8,
+      },
+      settings,
+    );
     return {
       configured: true,
       modelsConfigured: config.models.length,
