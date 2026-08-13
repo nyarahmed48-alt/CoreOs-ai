@@ -30,6 +30,23 @@ export interface Review {
   author: Copy;
 }
 
+/**
+ * A photograph on a demo page.
+ *
+ * Every slot below is optional. A demo with no photos renders gradient
+ * placeholders and looks exactly as it did before, so photographs can be added
+ * one at a time rather than all at once — see public/demos/README.md.
+ *
+ * Alt text is required and carries all three languages, because on these pages
+ * the photographs are the content. "A photo of the shop" helps nobody; say
+ * what is actually in the frame.
+ */
+export interface Photo {
+  /** Path under public/, e.g. "/demos/barber/shopfront.jpg". */
+  src: string;
+  alt: Copy;
+}
+
 /* ========================================================== barbershop === */
 
 export const BARBER = {
@@ -60,11 +77,14 @@ export const BARBER = {
   whereTitle: { ar: "أين نحن", ckb: "لە کوێین", en: "Where we are" },
   address: {
     ar: "شارع الجامعة، قرب دوار الساعة\nأربيل",
-    ckb: "شەقامی زانکۆ، نزیک قوللەی کاتژمێر\\nهەولێر",
+    ckb: "شەقامی زانکۆ، نزیک قوللەی کاتژمێر\nهەولێر",
     en: "University Street, near the clock tower\nErbil",
   },
   bookCta: { ar: "احجز دورك على واتساب", ckb: "لە واتساپ حجز بکە", en: "Book on WhatsApp" },
   walkIn: { ar: "أو تعال مباشرة — الدور عادةً أقل من عشرين دقيقة.", ckb: "یان ڕاستەوخۆ وەرە — چاوەڕوانییەکە زۆرجار لە بیست خولەک کەمترە.", en: "Or just walk in — the wait is usually under twenty minutes." },
+  /* Photographs. Empty renders the gradient placeholder — see
+     public/demos/README.md for what to drop in and where. */
+  heroPhoto: undefined as Photo | undefined,
 };
 
 /* ========================================================= nail studio === */
@@ -121,7 +141,12 @@ export const NAILS = {
     { day: { ar: "الخميس", ckb: "پێنجشەممە", en: "Thursday" }, time: { ar: "10:00 ص – 6:00 م", ckb: "10:00 – 18:00", en: "10:00 – 18:00" } },
     { day: { ar: "الجمعة", ckb: "هەینی", en: "Friday" }, time: { ar: "مغلق", ckb: "داخراو", en: "Closed" } },
   ],
-  address: { ar: "شارع 60 المتري، بناية النور، الطابق الأول\nأربيل", ckb: "شەقامی 60 مەتری، باڵەخانەی نوور، نهۆمی یەکەم\\nهەولێر", en: "60m Street, Al-Noor building, first floor\nErbil" },
+  address: { ar: "شارع 60 المتري، بناية النور، الطابق الأول\nأربيل", ckb: "شەقامی 60 مەتری، باڵەخانەی نوور، نهۆمی یەکەم\nهەولێر", en: "60m Street, Al-Noor building, first floor\nErbil" },
+  /* Photographs. The gallery is this business's strongest sales tool, so it
+     is the first place worth spending real pictures on. Any number from zero
+     to six; the rest of the grid stays gradient. */
+  heroPhoto: undefined as Photo | undefined,
+  gallery: [] as Photo[],
 };
 
 /* ========================================================== restaurant === */
@@ -236,4 +261,9 @@ export const REST = {
       hours: { ar: "يوميًا 1:00 ظهرًا – 11:00 مساءً", ckb: "ڕۆژانە 13:00 – 23:00", en: "Daily 13:00 – 23:00" },
     },
   ],
+  /* Photographs. Food carries a restaurant page further than anything else on
+     it, so the gallery is worth doing properly. Up to six. */
+  storyPhoto: undefined as Photo | undefined,
+  eventsPhoto: undefined as Photo | undefined,
+  gallery: [] as Photo[],
 };

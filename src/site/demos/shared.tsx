@@ -12,12 +12,13 @@
  * are common.
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "../router";
 import { useLang } from "../i18n";
 import { LangSwitch } from "../LangSwitch";
 import type { Copy } from "../strings";
+import type { Photo } from "./content";
 
 /**
  * The strip that marks a page as a demo.
@@ -76,31 +77,61 @@ export function useCopy() {
 }
 
 /**
- * Stand-in for a photograph.
+ * A photograph, or a placeholder standing in for one.
  *
- * These demos ship without real photography — a barbershop that does not
- * exist has none. Rather than stretch a stock image over it, each tile is a
- * generated gradient, which reads as an intentional placeholder in a mockup
- * instead of pretending to be a photo of something.
+ * Pass a `photo` and it renders that file. Leave it off and the tile falls
+ * back to a gradient in the demo's own palette, which reads as a deliberate
+ * placeholder in a mockup rather than pretending to be a picture of something.
+ *
+ * The fallback is not only for slots nobody has filled yet: if a file is
+ * missing or fails to load in a visitor's browser, the tile quietly becomes a
+ * gradient again instead of showing a broken-image icon on a page a prospect
+ * is judging the work by.
+ *
+ * The gradient keeps its own dimensions, so swapping a photo in never moves
+ * the rest of the page.
  */
 export function PhotoTile({
   from,
   to,
+  photo,
   className = "",
   ratio = "aspect-[4/3]",
 }: {
   from: string;
   to: string;
+  /** A real photograph. Omit for the gradient placeholder. */
+  photo?: Photo;
   className?: string;
   ratio?: string;
 }) {
+  const c = useCopy();
+  const [failed, setFailed] = useState(false);
+  const showPhoto = photo && !failed;
+
   return (
     <div
       className={`${ratio} overflow-hidden rounded-2xl ${className}`}
       style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
-      aria-hidden="true"
+      /* Only hide the tile from a screen reader while it is a bare gradient —
+         a real photograph is content and carries its own alt text. */
+      aria-hidden={showPhoto ? undefined : "true"}
     >
-      <div className="h-full w-full bg-[radial-gradient(120%_90%_at_20%_10%,rgba(255,255,255,0.22),transparent_60%)]" />
+      {showPhoto ? (
+        <img
+          src={photo.src}
+          alt={c(photo.alt)}
+          onError={() => setFailed(true)}
+          /* Lazy by default: the galleries sit well below the fold, and a
+             restaurant page with six photos should not make a visitor on a
+             phone wait for all of them before seeing the menu. */
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="h-full w-full bg-[radial-gradient(120%_90%_at_20%_10%,rgba(255,255,255,0.22),transparent_60%)]" />
+      )}
     </div>
   );
 }
