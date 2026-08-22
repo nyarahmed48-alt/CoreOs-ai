@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoreOS Game Inventory System - Portable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .no-copy {
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+  }
+  .watermark-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.10;
+  }
+  .tag-chip {
+    cursor: pointer;
+    transition: all .12s ease;
+  }
+  .tag-chip[data-active="true"] {
+    background: #4f46e5;
+    color: #fff;
+    border-color: #4f46e5;
+  }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: absolute; top: 0; left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body class="h-full font-sans text-slate-800 bg-[#fafafa]">
+
+<div class="flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-sky-500 rounded-lg shadow-lg">
+          <i data-lucide="gamepad-2" class="h-6 w-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-extrabold tracking-tight text-white font-sans">CoreOS Game Inventory</h1>
+            <span class="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold">PORTABLE V1.0</span>
+          </div>
+          <p class="text-xs text-slate-400">Local inventory, suppliers &amp; receipts &mdash; runs entirely in your browser</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-950/50 border border-indigo-500/30 px-3 py-1.5 rounded-md flex items-center gap-2">
+          <i data-lucide="user" class="h-3.5 w-3.5 text-indigo-300"></i>
+          <span class="text-[11px] font-mono tracking-wider text-indigo-300 font-bold">OPERATOR: ANONYMOUS</span>
+        </div>
+        <button onclick="exportBackup()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 border border-slate-700">
+          <i data-lucide="download" class="h-3.5 w-3.5"></i><span>Backup</span>
+        </button>
+        <label class="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5">
+          <i data-lucide="upload" class="h-3.5 w-3.5"></i><span>Restore</span>
+          <input type="file" accept="application/json" class="hidden" onchange="importBackup(event)">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notice -->
+  <div class="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-2 text-center">
+    This file stores everything locally in your browser (IndexedDB). Nothing is sent to a server. Use <strong>Backup</strong> regularly &mdash; clearing browser data will erase your records.
+  </div>
+
+  <!-- Tabs -->
+  <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <div class="flex gap-2 border-b border-slate-200" id="tabNav">
+      <button data-tab="inventory" class="tab-btn px-4 py-2.5 text-sm font-bold rounded-t-lg flex items-center gap-2" onclick="switchTab('inventory')">
+        <i data-lucide="package" class="h-4 w-4"></i> Inventory
+      </button>
+      <button data-tab="suppliers" class="tab-btn px-4 py-2.5 text-sm font-bold rounded-t-lg flex items-center gap-2" onclick="switchTab('suppliers')">
+        <i data-lucide="truck" class="h-4 w-4"></i> Suppliers
+      </button>
+      <button data-tab="receipts" class="tab-btn px-4 py-2.5 text-sm font-bold rounded-t-lg flex items-center gap-2" onclick="switchTab('receipts')">
+        <i data-lucide="receipt" class="h-4 w-4"></i> Receipts
+      </button>
+    </div>
+  </div>
+
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow">
+
+    <!-- ============ INVENTORY TAB ============ -->
+    <section id="tab-inventory" class="tab-section">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 class="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="plus-circle" class="h-4 w-4 text-indigo-600"></i>
+            <span id="invFormTitle">Add Inventory Entry</span>
+          </h2>
+          <form id="invForm" onsubmit="return saveInventory(event)" class="space-y-3">
+            <input type="hidden" id="inv_id">
+            <div>
+              <label class="text-xs font-bold text-slate-600">Name (buyer / customer)</label>
+              <input required id="inv_name" type="text" placeholder="e.g. Alex Carter" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Price</label>
+              <input required id="inv_price" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Game Name</label>
+              <input required id="inv_game" type="text" placeholder="e.g. Elden Ring" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Console Type</label>
+              <select id="inv_console" onchange="toggleConsoleOther()" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+                <option>PlayStation 5</option>
+                <option>PlayStation 4</option>
+                <option>Xbox Series X|S</option>
+                <option>Xbox One</option>
+                <option>Nintendo Switch</option>
+                <option>PC</option>
+                <option>Retro</option>
+                <option value="Other">Other</option>
+              </select>
+              <input id="inv_console_other" type="text" placeholder="Specify console" class="hidden mt-2 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Date</label>
+              <input required id="inv_date" type="date" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Notes <span class="font-normal text-slate-400">(optional)</span></label>
+              <textarea id="inv_notes" rows="2" placeholder="Any extra details..." class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"></textarea>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Photo <span class="font-normal text-slate-400">(optional, stored as an attachment)</span></label>
+              <input id="inv_photo" type="file" accept="image/*" class="mt-1 w-full text-xs">
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2.5 rounded-lg transition-all">Save Entry</button>
+              <button type="button" onclick="resetInventoryForm()" class="px-3 py-2.5 text-sm font-bold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-50">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-slate-800">Inventory Records</h2>
+            <span class="text-xs text-slate-400" id="invCount">0 entries</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                  <th class="text-left px-4 py-2.5">Name</th>
+                  <th class="text-left px-4 py-2.5">Game</th>
+                  <th class="text-left px-4 py-2.5">Console</th>
+                  <th class="text-left px-4 py-2.5">Price</th>
+                  <th class="text-left px-4 py-2.5">Date</th>
+                  <th class="text-right px-4 py-2.5">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+            <div id="invEmpty" class="hidden text-center text-sm text-slate-400 py-10">No inventory entries yet. Add one on the left.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SUPPLIERS TAB ============ -->
+    <section id="tab-suppliers" class="tab-section hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 class="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="plus-circle" class="h-4 w-4 text-sky-600"></i>
+            <span id="supFormTitle">Add Supplier / Vendor</span>
+          </h2>
+          <form id="supForm" onsubmit="return saveSupplier(event)" class="space-y-3">
+            <input type="hidden" id="sup_id">
+            <div>
+              <label class="text-xs font-bold text-slate-600">Vendor / Supplier Name</label>
+              <input required id="sup_vendor" type="text" placeholder="e.g. Northgate Games Wholesale" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Game Type(s) <span class="font-normal text-slate-400">(select any number)</span></label>
+              <div id="sup_gametypes" class="mt-1 flex flex-wrap gap-1.5"></div>
+              <div class="flex gap-1.5 mt-2">
+                <input id="sup_customtype" type="text" placeholder="Add custom type + Enter" class="flex-1 text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomGameType();}">
+                <button type="button" onclick="addCustomGameType()" class="text-xs font-bold text-sky-600 border border-sky-200 rounded-lg px-2.5">Add</button>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Name (item / shipment)</label>
+              <input required id="sup_name" type="text" placeholder="e.g. Q3 Racing Titles Batch" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Date</label>
+              <input required id="sup_date" type="date" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">Amount</label>
+              <input required id="sup_amount" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500">
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button type="submit" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold py-2.5 rounded-lg transition-all">Save Supplier</button>
+              <button type="button" onclick="resetSupplierForm()" class="px-3 py-2.5 text-sm font-bold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-50">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-slate-800">Supplier Records</h2>
+            <span class="text-xs text-slate-400" id="supCount">0 entries</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                  <th class="text-left px-4 py-2.5">Vendor</th>
+                  <th class="text-left px-4 py-2.5">Types</th>
+                  <th class="text-left px-4 py-2.5">Name</th>
+                  <th class="text-left px-4 py-2.5">Date</th>
+                  <th class="text-left px-4 py-2.5">Amount</th>
+                  <th class="text-right px-4 py-2.5">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="supTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+            <div id="supEmpty" class="hidden text-center text-sm text-slate-400 py-10">No supplier entries yet. Add one on the left.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RECEIPTS TAB ============ -->
+    <section id="tab-receipts" class="tab-section hidden">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-sm font-extrabold text-slate-800">Receipts</h2>
+          <span class="text-xs text-slate-400" id="rcpCount">0 receipts</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+              <tr>
+                <th class="text-left px-4 py-2.5">Receipt Code</th>
+                <th class="text-left px-4 py-2.5">Customer</th>
+                <th class="text-left px-4 py-2.5">Game</th>
+                <th class="text-left px-4 py-2.5">Price</th>
+                <th class="text-left px-4 py-2.5">Issued</th>
+                <th class="text-right px-4 py-2.5">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rcpTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+          <div id="rcpEmpty" class="hidden text-center text-sm text-slate-400 py-10">No receipts yet. Generate one from an Inventory entry.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-auto py-6">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 space-y-1">
+      <p class="font-bold text-slate-500">CoreOS Game Inventory System &mdash; Portable Edition</p>
+      <p>Powered by CoreOs and CoreOs.ai.</p>
+    </div>
+  </footer>
+</div>
+
+<!-- ============ RECEIPT MODAL ============ -->
+<div id="receiptModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+        <i data-lucide="receipt" class="h-4 w-4 text-indigo-600"></i> Receipt
+      </h3>
+      <button onclick="closeReceiptModal()" class="text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="h-5 w-5"></i>
+      </button>
+    </div>
+
+    <div class="p-5">
+      <div id="printArea">
+        <div id="receiptContent" class="no-copy relative border border-slate-200 rounded-xl p-6 bg-white overflow-hidden" oncontextmenu="return blockCopyEvent(event)">
+          <canvas id="watermarkCanvas" class="watermark-canvas"></canvas>
+          <div class="relative">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-base font-extrabold text-slate-800">CoreOS Game Inventory</p>
+                <p class="text-[11px] text-slate-400">Official Sales Receipt</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[11px] text-slate-400">Receipt Code</p>
+                <p class="text-xs font-mono font-bold text-indigo-600" id="rc_code"></p>
+              </div>
+            </div>
+            <div class="border-t border-b border-slate-100 py-3 space-y-1.5 text-sm">
+              <div class="flex justify-between"><span class="text-slate-400">Customer</span><span class="font-semibold text-slate-700" id="rc_name"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Game</span><span class="font-semibold text-slate-700" id="rc_game"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Console</span><span class="font-semibold text-slate-700" id="rc_console"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Purchase Date</span><span class="font-semibold text-slate-700" id="rc_date"></span></div>
+              <div class="flex justify-between" id="rc_notes_row"><span class="text-slate-400">Notes</span><span class="font-semibold text-slate-700 text-right" id="rc_notes"></span></div>
+            </div>
+            <div class="flex justify-between items-center py-3">
+              <span class="text-sm font-bold text-slate-600">Total</span>
+              <span class="text-xl font-extrabold text-indigo-600" id="rc_price"></span>
+            </div>
+            <div class="border-t border-slate-100 pt-3">
+              <canvas id="sealCanvas" height="60"></canvas>
+              <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                The verification code above is generated from this receipt's exact details.
+                If any detail is altered, the code no longer matches &mdash; that mismatch is what
+                marks a copy as inauthentic. Issued by <strong>Anonymous</strong> &middot; <span id="rc_issued"></span>.
+              </p>
+            </div>
+            <p class="text-center text-[10px] text-slate-400 mt-4 pt-3 border-t border-slate-100">Powered by CoreOs and CoreOs.ai.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-4">
+        <button onclick="downloadReceipt()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+          <i data-lucide="download" class="h-3.5 w-3.5"></i> Download PNG
+        </button>
+        <button onclick="window.print()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+          <i data-lucide="printer" class="h-3.5 w-3.5"></i> Print
+        </button>
+        <button onclick="shareReceipt()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+          <i data-lucide="share-2" class="h-3.5 w-3.5"></i> Share
+        </button>
+      </div>
+      <p class="text-[11px] text-center text-amber-600 mt-2">Text on this receipt can't be selected or copied &mdash; use Download, Print or Share instead.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-lg z-[60]"></div>
+
+<style>
+  .tab-btn { color: #64748b; border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+</style>
+
+<script>
+/* ================= IndexedDB: "Database" = structured records, "Storage" = file attachments ================= */
+const DB_NAME = "GameInventoryDB";
+const DB_VERSION = 1;
+let dbPromise = null;
+
+function openDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("inventory")) db.createObjectStore("inventory", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("receipts")) db.createObjectStore("receipts", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+async function dbGetAll(store) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbPut(store, value) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve(value);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbDelete(store, id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGet(store, id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function fmtMoney(n) {
+  const num = Number(n) || 0;
+  return "$" + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDate(d) {
+  if (!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.add("hidden"), 2400);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================= Tabs ================= */
+function switchTab(name) {
+  document.querySelectorAll(".tab-section").forEach(s => s.classList.add("hidden"));
+  document.getElementById("tab-" + name).classList.remove("hidden");
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+}
+
+/* ================= Inventory ================= */
+function toggleConsoleOther() {
+  const sel = document.getElementById("inv_console");
+  document.getElementById("inv_console_other").classList.toggle("hidden", sel.value !== "Other");
+}
+
+function resetInventoryForm() {
+  document.getElementById("invForm").reset();
+  document.getElementById("inv_id").value = "";
+  document.getElementById("invFormTitle").textContent = "Add Inventory Entry";
+  toggleConsoleOther();
+}
+
+async function saveInventory(evt) {
+  evt.preventDefault();
+  const id = document.getElementById("inv_id").value || uid();
+  const consoleSel = document.getElementById("inv_console").value;
+  const consoleType = consoleSel === "Other" ? (document.getElementById("inv_console_other").value.trim() || "Other") : consoleSel;
+
+  let photoId = null;
+  const existing = document.getElementById("inv_id").value ? await dbGet("inventory", id) : null;
+  if (existing) photoId = existing.photoId || null;
+
+  const file = document.getElementById("inv_photo").files[0];
+  if (file) {
+    photoId = photoId || uid();
+    const dataUrl = await fileToDataUrl(file);
+    await dbPut("attachments", { id: photoId, name: file.name, type: file.type, dataUrl });
+  }
+
+  const record = {
+    id,
+    name: document.getElementById("inv_name").value.trim(),
+    price: parseFloat(document.getElementById("inv_price").value) || 0,
+    gameName: document.getElementById("inv_game").value.trim(),
+    consoleType,
+    date: document.getElementById("inv_date").value,
+    notes: document.getElementById("inv_notes").value.trim(),
+    photoId,
+    createdAt: existing ? existing.createdAt : new Date().toISOString(),
+  };
+
+  await dbPut("inventory", record);
+  resetInventoryForm();
+  await renderInventory();
+  toast(existing ? "Inventory entry updated" : "Inventory entry added");
+  return false;
+}
+
+function editInventory(id) {
+  dbGet("inventory", id).then(rec => {
+    if (!rec) return;
+    document.getElementById("inv_id").value = rec.id;
+    document.getElementById("inv_name").value = rec.name;
+    document.getElementById("inv_price").value = rec.price;
+    document.getElementById("inv_game").value = rec.gameName;
+    document.getElementById("inv_date").value = rec.date;
+    document.getElementById("inv_notes").value = rec.notes || "";
+    const sel = document.getElementById("inv_console");
+    const knownOptions = Array.from(sel.options).map(o => o.value);
+    if (knownOptions.includes(rec.consoleType)) {
+      sel.value = rec.consoleType;
+    } else {
+      sel.value = "Other";
+      document.getElementById("inv_console_other").value = rec.consoleType;
+    }
+    toggleConsoleOther();
+    document.getElementById("invFormTitle").textContent = "Edit Inventory Entry";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+async function deleteInventory(id) {
+  if (!confirm("Delete this inventory entry? Its receipts (if any) stay in the Receipts tab.")) return;
+  await dbDelete("inventory", id);
+  await renderInventory();
+  toast("Inventory entry deleted");
+}
+
+async function renderInventory() {
+  const items = (await dbGetAll("inventory")).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const body = document.getElementById("invTableBody");
+  body.innerHTML = "";
+  document.getElementById("invCount").textContent = items.length + " entr" + (items.length === 1 ? "y" : "ies");
+  document.getElementById("invEmpty").classList.toggle("hidden", items.length > 0);
+
+  for (const it of items) {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="px-4 py-2.5 font-semibold text-slate-700">${escapeHtml(it.name)}</td>
+      <td class="px-4 py-2.5">${escapeHtml(it.gameName)}</td>
+      <td class="px-4 py-2.5 text-slate-500">${escapeHtml(it.consoleType)}</td>
+      <td class="px-4 py-2.5 font-mono">${fmtMoney(it.price)}</td>
+      <td class="px-4 py-2.5 text-slate-500">${fmtDate(it.date)}</td>
+      <td class="px-4 py-2.5 text-right whitespace-nowrap">
+        <button onclick="generateReceipt('${it.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="Generate Receipt"><i data-lucide="receipt" class="h-4 w-4 inline"></i></button>
+        <button onclick="editInventory('${it.id}')" class="text-slate-400 hover:text-slate-700 mr-2" title="Edit"><i data-lucide="pencil" class="h-4 w-4 inline"></i></button>
+        <button onclick="deleteInventory('${it.id}')" class="text-rose-400 hover:text-rose-600" title="Delete"><i data-lucide="trash-2" class="h-4 w-4 inline"></i></button>
+      </td>`;
+    body.appendChild(tr);
+  }
+  safeIcons();
+}
+
+/* ================= Suppliers ================= */
+const GAME_TYPE_PRESETS = ["Action", "Adventure", "RPG", "Shooter", "Sports", "Racing", "Puzzle", "Strategy", "Simulation", "Horror", "Fighting", "Platformer"];
+let selectedGameTypes = new Set();
+
+function renderGameTypeChips() {
+  const wrap = document.getElementById("sup_gametypes");
+  wrap.innerHTML = "";
+  const allTypes = Array.from(new Set([...GAME_TYPE_PRESETS, ...selectedGameTypes]));
+  for (const t of allTypes) {
+    const active = selectedGameTypes.has(t);
+    const chip = document.createElement("span");
+    chip.className = "tag-chip text-[11px] font-semibold px-2.5 py-1 rounded-full border border-slate-300 text-slate-600";
+    chip.dataset.active = active ? "true" : "false";
+    chip.textContent = t;
+    chip.onclick = () => {
+      if (selectedGameTypes.has(t)) selectedGameTypes.delete(t); else selectedGameTypes.add(t);
+      renderGameTypeChips();
+    };
+    wrap.appendChild(chip);
+  }
+}
+
+function addCustomGameType() {
+  const input = document.getElementById("sup_customtype");
+  const val = input.value.trim();
+  if (!val) return;
+  selectedGameTypes.add(val);
+  input.value = "";
+  renderGameTypeChips();
+}
+
+function resetSupplierForm() {
+  document.getElementById("supForm").reset();
+  document.getElementById("sup_id").value = "";
+  document.getElementById("supFormTitle").textContent = "Add Supplier / Vendor";
+  selectedGameTypes = new Set();
+  renderGameTypeChips();
+}
+
+async function saveSupplier(evt) {
+  evt.preventDefault();
+  if (selectedGameTypes.size === 0) {
+    toast("Pick at least one game type");
+    return false;
+  }
+  const id = document.getElementById("sup_id").value || uid();
+  const existing = document.getElementById("sup_id").value ? await dbGet("suppliers", id) : null;
+  const record = {
+    id,
+    vendorName: document.getElementById("sup_vendor").value.trim(),
+    gameTypes: Array.from(selectedGameTypes),
+    name: document.getElementById("sup_name").value.trim(),
+    date: document.getElementById("sup_date").value,
+    amount: parseFloat(document.getElementById("sup_amount").value) || 0,
+    createdAt: existing ? existing.createdAt : new Date().toISOString(),
+  };
+  await dbPut("suppliers", record);
+  resetSupplierForm();
+  await renderSuppliers();
+  toast(existing ? "Supplier updated" : "Supplier added");
+  return false;
+}
+
+function editSupplier(id) {
+  dbGet("suppliers", id).then(rec => {
+    if (!rec) return;
+    document.getElementById("sup_id").value = rec.id;
+    document.getElementById("sup_vendor").value = rec.vendorName;
+    document.getElementById("sup_name").value = rec.name;
+    document.getElementById("sup_date").value = rec.date;
+    document.getElementById("sup_amount").value = rec.amount;
+    selectedGameTypes = new Set(rec.gameTypes || []);
+    renderGameTypeChips();
+    document.getElementById("supFormTitle").textContent = "Edit Supplier / Vendor";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+async function deleteSupplier(id) {
+  if (!confirm("Delete this supplier entry?")) return;
+  await dbDelete("suppliers", id);
+  await renderSuppliers();
+  toast("Supplier deleted");
+}
+
+async function renderSuppliers() {
+  const items = (await dbGetAll("suppliers")).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const body = document.getElementById("supTableBody");
+  body.innerHTML = "";
+  document.getElementById("supCount").textContent = items.length + " entr" + (items.length === 1 ? "y" : "ies");
+  document.getElementById("supEmpty").classList.toggle("hidden", items.length > 0);
+
+  for (const it of items) {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="px-4 py-2.5 font-semibold text-slate-700">${escapeHtml(it.vendorName)}</td>
+      <td class="px-4 py-2.5">${(it.gameTypes || []).map(t => `<span class="inline-block text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-2 py-0.5 mr-1 mb-1">${escapeHtml(t)}</span>`).join("")}</td>
+      <td class="px-4 py-2.5">${escapeHtml(it.name)}</td>
+      <td class="px-4 py-2.5 text-slate-500">${fmtDate(it.date)}</td>
+      <td class="px-4 py-2.5 font-mono">${fmtMoney(it.amount)}</td>
+      <td class="px-4 py-2.5 text-right whitespace-nowrap">
+        <button onclick="editSupplier('${it.id}')" class="text-slate-400 hover:text-slate-700 mr-2" title="Edit"><i data-lucide="pencil" class="h-4 w-4 inline"></i></button>
+        <button onclick="deleteSupplier('${it.id}')" class="text-rose-400 hover:text-rose-600" title="Delete"><i data-lucide="trash-2" class="h-4 w-4 inline"></i></button>
+      </td>`;
+    body.appendChild(tr);
+  }
+  safeIcons();
+}
+
+/* ================= Receipts ================= */
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const hashBuf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function generateReceipt(inventoryId) {
+  const inv = await dbGet("inventory", inventoryId);
+  if (!inv) return;
+
+  const id = uid();
+  const receiptCode = "RCPT-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const issuedAt = new Date().toISOString();
+
+  const canonical = JSON.stringify({
+    receiptCode, inventoryId, name: inv.name, price: inv.price, gameName: inv.gameName,
+    consoleType: inv.consoleType, date: inv.date, notes: inv.notes || "", issuedAt,
+  });
+  const verificationHash = await sha256Hex(canonical);
+
+  const receipt = {
+    id, receiptCode, inventoryId,
+    name: inv.name, price: inv.price, gameName: inv.gameName, consoleType: inv.consoleType,
+    date: inv.date, notes: inv.notes || "", photoId: inv.photoId || null,
+    verificationHash, issuedAt,
+  };
+
+  await dbPut("receipts", receipt);
+  await renderReceipts();
+  switchTab("receipts");
+  toast("Receipt generated");
+  openReceiptModal(id);
+}
+
+async function renderReceipts() {
+  const items = (await dbGetAll("receipts")).sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || ""));
+  const body = document.getElementById("rcpTableBody");
+  body.innerHTML = "";
+  document.getElementById("rcpCount").textContent = items.length + " receipt" + (items.length === 1 ? "" : "s");
+  document.getElementById("rcpEmpty").classList.toggle("hidden", items.length > 0);
+
+  for (const r of items) {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="px-4 py-2.5 font-mono text-xs font-bold text-indigo-600">${escapeHtml(r.receiptCode)}</td>
+      <td class="px-4 py-2.5 font-semibold text-slate-700">${escapeHtml(r.name)}</td>
+      <td class="px-4 py-2.5">${escapeHtml(r.gameName)}</td>
+      <td class="px-4 py-2.5 font-mono">${fmtMoney(r.price)}</td>
+      <td class="px-4 py-2.5 text-slate-500">${fmtDate(r.date)}</td>
+      <td class="px-4 py-2.5 text-right whitespace-nowrap">
+        <button onclick="openReceiptModal('${r.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="View"><i data-lucide="eye" class="h-4 w-4 inline"></i></button>
+        <button onclick="deleteReceipt('${r.id}')" class="text-rose-400 hover:text-rose-600" title="Delete"><i data-lucide="trash-2" class="h-4 w-4 inline"></i></button>
+      </td>`;
+    body.appendChild(tr);
+  }
+  safeIcons();
+}
+
+async function deleteReceipt(id) {
+  if (!confirm("Delete this receipt?")) return;
+  await dbDelete("receipts", id);
+  await renderReceipts();
+  toast("Receipt deleted");
+}
+
+let currentReceiptId = null;
+
+async function openReceiptModal(id) {
+  const r = await dbGet("receipts", id);
+  if (!r) return;
+  currentReceiptId = id;
+
+  document.getElementById("rc_code").textContent = r.receiptCode;
+  document.getElementById("rc_name").textContent = r.name;
+  document.getElementById("rc_game").textContent = r.gameName;
+  document.getElementById("rc_console").textContent = r.consoleType;
+  document.getElementById("rc_date").textContent = fmtDate(r.date);
+  document.getElementById("rc_price").textContent = fmtMoney(r.price);
+  document.getElementById("rc_issued").textContent = new Date(r.issuedAt).toLocaleString();
+
+  const notesRow = document.getElementById("rc_notes_row");
+  if (r.notes) {
+    notesRow.classList.remove("hidden");
+    document.getElementById("rc_notes").textContent = r.notes;
+  } else {
+    notesRow.classList.add("hidden");
+  }
+
+  drawWatermark();
+  drawSeal(r.verificationHash);
+  wireCopyProtection();
+
+  document.getElementById("receiptModal").classList.remove("hidden");
+  safeIcons();
+}
+
+function closeReceiptModal() {
+  document.getElementById("receiptModal").classList.add("hidden");
+  currentReceiptId = null;
+}
+
+function drawWatermark() {
+  const canvas = document.getElementById("watermarkCanvas");
+  const parent = canvas.parentElement;
+  const w = parent.clientWidth || 420;
+  const h = parent.clientHeight || 420;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-Math.PI / 8);
+  ctx.font = "bold 16px monospace";
+  ctx.fillStyle = "#4f46e5";
+  ctx.textAlign = "center";
+  const label = "COREOS • AUTHENTIC";
+  for (let y = -h; y < h; y += 46) {
+    ctx.fillText(label, 0, y);
+  }
+  ctx.restore();
+}
+
+/* Deterministic bar pattern derived from the verification hash, rendered on
+   canvas (not text) so the mark itself can't be lifted by selecting text. */
+function drawSeal(hashHex) {
+  const canvas = document.getElementById("sealCanvas");
+  const w = canvas.parentElement.clientWidth || 400;
+  canvas.width = w;
+  canvas.height = 60;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, 60);
+
+  const bytes = hashHex.match(/.{2}/g).slice(0, 40);
+  const barW = w / bytes.length;
+  ctx.fillStyle = "#0f172a";
+  bytes.forEach((byte, i) => {
+    const v = parseInt(byte, 16);
+    const barHeight = 14 + (v % 26);
+    ctx.fillRect(i * barW, 0, Math.max(barW - 1, 1), barHeight);
+  });
+
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = "#4f46e5";
+  ctx.textAlign = "left";
+  ctx.fillText("VERIFY: " + hashHex.slice(0, 16).toUpperCase(), 0, 44);
+}
+
+function blockCopyEvent(e) {
+  e.preventDefault();
+  toast("Copying is disabled on receipts — use Download, Print or Share");
+  return false;
+}
+
+/* CSS user-select:none stops selection in normal use, but these listeners
+   also stop a programmatic/keyboard copy (Ctrl/Cmd+C) on the receipt itself. */
+function wireCopyProtection() {
+  const node = document.getElementById("receiptContent");
+  if (!node || node.dataset.copyProtected) return;
+  node.dataset.copyProtected = "true";
+  ["copy", "cut"].forEach(evt => node.addEventListener(evt, blockCopyEvent));
+  node.addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && (k === "c" || k === "x")) blockCopyEvent(e);
+  });
+}
+
+async function downloadReceipt() {
+  if (typeof html2canvas === "undefined") {
+    toast("Download needs the export library, which needs internet access — try Print instead");
+    return;
+  }
+  const node = document.getElementById("receiptContent");
+  const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const r = currentReceiptId ? document.getElementById("rc_code").textContent : "receipt";
+    link.download = `${r}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast("Receipt downloaded");
+  });
+}
+
+async function shareReceipt() {
+  if (typeof html2canvas === "undefined") {
+    toast("Share needs the export library, which needs internet access — try Print instead");
+    return;
+  }
+  const node = document.getElementById("receiptContent");
+  const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
+  canvas.toBlob(async blob => {
+    const code = document.getElementById("rc_code").textContent;
+    const file = new File([blob], `${code}.png`, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "Receipt " + code, text: "Powered by CoreOs and CoreOs.ai." });
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${code}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast("Sharing isn't supported here — downloaded instead");
+  });
+}
+
+/* ================= Backup / Restore ================= */
+async function exportBackup() {
+  const [inventory, suppliers, receipts, attachments] = await Promise.all([
+    dbGetAll("inventory"), dbGetAll("suppliers"), dbGetAll("receipts"), dbGetAll("attachments"),
+  ]);
+  const data = {
+    systemHeader: "CoreOS Game Inventory System Portable Backup",
+    timestamp: new Date().toISOString(),
+    inventory, suppliers, receipts, attachments,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `game-inventory-backup-${Date.now()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  toast("Backup downloaded");
+}
+
+async function importBackup(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  if (!confirm("Restoring will merge this backup into your current data (matching IDs are overwritten). Continue?")) {
+    evt.target.value = "";
+    return;
+  }
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    for (const rec of data.inventory || []) await dbPut("inventory", rec);
+    for (const rec of data.suppliers || []) await dbPut("suppliers", rec);
+    for (const rec of data.receipts || []) await dbPut("receipts", rec);
+    for (const rec of data.attachments || []) await dbPut("attachments", rec);
+    await renderInventory();
+    await renderSuppliers();
+    await renderReceipts();
+    toast("Backup restored");
+  } catch (err) {
+    toast("Restore failed: invalid backup file");
+  }
+  evt.target.value = "";
+}
+
+/* ================= Utils ================= */
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+/* The icon library loads from a CDN; if it's slow, blocked, or offline this
+   silently no-ops instead of throwing and aborting whatever called it. */
+function safeIcons() {
+  try {
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    /* icons are cosmetic — never let this break data rendering */
+  }
+}
+
+/* ================= Boot ================= */
+window.addEventListener("DOMContentLoaded", async () => {
+  switchTab("inventory");
+  document.getElementById("inv_date").valueAsDate = new Date();
+  document.getElementById("sup_date").valueAsDate = new Date();
+  renderGameTypeChips();
+  await renderInventory();
+  await renderSuppliers();
+  await renderReceipts();
+  safeIcons();
+});
+</script>
+</body>
+</html>
