@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>حجز طاولة — Reserve a Table</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🍽️</text></svg>" />
+<!--
+  Reservation demo — customer booking page. One file, no build step.
+
+  Setup:
+  1. Create a Supabase project and run schema.sql (next to this file) in its
+     SQL editor — creates the `reservations` table + RLS policies + Realtime.
+  2. Fill in SUPABASE_URL / SUPABASE_ANON_KEY below (search "TODO").
+  3. Open this file in a browser, or serve the folder with any static server.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
+
+  :root {
+    --bg: #0f172a;
+    --bg-raised: #141d33;
+    --bg-card: #16213c;
+    --border: #263252;
+    --border-soft: #1c2540;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-faint: #64748b;
+    --gold: #eab308;
+    --gold-soft: rgba(234, 179, 8, 0.14);
+    --emerald: #10b981;
+    --emerald-soft: rgba(16, 185, 129, 0.14);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --radius: 16px;
+    --shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(60rem 40rem at 15% -10%, rgba(234, 179, 8, 0.08), transparent 60%),
+      radial-gradient(50rem 35rem at 90% 0%, rgba(16, 185, 129, 0.08), transparent 62%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html[lang="ar"] body, html[lang="ar"] {
+    font-family: "Tajawal", "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  ::selection { background: var(--gold); color: #191207; }
+  button { font-family: inherit; }
+
+  .page { max-width: 560px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 28px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--gold), var(--emerald));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  .brand-sub { display: block; font-size: 11px; font-weight: 600; color: var(--text-faint); letter-spacing: 0.04em; }
+
+  .lang-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px; cursor: pointer; user-select: none;
+  }
+
+  .lang-toggle span {
+    padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    color: var(--text-faint); transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .lang-toggle span.active { background: var(--gold); color: #191207; }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px;
+  }
+
+  .hero-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--gold-soft); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 14px;
+  }
+
+  h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .subtitle { color: var(--text-muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 24px; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 7px; }
+  .field .optional-tag { font-weight: 500; color: var(--text-faint); text-transform: none; }
+
+  .field input {
+    width: 100%; background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; font-size: 15px; color: var(--text);
+    outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; font-family: inherit;
+  }
+
+  .field input::placeholder { color: var(--text-faint); }
+  .field input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .field-error { margin-top: 6px; font-size: 12.5px; color: var(--danger); display: none; }
+  .field.has-error .field-error { display: block; }
+  .field.has-error input { border-color: var(--danger); }
+
+  .submit-btn {
+    width: 100%; border: none; border-radius: 12px; padding: 14px 18px;
+    background: linear-gradient(135deg, var(--gold), #f0c33e); color: #191207;
+    font-size: 15.5px; font-weight: 800; cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.1s ease; margin-top: 6px;
+  }
+
+  .submit-btn:hover { opacity: 0.92; }
+  .submit-btn:active { transform: scale(0.99); }
+  .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .form-note { margin-top: 14px; font-size: 12.5px; color: var(--text-faint); text-align: center; }
+
+  .confirm { display: none; text-align: center; padding: 12px 4px 4px; }
+  .confirm.visible { display: block; }
+
+  .confirm-icon {
+    width: 60px; height: 60px; border-radius: 999px;
+    background: var(--emerald-soft); color: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 16px;
+  }
+
+  .confirm h2 { font-size: 20px; font-weight: 800; margin: 0 0 8px; }
+  .confirm p { color: var(--text-muted); font-size: 14.5px; margin: 0 0 20px; }
+
+  .confirm-summary {
+    text-align: start; background: var(--bg-raised); border: 1px solid var(--border-soft);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;
+  }
+
+  .confirm-summary div { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; }
+  .confirm-summary div + div { border-top: 1px dashed var(--border-soft); }
+  .confirm-summary span:first-child { color: var(--text-faint); }
+  .confirm-summary span:last-child { font-weight: 700; }
+
+  .secondary-btn {
+    width: 100%; border: 1px solid var(--border); background: transparent;
+    border-radius: 12px; padding: 12px 18px; color: var(--text);
+    font-size: 14.5px; font-weight: 700; cursor: pointer;
+  }
+
+  .secondary-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  .banner { display: none; border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.6; margin-bottom: 20px; }
+  .banner.visible { display: block; }
+  .banner-warn { background: var(--danger-soft); border: 1px solid rgba(248, 113, 113, 0.35); color: #fecaca; }
+  .banner code { background: rgba(0, 0, 0, 0.25); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+
+  .footer-note { margin-top: 24px; text-align: center; font-size: 12.5px; color: var(--text-faint); }
+
+  @media (max-width: 560px) {
+    .field-row { grid-template-columns: 1fr; }
+    .card { padding: 22px 18px; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🍽️</span>
+        <span>
+          <span data-i18n="brand.name">مطعم لومير</span>
+          <span class="brand-sub" data-i18n="brand.tagline">حجز طاولة فوري</span>
+        </span>
+      </div>
+      <button class="lang-toggle" id="lang-toggle" type="button" aria-label="Toggle language">
+        <span id="lang-ar-label" data-i18n="lang.ar">عربي</span>
+        <span id="lang-en-label" data-i18n="lang.en">EN</span>
+      </button>
+    </div>
+
+    <div id="config-banner" class="banner banner-warn">
+      <strong data-i18n="banner.setupTitle">Supabase غير متصل بعد</strong><br />
+      <span data-i18n="banner.setupBody">
+        عدّل قيم <code>SUPABASE_URL</code> و<code>SUPABASE_ANON_KEY</code> في أعلى ملف الحجز.
+      </span>
+    </div>
+
+    <div class="card">
+      <div id="form-view">
+        <div class="hero-icon">📅</div>
+        <h1 data-i18n="form.title">احجز طاولتك</h1>
+        <p class="subtitle" data-i18n="form.subtitle">املأ التفاصيل أدناه وسنؤكد حجزك فورًا.</p>
+
+        <form id="reservation-form" novalidate>
+          <div class="field-row">
+            <div class="field" id="field-date">
+              <label for="date" data-i18n="form.date">التاريخ</label>
+              <input type="date" id="date" name="date" required />
+              <div class="field-error" data-i18n="form.dateError">يرجى اختيار تاريخ صالح.</div>
+            </div>
+            <div class="field" id="field-time">
+              <label for="time" data-i18n="form.time">الوقت</label>
+              <input type="time" id="time" name="time" required />
+              <div class="field-error" data-i18n="form.timeError">يرجى اختيار وقت صالح.</div>
+            </div>
+          </div>
+
+          <div class="field" id="field-guests">
+            <label for="guests" data-i18n="form.guests">عدد الأشخاص</label>
+            <input type="number" id="guests" name="guests" min="1" max="50" step="1" placeholder="2" required />
+            <div class="field-error" data-i18n="form.guestsError">أدخل عدد أشخاص بين 1 و50.</div>
+          </div>
+
+          <div class="field" id="field-phone">
+            <label for="phone">
+              <span data-i18n="form.phone">رقم الهاتف</span>
+              <span class="optional-tag" data-i18n="form.optional">(اختياري)</span>
+            </label>
+            <input type="tel" id="phone" name="phone" data-i18n-placeholder="form.phonePlaceholder" placeholder="07xx xxx xxxx" />
+          </div>
+
+          <button type="submit" class="submit-btn" id="submit-btn" data-i18n="form.submit">تأكيد الحجز</button>
+          <p class="form-note" data-i18n="form.note">سيتم التواصل معك فقط إذا احتجنا لتأكيد أي تفاصيل.</p>
+        </form>
+      </div>
+
+      <div id="confirm-view" class="confirm">
+        <div class="confirm-icon">✓</div>
+        <h2 data-i18n="confirm.title">تم تأكيد حجزك!</h2>
+        <p data-i18n="confirm.body">نتطلع لاستقبالك. إليك تفاصيل الحجز:</p>
+
+        <div class="confirm-summary">
+          <div><span data-i18n="confirm.date">التاريخ</span><span id="confirm-date">—</span></div>
+          <div><span data-i18n="confirm.time">الوقت</span><span id="confirm-time">—</span></div>
+          <div><span data-i18n="confirm.guests">عدد الأشخاص</span><span id="confirm-guests">—</span></div>
+          <div><span data-i18n="confirm.phone">رقم الهاتف</span><span id="confirm-phone">—</span></div>
+        </div>
+
+        <button class="secondary-btn" id="new-reservation-btn" data-i18n="confirm.newBooking">إجراء حجز آخر</button>
+      </div>
+    </div>
+
+    <p class="footer-note" data-i18n="footer.note">حجز تجريبي — مدعوم بواسطة Supabase</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ---- TODO: fill in your Supabase project's values -----------------
+    // Dashboard -> Project Settings -> API. The anon key is meant to be
+    // public; access is controlled by the RLS policies in schema.sql, not
+    // by this key being secret.
+    const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR-PUBLIC-ANON-KEY";
+    // ---------------------------------------------------------------------
+
+    const STRINGS = {
+      ar: {
+        "brand.name": "مطعم لومير",
+        "brand.tagline": "حجز طاولة فوري",
+        "lang.ar": "عربي",
+        "lang.en": "EN",
+        "banner.setupTitle": "Supabase غير متصل بعد",
+        "banner.setupBody": 'عدّل قيم <code>SUPABASE_URL</code> و<code>SUPABASE_ANON_KEY</code> في أعلى ملف الحجز.',
+        "form.title": "احجز طاولتك",
+        "form.subtitle": "املأ التفاصيل أدناه وسنؤكد حجزك فورًا.",
+        "form.date": "التاريخ",
+        "form.dateError": "يرجى اختيار تاريخ صالح.",
+        "form.time": "الوقت",
+        "form.timeError": "يرجى اختيار وقت صالح.",
+        "form.guests": "عدد الأشخاص",
+        "form.guestsError": "أدخل عدد أشخاص بين 1 و50.",
+        "form.phone": "رقم الهاتف",
+        "form.optional": "(اختياري)",
+        "form.phonePlaceholder": "07xx xxx xxxx",
+        "form.submit": "تأكيد الحجز",
+        "form.submitting": "جارٍ الإرسال...",
+        "form.note": "سيتم التواصل معك فقط إذا احتجنا لتأكيد أي تفاصيل.",
+        "form.submitError": "تعذّر إرسال الحجز. حاول مرة أخرى.",
+        "confirm.title": "تم تأكيد حجزك!",
+        "confirm.body": "نتطلع لاستقبالك. إليك تفاصيل الحجز:",
+        "confirm.date": "التاريخ",
+        "confirm.time": "الوقت",
+        "confirm.guests": "عدد الأشخاص",
+        "confirm.phone": "رقم الهاتف",
+        "confirm.phoneNotProvided": "لم يُقدَّم",
+        "confirm.newBooking": "إجراء حجز آخر",
+        "footer.note": "حجز تجريبي — مدعوم بواسطة Supabase",
+      },
+      en: {
+        "brand.name": "Lumière Restaurant",
+        "brand.tagline": "Instant table booking",
+        "lang.ar": "عربي",
+        "lang.en": "EN",
+        "banner.setupTitle": "Supabase not connected yet",
+        "banner.setupBody": 'Fill in <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the booking file.',
+        "form.title": "Reserve your table",
+        "form.subtitle": "Fill in the details below and we'll confirm instantly.",
+        "form.date": "Date",
+        "form.dateError": "Please choose a valid date.",
+        "form.time": "Time",
+        "form.timeError": "Please choose a valid time.",
+        "form.guests": "Number of guests",
+        "form.guestsError": "Enter a guest count between 1 and 50.",
+        "form.phone": "Phone number",
+        "form.optional": "(optional)",
+        "form.phonePlaceholder": "07xx xxx xxxx",
+        "form.submit": "Confirm reservation",
+        "form.submitting": "Submitting...",
+        "form.note": "We'll only reach out if we need to confirm any details.",
+        "form.submitError": "Couldn't submit your reservation. Please try again.",
+        "confirm.title": "Reservation confirmed!",
+        "confirm.body": "We look forward to seeing you. Here are your details:",
+        "confirm.date": "Date",
+        "confirm.time": "Time",
+        "confirm.guests": "Guests",
+        "confirm.phone": "Phone",
+        "confirm.phoneNotProvided": "Not provided",
+        "confirm.newBooking": "Make another reservation",
+        "footer.note": "Demo booking — powered by Supabase",
+      },
+    };
+
+    const STORAGE_KEY = "reservation-demo.lang";
+    let lang = localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "ar";
+
+    function t(key) { return STRINGS[lang][key] ?? key; }
+
+    function applyLang() {
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "en" ? "ltr" : "rtl";
+
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        el.innerHTML = t(el.getAttribute("data-i18n"));
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+        el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+      });
+
+      document.getElementById("lang-ar-label").classList.toggle("active", lang === "ar");
+      document.getElementById("lang-en-label").classList.toggle("active", lang === "en");
+
+      localStorage.setItem(STORAGE_KEY, lang);
+    }
+
+    document.getElementById("lang-toggle").addEventListener("click", () => {
+      lang = lang === "ar" ? "en" : "ar";
+      applyLang();
+    });
+
+    applyLang();
+
+    // ---------------------------------------------------------- Supabase
+
+    const configured =
+      SUPABASE_URL.startsWith("http") && !SUPABASE_URL.includes("YOUR-PROJECT-REF");
+
+    const banner = document.getElementById("config-banner");
+    if (!configured) banner.classList.add("visible");
+
+    const client = configured
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    // -------------------------------------------------------------- Form
+
+    const form = document.getElementById("reservation-form");
+    const submitBtn = document.getElementById("submit-btn");
+    const dateInput = document.getElementById("date");
+    const timeInput = document.getElementById("time");
+    const guestsInput = document.getElementById("guests");
+    const phoneInput = document.getElementById("phone");
+
+    dateInput.min = new Date().toISOString().slice(0, 10);
+
+    function setFieldError(fieldId, hasError) {
+      document.getElementById(fieldId).classList.toggle("has-error", hasError);
+    }
+
+    function validate() {
+      let valid = true;
+
+      const hasDate = Boolean(dateInput.value);
+      setFieldError("field-date", !hasDate);
+      valid = valid && hasDate;
+
+      const hasTime = Boolean(timeInput.value);
+      setFieldError("field-time", !hasTime);
+      valid = valid && hasTime;
+
+      const guests = Number(guestsInput.value);
+      const validGuests = Number.isInteger(guests) && guests >= 1 && guests <= 50;
+      setFieldError("field-guests", !validGuests);
+      valid = valid && validGuests;
+
+      return valid;
+    }
+
+    [dateInput, timeInput, guestsInput].forEach((el) => el.addEventListener("input", validate));
+
+    function formatDate(value) {
+      const d = new Date(`${value}T00:00:00`);
+      return d.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+        weekday: "short", year: "numeric", month: "short", day: "numeric",
+      });
+    }
+
+    function formatTime(value) {
+      const [h, m] = value.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-GB", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function showConfirmation({ date, time, guests, phone }) {
+      document.getElementById("confirm-date").textContent = formatDate(date);
+      document.getElementById("confirm-time").textContent = formatTime(time);
+      document.getElementById("confirm-guests").textContent = guests;
+      document.getElementById("confirm-phone").textContent = phone || t("confirm.phoneNotProvided");
+
+      document.getElementById("form-view").style.display = "none";
+      document.getElementById("confirm-view").classList.add("visible");
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!validate()) return;
+
+      if (!client) {
+        banner.classList.add("visible");
+        return;
+      }
+
+      const payload = {
+        reservation_date: dateInput.value,
+        reservation_time: timeInput.value,
+        guest_count: Number(guestsInput.value),
+        phone_number: phoneInput.value.trim() || null,
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = t("form.submitting");
+
+      const { error } = await client.from("reservations").insert(payload);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = t("form.submit");
+
+      if (error) {
+        console.error("Reservation insert failed:", error);
+        alert(t("form.submitError"));
+        return;
+      }
+
+      showConfirmation({
+        date: dateInput.value,
+        time: timeInput.value,
+        guests: payload.guest_count,
+        phone: payload.phone_number,
+      });
+    });
+
+    document.getElementById("new-reservation-btn").addEventListener("click", () => {
+      form.reset();
+      ["field-date", "field-time", "field-guests"].forEach((id) => setFieldError(id, false));
+      document.getElementById("confirm-view").classList.remove("visible");
+      document.getElementById("form-view").style.display = "";
+    });
+  })();
+  </script>
+</body>
+</html>

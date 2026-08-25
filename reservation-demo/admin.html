@@ -1,14 +1,123 @@
 <!doctype html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reservations — Operator Dashboard</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>📋</text></svg>" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reservations — Operator Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>📋</text></svg>" />
+<!--
+  Reservation demo — operator dashboard. One file, no build step.
+
+  Setup:
+  1. Create a Supabase project and run schema.sql (next to this file) in its
+     SQL editor — creates the `reservations` table + RLS policies + Realtime.
+  2. Fill in SUPABASE_URL / SUPABASE_ANON_KEY below (search "TODO").
+  3. Open this file in a browser, or serve the folder with any static server.
+     New bookings from booking.html appear here live, no refresh needed.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0f172a;
+    --bg-raised: #141d33;
+    --bg-card: #16213c;
+    --border: #263252;
+    --border-soft: #1c2540;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-faint: #64748b;
+    --gold: #eab308;
+    --gold-soft: rgba(234, 179, 8, 0.14);
+    --emerald: #10b981;
+    --emerald-soft: rgba(16, 185, 129, 0.14);
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --radius: 16px;
+    --shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(60rem 40rem at 15% -10%, rgba(234, 179, 8, 0.08), transparent 60%),
+      radial-gradient(50rem 35rem at 90% 0%, rgba(16, 185, 129, 0.08), transparent 62%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--gold), var(--emerald));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  .brand-sub { display: block; font-size: 11px; font-weight: 600; color: var(--text-faint); letter-spacing: 0.04em; }
+
+  .banner { display: none; border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.6; margin-bottom: 20px; }
+  .banner.visible { display: block; }
+  .banner-warn { background: var(--danger-soft); border: 1px solid rgba(248, 113, 113, 0.35); color: #fecaca; }
+  .banner code { background: rgba(0, 0, 0, 0.25); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+
+  .dash-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700;
+    color: var(--text-muted); background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 999px; padding: 7px 13px;
+  }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--text-faint); }
+  .status-pill.live .status-dot { background: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-soft); }
+  .status-pill.live { color: var(--emerald); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 24px; }
+
+  .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .stat-card .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat-card .stat-label { font-size: 12.5px; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+
+  .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .table-scroll { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+
+  thead th {
+    text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-faint); padding: 14px 18px; border-bottom: 1px solid var(--border);
+    background: var(--bg-raised); white-space: nowrap;
+  }
+
+  tbody td { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.6s ease; }
+  tbody tr.row-new { background: var(--emerald-soft); }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; }
+  .pill.muted { color: var(--text-faint); font-weight: 500; font-style: italic; }
+
+  .guest-badge {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px;
+    padding: 0 8px; border-radius: 999px; background: var(--gold-soft); color: var(--gold);
+    font-weight: 800; font-size: 13px;
+  }
+
+  .empty-state { padding: 64px 20px; text-align: center; color: var(--text-faint); font-size: 14.5px; }
+  .footer-note { margin-top: 24px; text-align: center; font-size: 12.5px; color: var(--text-faint); }
+</style>
 </head>
 <body>
-  <div class="page page-wide">
+  <div class="page">
     <div class="topbar">
       <div class="brand">
         <span class="brand-mark">📋</span>
@@ -21,7 +130,7 @@
 
     <div id="config-banner" class="banner banner-warn">
       <strong>Supabase not connected yet</strong><br />
-      Copy <code>config.example.js</code> to <code>config.js</code> and fill in your Supabase project details.
+      Fill in <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of this file.
     </div>
 
     <div class="dash-header">
@@ -68,7 +177,137 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js" onerror="console.warn('config.js not found — copy config.example.js to config.js')"></script>
-  <script src="admin.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ---- TODO: fill in your Supabase project's values -----------------
+    // Dashboard -> Project Settings -> API. Same project as booking.html.
+    const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR-PUBLIC-ANON-KEY";
+    // ---------------------------------------------------------------------
+
+    const configured = SUPABASE_URL.startsWith("http") && !SUPABASE_URL.includes("YOUR-PROJECT-REF");
+
+    const banner = document.getElementById("config-banner");
+    const statusPill = document.getElementById("status-pill");
+    const statusLabel = document.getElementById("status-label");
+    const tbody = document.getElementById("reservations-body");
+    const emptyState = document.getElementById("empty-state");
+
+    const statTotal = document.getElementById("stat-total");
+    const statToday = document.getElementById("stat-today");
+    const statGuestsToday = document.getElementById("stat-guests-today");
+
+    if (!configured) {
+      banner.classList.add("visible");
+      statusLabel.textContent = "Not connected";
+      return;
+    }
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let rows = [];
+
+    function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+    function formatDate(value) {
+      return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
+        weekday: "short", year: "numeric", month: "short", day: "numeric",
+      });
+    }
+
+    function formatTime(value) {
+      const [h, m] = value.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatTimestamp(value) {
+      return new Date(value).toLocaleString("en-GB", {
+        year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+    }
+
+    function renderStats() {
+      const today = todayISO();
+      const todaysRows = rows.filter((r) => r.reservation_date === today);
+
+      statTotal.textContent = rows.length;
+      statToday.textContent = todaysRows.length;
+      statGuestsToday.textContent = todaysRows.reduce((sum, r) => sum + r.guest_count, 0);
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function rowHTML(r) {
+      const phone = r.phone_number
+        ? `<span class="pill">${escapeHTML(r.phone_number)}</span>`
+        : `<span class="pill muted">Not Provided</span>`;
+
+      return `
+        <tr data-id="${r.id}">
+          <td>${formatDate(r.reservation_date)}</td>
+          <td>${formatTime(r.reservation_time)}</td>
+          <td><span class="guest-badge">${r.guest_count}</span></td>
+          <td>${phone}</td>
+          <td>${formatTimestamp(r.created_at)}</td>
+        </tr>
+      `;
+    }
+
+    function renderTable() {
+      emptyState.style.display = rows.length ? "none" : "block";
+      tbody.innerHTML = rows.map(rowHTML).join("");
+      renderStats();
+    }
+
+    function prependRow(row) {
+      if (rows.some((r) => r.id === row.id)) return;
+      rows = [row, ...rows];
+      renderTable();
+      const tr = tbody.querySelector(`tr[data-id="${row.id}"]`);
+      if (tr) {
+        tr.classList.add("row-new");
+        setTimeout(() => tr.classList.remove("row-new"), 2500);
+      }
+    }
+
+    async function loadReservations() {
+      const { data, error } = await client
+        .from("reservations")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error("Failed to load reservations:", error);
+        statusPill.classList.remove("live");
+        statusLabel.textContent = "Connection error";
+        return;
+      }
+
+      rows = data;
+      renderTable();
+    }
+
+    function setLive() {
+      statusPill.classList.add("live");
+      statusLabel.textContent = "Live";
+    }
+
+    client
+      .channel("reservations-dashboard")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "reservations" }, (payload) => prependRow(payload.new))
+      .subscribe((status) => { if (status === "SUBSCRIBED") setLive(); });
+
+    loadReservations();
+  })();
+  </script>
 </body>
 </html>

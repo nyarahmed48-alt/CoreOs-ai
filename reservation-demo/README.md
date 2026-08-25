@@ -1,17 +1,17 @@
 # Reservation demo
 
-A self-contained, no-build reservation MVP: a customer booking page and an
-operator dashboard, both talking directly to a shared Supabase project. Plain
-HTML/CSS/JS — no `npm install`, no bundler — open the files in a browser or
-drop the folder on any static host.
+A self-contained reservation MVP: two single-file HTML pages, one shared
+Supabase project. No build step, no `npm install` — open the files in a
+browser or drop the folder on any static host.
 
 | File | What it is |
 | --- | --- |
-| `index.html` + `booking.js` | Customer-facing booking form. Arabic (RTL) by default, with a toggle to English (LTR). |
-| `admin.html` + `admin.js` | Internal dashboard: live table of all reservations, updates in real time as bookings come in. Pinned English/LTR — it's a staff tool. |
-| `styles.css` | Shared dark theme (deep slate `#0F172A` background, gold + emerald accents). |
+| `booking.html` | Customer-facing booking form. Arabic (RTL) by default, with a toggle to English (LTR). |
+| `admin.html` | Internal dashboard: live table of all reservations, updates in real time as bookings come in. Pinned English/LTR — it's a staff tool. |
 | `schema.sql` | The Supabase table, Row Level Security policies, and Realtime setup. |
-| `config.example.js` | Template for your Supabase credentials — copy to `config.js`. |
+
+Each HTML file has its CSS and JS inlined — dark slate `#0F172A` theme with
+gold/emerald accents, logical CSS so RTL just works.
 
 ## 1. Create the Supabase project
 
@@ -21,34 +21,32 @@ drop the folder on any static host.
 
 ## 2. Configure the app
 
-This is a plain static site with no build step, so there's no bundler to inject
-`process.env.*` at build time. The equivalent here is a small config file the
-browser loads directly:
-
-```bash
-cp reservation-demo/config.example.js reservation-demo/config.js
-```
-
-Edit `reservation-demo/config.js`:
+There's no bundler here to inject `process.env.*` at build time, so each file
+carries its own small config block instead. Open **both** `booking.html` and
+`admin.html`, find the `<script>` block near the bottom (search for `TODO`),
+and fill in:
 
 ```js
-window.SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-window.SUPABASE_ANON_KEY = "YOUR-PUBLIC-ANON-KEY";
+const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-PUBLIC-ANON-KEY";
 ```
 
-`config.js` is gitignored — it's never committed, so each deployment points at
-its own Supabase project. If you later move this into a bundler-based app
-(Vite, Next.js, etc.), these map directly to `VITE_SUPABASE_URL` /
-`NEXT_PUBLIC_SUPABASE_URL` and their `_ANON_KEY` counterparts — same two
-values, just injected at build time instead of loaded as a script tag.
+Same two values in both files, since they talk to the same project. If you
+later move this into a bundler-based app (Vite, Next.js, etc.), these map
+directly to `VITE_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` and their
+`_ANON_KEY` counterparts — same two values, injected at build time instead of
+hardcoded in the file.
 
 The anon key is meant to be public (Supabase expects it in the browser); what
 actually protects the table is the Row Level Security policies in
-`schema.sql`, not the key being secret.
+`schema.sql`, not the key being secret. Since the key lives in these files
+once filled in, don't commit real project credentials to a public repo — keep
+a local, unpushed copy for anything beyond a demo.
 
 ## 3. Run it
 
-Any static file server works — for example:
+Open the files directly (`file://...`) — both talk to Supabase over HTTPS —
+or serve the folder with any static file server:
 
 ```bash
 cd reservation-demo
@@ -56,15 +54,8 @@ npx serve .
 # or: python3 -m http.server 8080
 ```
 
-Then open:
-
-- `http://localhost:.../index.html` — the customer booking form
-- `http://localhost:.../admin.html` — the operator dashboard
-
-Opening the files directly via `file://` also works, since everything talks
-to Supabase over HTTPS from the browser.
-
-Submit a booking on `index.html` and it shows up instantly on `admin.html` —
+Then open `booking.html` (customer form) and `admin.html` (operator
+dashboard). Submit a booking on one and it shows up instantly on the other —
 no refresh needed, via a Supabase Realtime subscription.
 
 ## Schema
