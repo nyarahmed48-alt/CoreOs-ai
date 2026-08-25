@@ -10,3 +10,6 @@ coverage/
 # Runtime state written by the server (seeded on first run)
 data/chats.json
 data/owners.json
+
+# Reservation demo — holds your Supabase project's public URL/anon key
+reservation-demo/config.js

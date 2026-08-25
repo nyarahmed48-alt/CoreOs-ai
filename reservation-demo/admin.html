@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservations — Operator Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>📋</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page page-wide">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark">📋</span>
+        <span>
+          Operator Dashboard
+          <span class="brand-sub">Lumière Restaurant — reservations</span>
+        </span>
+      </div>
+    </div>
+
+    <div id="config-banner" class="banner banner-warn">
+      <strong>Supabase not connected yet</strong><br />
+      Copy <code>config.example.js</code> to <code>config.js</code> and fill in your Supabase project details.
+    </div>
+
+    <div class="dash-header">
+      <span class="status-pill" id="status-pill">
+        <span class="status-dot"></span>
+        <span id="status-label">Connecting...</span>
+      </span>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total reservations</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-today">0</div>
+        <div class="stat-label">Booked for today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-guests-today">0</div>
+        <div class="stat-label">Guests expected today</div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Guests</th>
+              <th>Phone</th>
+              <th>Booked at</th>
+            </tr>
+          </thead>
+          <tbody id="reservations-body"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="empty-state">No reservations yet — bookings will appear here in real time.</div>
+    </div>
+
+    <p class="footer-note">Internal tool — updates live as customers book. Not linked from the public site.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js" onerror="console.warn('config.js not found — copy config.example.js to config.js')"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

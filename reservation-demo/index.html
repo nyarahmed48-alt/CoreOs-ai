@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>حجز طاولة — Reserve a Table</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🍽️</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🍽️</span>
+        <span>
+          <span data-i18n="brand.name">مطعم لومير</span>
+          <span class="brand-sub" data-i18n="brand.tagline">حجز طاولة فوري</span>
+        </span>
+      </div>
+      <button class="lang-toggle" id="lang-toggle" type="button" aria-label="Toggle language">
+        <span id="lang-ar-label" data-i18n="lang.ar">عربي</span>
+        <span id="lang-en-label" data-i18n="lang.en">EN</span>
+      </button>
+    </div>
+
+    <div id="config-banner" class="banner banner-warn">
+      <strong data-i18n="banner.setupTitle">Supabase غير متصل بعد</strong><br />
+      <span data-i18n="banner.setupBody">
+        انسخ ملف <code>config.example.js</code> إلى <code>config.js</code> وأدخل بيانات مشروعك في Supabase.
+      </span>
+    </div>
+
+    <div class="card">
+      <div id="form-view">
+        <div class="hero-icon">📅</div>
+        <h1 data-i18n="form.title">احجز طاولتك</h1>
+        <p class="subtitle" data-i18n="form.subtitle">
+          املأ التفاصيل أدناه وسنؤكد حجزك فورًا.
+        </p>
+
+        <form id="reservation-form" novalidate>
+          <div class="field-row">
+            <div class="field" id="field-date">
+              <label for="date" data-i18n="form.date">التاريخ</label>
+              <input type="date" id="date" name="date" required />
+              <div class="field-error" data-i18n="form.dateError">يرجى اختيار تاريخ صالح.</div>
+            </div>
+            <div class="field" id="field-time">
+              <label for="time" data-i18n="form.time">الوقت</label>
+              <input type="time" id="time" name="time" required />
+              <div class="field-error" data-i18n="form.timeError">يرجى اختيار وقت صالح.</div>
+            </div>
+          </div>
+
+          <div class="field" id="field-guests">
+            <label for="guests" data-i18n="form.guests">عدد الأشخاص</label>
+            <input type="number" id="guests" name="guests" min="1" max="50" step="1" placeholder="2" required />
+            <div class="field-error" data-i18n="form.guestsError">أدخل عدد أشخاص بين 1 و50.</div>
+          </div>
+
+          <div class="field" id="field-phone">
+            <label for="phone">
+              <span data-i18n="form.phone">رقم الهاتف</span>
+              <span class="optional-tag" data-i18n="form.optional">(اختياري)</span>
+            </label>
+            <input type="tel" id="phone" name="phone" data-i18n-placeholder="form.phonePlaceholder" placeholder="07xx xxx xxxx" />
+          </div>
+
+          <button type="submit" class="submit-btn" id="submit-btn" data-i18n="form.submit">
+            تأكيد الحجز
+          </button>
+
+          <p class="form-note" data-i18n="form.note">
+            سيتم التواصل معك فقط إذا احتجنا لتأكيد أي تفاصيل.
+          </p>
+        </form>
+      </div>
+
+      <div id="confirm-view" class="confirm">
+        <div class="confirm-icon">✓</div>
+        <h2 data-i18n="confirm.title">تم تأكيد حجزك!</h2>
+        <p data-i18n="confirm.body">نتطلع لاستقبالك. إليك تفاصيل الحجز:</p>
+
+        <div class="confirm-summary">
+          <div>
+            <span data-i18n="confirm.date">التاريخ</span>
+            <span id="confirm-date">—</span>
+          </div>
+          <div>
+            <span data-i18n="confirm.time">الوقت</span>
+            <span id="confirm-time">—</span>
+          </div>
+          <div>
+            <span data-i18n="confirm.guests">عدد الأشخاص</span>
+            <span id="confirm-guests">—</span>
+          </div>
+          <div>
+            <span data-i18n="confirm.phone">رقم الهاتف</span>
+            <span id="confirm-phone">—</span>
+          </div>
+        </div>
+
+        <button class="secondary-btn" id="new-reservation-btn" data-i18n="confirm.newBooking">
+          إجراء حجز آخر
+        </button>
+      </div>
+    </div>
+
+    <p class="footer-note" data-i18n="footer.note">حجز تجريبي — مدعوم بواسطة Supabase</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js" onerror="console.warn('config.js not found — copy config.example.js to config.js')"></script>
+  <script src="booking.js"></script>
+</body>
+</html>
