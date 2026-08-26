@@ -12,6 +12,21 @@ place until the switch is finished, so nothing goes dark mid-move.
 Go to **`https://<your-site>/admin`**, paste the admin token, and change either
 field. It takes effect on the very next request.
 
+This works on **both hosts** — Netlify today, Cloudflare when that switch
+happens. The only setup is one environment variable:
+
+| Name | Type | Value |
+|---|---|---|
+| `ADMIN_TOKEN` | Secret | any long random string — this is the password |
+
+Netlify: **Site configuration → Environment variables**. Cloudflare:
+**Settings → Variables and Secrets**. Generate one with `openssl rand -base64 32`.
+
+Storage needs no setup on Netlify — it uses Netlify Blobs, which is already
+there. On Cloudflare it needs a KV namespace; see step 3 below. Without
+storage, `/admin` can still read the current settings but not save them, and
+says so.
+
 - **Model** — one id from [openrouter.ai/models](https://openrouter.ai/models),
   or several separated by commas. They are tried in order, so the second one
   covers you when the first is out of quota or retired.

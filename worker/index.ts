@@ -23,8 +23,9 @@ import {
   isConfigured,
   publicAgentList,
 } from "../lab/agents";
-import { ADMIN_PAGE } from "./admin";
-import { handleSettings, resolveSettings, type Env } from "./settings";
+import { ADMIN_PAGE } from "../lab/admin-page";
+import { handleSettingsRequest, resolveSettings } from "../lab/settings";
+import { settingsStore, type Env } from "./settings";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -34,7 +35,7 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
   /* ---------------------------------------------------------- the roster */
   if (url.pathname === "/api/lab/agents") {
-    const settings = await resolveSettings(env);
+    const settings = await resolveSettings(env as any, settingsStore(env));
     return json({ agents: publicAgentList(), live: isConfigured(settings) });
   }
 
@@ -43,13 +44,18 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ error: "METHOD_NOT_ALLOWED" }, 405, { allow: "GET" });
     }
-    const health = await checkLabHealth(await resolveSettings(env));
+    const health = await checkLabHealth(await resolveSettings(env as any, settingsStore(env)));
     return json(health, health.probe.ok ? 200 : 503, { "cache-control": "no-store" });
   }
 
   /* ----------------------------------------------------------- settings */
   if (url.pathname === "/api/lab/settings") {
-    return handleSettings(request, env);
+    return handleSettingsRequest(request, {
+      env: env as any,
+      store: settingsStore(env),
+      adminToken: env.ADMIN_TOKEN,
+      hostName: "Cloudflare",
+    });
   }
 
   /* --------------------------------------------------------------- chat */
@@ -71,7 +77,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       message,
       history,
       lang,
-      settings: await resolveSettings(env),
+      settings: await resolveSettings(env as any, settingsStore(env)),
     });
     return json(body, status);
   }

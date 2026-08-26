@@ -16,7 +16,9 @@
  * key, never the model ids, never a provider error string.
  */
 
-import { checkLabHealth, settingsFromProcess } from "../../lab/agents";
+import { checkLabHealth } from "../../lab/agents";
+import { resolveSettings } from "../../lab/settings";
+import { settingsStore } from "../lib/store";
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -26,7 +28,7 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
-  const health = await checkLabHealth(settingsFromProcess());
+  const health = await checkLabHealth(await resolveSettings(process.env as Record<string, string | undefined>, settingsStore()));
 
   return new Response(JSON.stringify(health, null, 2), {
     // A cached health check is a lie, so make that explicit to every hop.
