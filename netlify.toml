@@ -17,6 +17,19 @@
   to = "/.netlify/functions/lab-health"
   status = 200
 
+# Change the model or the key without a deploy. /admin is the page; the
+# settings path is the API behind it. Both refuse everything unless ADMIN_TOKEN
+# is set in the site's environment variables.
+[[redirects]]
+  from = "/api/lab/settings"
+  to = "/.netlify/functions/lab-settings"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/lab-admin"
+  status = 200
+
 # Client-side routing: every other path serves the app shell so /mission,
 # /coreos-ai, /contact and friends survive a refresh or a shared link.
 [[redirects]]

@@ -6,11 +6,14 @@
 /**
  * The /admin page: change the OpenRouter model or key without a deploy.
  *
- * Served straight from the Worker rather than added to the React app, for two
+ * Served straight from the server rather than added to the React app, for two
  * reasons. It keeps an admin surface out of the bundle every visitor
  * downloads, and it means this page still works when the site build is broken
  * — which is exactly when you might need to point the sandbox at a different
  * model.
+ *
+ * Lives beside the agent code rather than under worker/ because both hosts
+ * serve it: Cloudflare from the Worker, Netlify from a function.
  *
  * The token is typed in, held in memory for the length of the visit, and sent
  * as a header. It is never stored, never put in the URL, and never logged.
