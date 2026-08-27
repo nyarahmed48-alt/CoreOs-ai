@@ -29,6 +29,10 @@ const DEMOS: Record<string, () => ReactElement> = {
 // is split out and never downloaded by ordinary site visitors.
 const Manager = lazy(() => import("./App"));
 
+// The till at /pos is the same story: a cashier's tool, opened directly on the
+// shop's machine and never linked from the nav, so it is split out too.
+const Pos = lazy(() => import("./pos/PosApp"));
+
 /** Customer portals and iframe embeds are published as `/?portal=<id>` (see
  *  App.tsx). Those links predate the marketing site and are live on client
  *  sites, so they must keep resolving to the portal rather than the homepage. */
@@ -59,6 +63,14 @@ function Routes() {
           <Manager />
         </Suspense>
       </div>
+    );
+  }
+
+  if (path === "/pos") {
+    return (
+      <Suspense fallback={<ConsoleFallback />}>
+        <Pos />
+      </Suspense>
     );
   }
 

@@ -16,6 +16,7 @@ people you already employ rather than replace them.
 | `/testing`    | The 11 CoreOs business agents open for public testing              |
 | `/coreos-ai`  | CoreOs.ai — the open model lab, 20 codenamed models to test        |
 | `/contact`    | Contact page, all routes leading to coreosgmail.com@gmail.com      |
+| `/pos`        | The market till — a working point of sale (lazy-loaded, not in nav) |
 | `/manager`    | The internal SaaS manager console (lazy-loaded, not linked in nav) |
 
 Client-side routing is a small History API router (`src/site/router.tsx`); the
@@ -48,7 +49,57 @@ src/
     TestConsole.tsx   sandbox chat modal, talks to /api/lab/chat
     HomePage.tsx  MissionPage.tsx  TestingPage.tsx
     CoreOsAiPage.tsx  ContactPage.tsx  Eyebrow.tsx  contact.ts
+  pos/
+    PosApp.tsx        the till shell — four tabs, print stylesheet
+    store.ts          all state, in localStorage, read through useSyncExternalStore
+    types.ts          Product, Sale, Settings — the whole domain
+    money.ts          IQD formatting and rounding to the nearest note
+    seed.ts           the sample shop a new install opens on
+    RegisterView.tsx  the till: shelf, basket, barcode scanning
+    CheckoutModal.tsx payment, cash tendering and change
+    ProductsView.tsx  products, prices, stock, categories
+    SalesView.tsx     sales history and the end-of-day report
+    SettingsView.tsx  shop details, till behaviour, backup
+    Receipt.tsx       the 72mm receipt, on screen, on paper and as text
+    ui.tsx            buttons, fields and the modal
 ```
+
+## The till (`/pos`)
+
+A working point of sale for a market, not a demo: goods are rung up, stock
+comes off the shelf, receipts are numbered and printed, and the day's takings
+are counted.
+
+**Everything lives in the browser.** Two `localStorage` keys — the shop file and
+the open basket — read through `useSyncExternalStore`, so a second tab on the
+same machine stays in step and a refresh mid-sale loses nothing. There is no
+server and no account: a till has to keep ringing when the internet drops, and
+one shop on one machine does not need one. `src/pos/store.ts` is the only file
+that knows this; putting a backend behind it later means rewriting that file
+and nothing else. The flip side is that the browser holds the only copy, so
+Settings exports a JSON backup and restores one.
+
+- **Money is whole dinars.** No decimals anywhere in the system, and totals
+  round to the nearest 250 — the smallest note in ordinary circulation. The
+  rounding shows as its own line on the receipt, and can be switched off.
+- **Barcode scanners are keyboards.** Stray typing anywhere on the till screen
+  is pushed into the scan box, so a scan rings up whatever the cashier last
+  touched. An exact barcode wins; a search narrowed to one product also rings.
+- **Change is the number that matters.** Notes are tapped in as they are handed
+  over — two 10,000s is two taps — and the change is the largest thing on the
+  screen after the total.
+- **Printing** hides the application rather than opening a second window, which
+  these machines block. The receipt is laid out at 72mm, the width of the
+  thermal rolls the shops already own; sharing falls back to a text file where
+  the Web Share API is missing.
+- **Corrections are voids.** A voided sale puts the goods back and leaves the
+  takings, but keeps its receipt number, so the book has no holes. Products are
+  archived rather than deleted, so old receipts still read correctly.
+
+The till is English and left-to-right, pinned that way inside the Arabic-first
+site: it is the cashier-facing tool and was laid out for that. It is not linked
+from the nav — it is opened directly on the shop's machine — and it is a lazy
+chunk, so a visitor reading the website never downloads it.
 
 ## Languages
 
