@@ -1,0 +1,4 @@
+{
+  "marker": "pr-24",
+  "why": "A plain static file with no code behind it. If opening /deploy-check.json shows this marker, the latest commit reached the host and the build is fine — so any broken endpoint is the function, not the deploy. If it 404s or shows an older marker, deploys are not landing and nothing else is worth debugging yet."
+}
