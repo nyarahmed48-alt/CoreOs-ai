@@ -1,0 +1,31 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Styles for the portable build only.
+ *
+ * The site's stylesheet pulls four families off Google Fonts. A till on a shop
+ * counter cannot count on the internet — that is the whole premise — so the
+ * portable file asks for nothing over the network and uses whatever the
+ * machine already has.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background-color: #05060a;
+  color: #e7eaf6;
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}

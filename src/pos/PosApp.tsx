@@ -12,7 +12,9 @@
  * and its layout was built for that.
  *
  * Loaded lazily from the route table, so a visitor reading the website never
- * downloads it.
+ * downloads it. The same component is also built into a single portable HTML
+ * file for shops that run the till off a USB stick rather than the site, which
+ * is what `standalone` is for: there is no site to exit to there.
  */
 
 import { useState } from "react";
@@ -55,7 +57,7 @@ const TABS: { id: Tab; label: string; icon: typeof ShoppingCart }[] = [
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export default function PosApp() {
+export default function PosApp({ standalone = false }: { standalone?: boolean }) {
   const data = usePos();
   const writeError = useWriteError();
   const [tab, setTab] = useState<Tab>("register");
@@ -96,12 +98,14 @@ export default function PosApp() {
               <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
-          <Link
-            to="/"
-            className="ms-1 hidden shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7490] hover:text-white lg:inline-block"
-          >
-            Exit
-          </Link>
+          {standalone ? null : (
+            <Link
+              to="/"
+              className="ms-1 hidden shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7490] hover:text-white lg:inline-block"
+            >
+              Exit
+            </Link>
+          )}
         </nav>
       </header>
 

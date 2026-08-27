@@ -10,6 +10,7 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:web": "vite build",
+    "build:pos": "vite build --config vite.pos.config.ts && node scripts/build-portable-pos.mjs",
     "deploy": "npm run build:web && wrangler deploy",
     "cf:dev": "npm run build:web && wrangler dev",
     "start": "node dist/server.cjs",

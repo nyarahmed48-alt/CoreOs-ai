@@ -101,6 +101,25 @@ site: it is the cashier-facing tool and was laid out for that. It is not linked
 from the nav — it is opened directly on the shop's machine — and it is a lazy
 chunk, so a visitor reading the website never downloads it.
 
+### The portable till
+
+`CoreOS_Market_POS_Portable.html` is the same application as one file. Copy it
+onto the shop's machine or a USB stick, double-click it, and the till opens —
+no server, no install, no internet, and no requests off the machine at all.
+Fonts are whatever the machine already has, for the same reason.
+
+```
+npm run build:pos     # rebuild the portable file after changing src/pos
+```
+
+The build is `vite.pos.config.ts` (one entry, one chunk, one stylesheet) plus
+`scripts/build-portable-pos.mjs`, which inlines the script and the styles and
+refuses to finish if anything is still pointing at a file on disk.
+
+Each copy keeps its own books: the file is the program, and the shop's
+products and sales live in that browser's storage on that machine. Moving a
+shop to another machine is Settings → export, then restore on the other side.
+
 ## Languages
 
 The site is **Arabic first**, with an English toggle in the nav. The choice is
