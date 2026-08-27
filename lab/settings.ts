@@ -170,7 +170,20 @@ export async function handleSettingsRequest(
     }
 
     next.updatedAt = new Date().toISOString();
-    await store.write(next);
+    try {
+      await store.write(next);
+    } catch (err) {
+      /* Say plainly that nothing was saved. A 500 here would look identical to
+         a success that silently did nothing. */
+      console.error("Could not save settings:", err);
+      return json(
+        {
+          error: "SAVE_FAILED",
+          message: `Settings could not be saved on this deployment. Change OPENROUTER_MODEL and OPENROUTER_API_KEY as environment variables in ${hostName} instead.`,
+        },
+        503,
+      );
+    }
 
     const effective = await resolveSettings(env, store);
     return json({
