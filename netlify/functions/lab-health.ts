@@ -17,6 +17,11 @@
  */
 
 import { checkLabHealth, settingsFromProcess } from "../../lab/agents";
+import { withDeadline } from "../lib/deadline";
+
+/* Bumped whenever this function changes, so the running build can be
+   identified from its own output instead of guessed at. */
+const BUILD = "pr-26";
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -26,14 +31,30 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
-  const health = await checkLabHealth(settingsFromProcess());
-
-  return new Response(JSON.stringify(health, null, 2), {
-    // A cached health check is a lie, so make that explicit to every hop.
-    status: health.probe.ok ? 200 : 503,
-    headers: {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+  return withDeadline(
+    async () => {
+      const health = await checkLabHealth(settingsFromProcess());
+      return new Response(JSON.stringify({ build: BUILD, ...health }, null, 2), {
+        // A cached health check is a lie, so make that explicit to every hop.
+        status: health.probe.ok ? 200 : 503,
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        },
+      });
     },
-  });
+    () =>
+      new Response(
+        JSON.stringify(
+          {
+            build: BUILD,
+            error: "FUNCTION_TIMEOUT",
+            hint: "The health probe itself hung. That points at the network path to the provider rather than the key or the model.",
+          },
+          null,
+          2,
+        ),
+        { status: 504, headers: { "content-type": "application/json", "cache-control": "no-store" } },
+      ),
+  );
 }

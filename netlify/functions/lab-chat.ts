@@ -14,6 +14,7 @@
  */
 
 import { handleLabChat, settingsFromProcess } from "../../lab/agents";
+import { withDeadline } from "../lib/deadline";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -36,7 +37,29 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const { slug, message, history, lang } = payload ?? {};
-  const { status, body } = await handleLabChat({ slug, message, history, lang, settings: settingsFromProcess() });
 
-  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+  /* Raced against a deadline this function owns. Netlify kills an invocation
+     at 30s and answers with HTML, which the console misreads as "no sandbox on
+     this deployment" — so whatever hangs, say so in JSON before that happens. */
+  return withDeadline(
+    async () => {
+      const { status, body } = await handleLabChat({
+        slug,
+        message,
+        history,
+        lang,
+        settings: settingsFromProcess(),
+      });
+      return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+    },
+    () =>
+      new Response(
+        JSON.stringify({
+          error: "FUNCTION_TIMEOUT",
+          message:
+            "That took too long to answer and the request was stopped. The model may be slow or unreachable — try a shorter question, or check /api/lab/health.",
+        }),
+        { status: 504, headers: JSON_HEADERS },
+      ),
+  );
 }
