@@ -46,10 +46,20 @@ declare global {
   }
 }
 
+/** A live frame or a photograph — both are just pictures with a barcode
+    somewhere in them. */
+type Frame = HTMLVideoElement | HTMLImageElement;
+
+function sizeOf(source: Frame): { width: number; height: number } {
+  return source instanceof HTMLVideoElement
+    ? { width: source.videoWidth, height: source.videoHeight }
+    : { width: source.naturalWidth, height: source.naturalHeight };
+}
+
 interface Reader {
-  /** The code in this frame, or null. Never throws: a frame with nothing in
-      it is the normal case, twenty times a second. */
-  read: (video: HTMLVideoElement) => Promise<string | null>;
+  /** The code in this picture, or null. Never throws: a frame with nothing in
+      it is the normal case, five times a second. */
+  read: (source: Frame) => Promise<string | null>;
   stop: () => void;
 }
 
@@ -64,7 +74,7 @@ async function openReader(): Promise<Reader> {
   if (window.BarcodeDetector) {
     const native = new window.BarcodeDetector({ formats: FORMATS });
     return {
-      read: async (video) => (await native.detect(video))[0]?.rawValue ?? null,
+      read: async (source) => (await native.detect(source))[0]?.rawValue ?? null,
       stop: () => undefined,
     };
   }
@@ -101,13 +111,14 @@ async function openReader(): Promise<Reader> {
   const context = canvas.getContext("2d", { willReadFrequently: true });
 
   return {
-    read: async (video) => {
-      if (!canvas || !context || !video.videoWidth) return null;
-      if (canvas.width !== video.videoWidth) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+    read: async (source) => {
+      const { width, height } = sizeOf(source);
+      if (!canvas || !context || !width) return null;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
       }
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      context.drawImage(source, 0, 0, width, height);
       try {
         const source = new HTMLCanvasElementLuminanceSource(canvas);
         const bitmap = new BinaryBitmap(new HybridBinarizer(source));
@@ -178,6 +189,8 @@ export function CameraScanner({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const readerRef = useRef<Reader | null>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   /** Frames in a row with nothing in them — how the till knows the packet has
       been taken away rather than still sitting in front of the lens. */
@@ -185,6 +198,7 @@ export function CameraScanner({
   const [support, setSupport] = useState<Support>("checking");
   const [error, setError] = useState("");
   const [log, setLog] = useState<string[]>([]);
+  const [photoNote, setPhotoNote] = useState("");
 
   const handle = useCallback(
     (code: string) => {
@@ -215,14 +229,48 @@ export function CameraScanner({
   useEffect(() => {
     let stopped = false;
     let timer: number | undefined;
+    let watchdog: number | undefined;
+    let gaveUp = false;
     let reader: Reader | undefined;
 
     async function start() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        reader = await openReader();
+        readerRef.current = reader;
+
+        /* A phone asked for the camera by a page it opened from a file often
+           answers neither yes nor no: the permission prompt never appears and
+           the promise never settles, which left this screen saying "Starting
+           the camera…" for as long as anyone was willing to wait. Waiting
+           forever is not a state a cashier can act on, so it becomes a
+           refusal after seven seconds — and the photo route below still
+           works, because that is the phone's own camera app rather than a
+           permission this page has to be granted. */
+        const asked = navigator.mediaDevices.getUserMedia({
           // The back camera on a phone; ignored by a laptop with one webcam.
           video: { facingMode: "environment" },
         });
+        // A permission granted after we stopped waiting still opens a camera.
+        // Nobody would be looking at it, so shut it off rather than leave the
+        // light on above a counter.
+        asked
+          .then((late) => {
+            if (stopped || gaveUp) {
+              for (const track of late.getTracks()) track.stop();
+            }
+          })
+          .catch(() => undefined);
+
+        const stream = await Promise.race([
+          asked,
+          new Promise<MediaStream>((_, reject) => {
+            watchdog = window.setTimeout(
+              () => reject(new DOMException("No answer", "TimeoutError")),
+              7000,
+            );
+          }),
+        ]);
+        window.clearTimeout(watchdog);
         if (stopped) {
           for (const track of stream.getTracks()) track.stop();
           return;
@@ -233,12 +281,6 @@ export function CameraScanner({
           await videoRef.current.play().catch(() => undefined);
         }
         setSupport("ready");
-
-        reader = await openReader();
-        if (stopped) {
-          reader.stop();
-          return;
-        }
 
         let busy = false;
         timer = window.setInterval(async () => {
@@ -257,13 +299,14 @@ export function CameraScanner({
         }, 200);
       } catch (cause) {
         const name = (cause as DOMException)?.name;
+        gaveUp = true;
         setSupport("unsupported");
         setError(
-          name === "NotAllowedError"
-            ? "The camera was blocked. Allow camera access for this page and try again — a page opened straight from a file is often refused, in which case use a USB scanner or type the number."
-            : name === "NotFoundError"
-              ? "No camera on this machine. Use a USB scanner, or type the number."
-              : "The camera could not be started here. Use a USB scanner, or type the number.",
+          name === "NotFoundError"
+            ? "No camera on this machine. Use a USB scanner, or type the number."
+            : name === "NotAllowedError"
+              ? "The camera was blocked for this page. Take a photo instead — that uses the phone's own camera — or allow camera access and try again."
+              : "This browser will not give the page a live camera. It usually will not for a page opened from a file. Take a photo instead — that uses the phone's own camera.",
         );
       }
     }
@@ -272,12 +315,46 @@ export function CameraScanner({
 
     return () => {
       stopped = true;
+      window.clearTimeout(watchdog);
       if (timer) window.clearInterval(timer);
       reader?.stop();
       for (const track of streamRef.current?.getTracks() ?? []) track.stop();
       streamRef.current = null;
     };
   }, [handle]);
+
+  /**
+   * The way in when the live camera is refused.
+   *
+   * `capture` hands the job to the phone's own camera app, which needs no
+   * permission from this page — so it works from a file, where getUserMedia
+   * does not. One photo, one barcode, which is slower than a live scan and
+   * still beats typing thirteen digits.
+   */
+  async function readPhoto(file: File) {
+    setPhotoNote("Reading the photo…");
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const reader = readerRef.current ?? (await openReader());
+      readerRef.current = reader;
+      const code = await reader.read(image);
+      if (code) {
+        setPhotoNote("");
+        handle(code);
+      } else {
+        setPhotoNote(
+          "No barcode found in that photo. Fill the frame with the barcode, hold the phone steady, and try again.",
+        );
+      }
+    } catch {
+      setPhotoNote("That photo could not be read. Try again.");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
 
   return (
     <Modal title={title} onClose={onClose}>
@@ -323,7 +400,34 @@ export function CameraScanner({
         </p>
       ) : null}
 
-      <Button variant="primary" className="mt-4 h-[48px] w-full" onClick={onClose}>
+      {/* Always available, not only after a failure: on a counter where the
+          live camera is refused every time, this is the scanner. */}
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void readPhoto(file);
+          event.target.value = "";
+        }}
+      />
+
+      {photoNote ? (
+        <p className="mt-3 text-center text-[13px] text-[#f0c078]">{photoNote}</p>
+      ) : null}
+
+      <Button
+        variant={support === "ready" ? "ghost" : "primary"}
+        className="mt-3 h-[48px] w-full"
+        onClick={() => photoRef.current?.click()}
+      >
+        <Camera size={17} /> Take a photo of the barcode
+      </Button>
+
+      <Button variant={support === "ready" ? "primary" : "ghost"} className="mt-2 h-[48px] w-full" onClick={onClose}>
         {mode === "continuous" && log.length > 0 ? "Done scanning" : "Close"}
       </Button>
     </Modal>

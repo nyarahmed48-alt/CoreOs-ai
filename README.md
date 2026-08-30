@@ -98,9 +98,14 @@ Settings exports a JSON backup and restores one.
   every time a cashier held one still. The same button on a product captures
   its barcode.
 
-  The camera still needs a browser willing to hand one over: a page opened
-  straight from a file is often refused, and the shop then wants the till
-  served over https, or a USB scanner.
+  The camera still needs a browser willing to hand one over, and a phone will
+  not hand one to a page opened from a file — it answers neither yes nor no,
+  so the request hangs. The scanner gives up after seven seconds rather than
+  waiting forever, and offers the route that does work there: **take a photo**,
+  which goes through the phone's own camera app and needs no permission from
+  the page. One photo, one barcode — slower than a live scan, faster than
+  typing thirteen digits. For live scanning on a phone, serve the till over
+  https.
 - **Change is the number that matters.** Notes are tapped in as they are handed
   over — two 10,000s is two taps — and the change is the largest thing on the
   screen after the total.
