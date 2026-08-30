@@ -15,6 +15,4 @@
 
 /api/lab/chat      /.netlify/functions/lab-chat      200
 /api/lab/health    /.netlify/functions/lab-health    200
-/api/lab/settings  /.netlify/functions/lab-settings  200
-/admin             /.netlify/functions/lab-admin     200
 /*                 /index.html                       200
