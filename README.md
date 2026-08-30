@@ -86,12 +86,21 @@ Settings exports a JSON backup and restores one.
   is pushed into the scan box, so a scan rings up whatever the cashier last
   touched. An exact barcode wins; a search narrowed to one product also rings.
 - **The camera scans too**, for the shops that have a phone before they have a
-  scanner. It uses the browser's own `BarcodeDetector` — no library, nothing
-  leaves the device — and stays open so a whole basket goes through in one
-  pass, beeping on each read and ignoring the same code for a second so a
-  packet held in frame is not rung up twenty times. Chrome and Android have
-  the reader; Safari and Firefox do not, and there the scanner says so instead
-  of failing silently. The same button on a product captures its barcode.
+  scanner — with two readers behind it. The browser's own `BarcodeDetector`
+  where it exists, and a decoder shipped inside the till where it does not.
+  That fallback is not a nicety: `BarcodeDetector` is missing from Windows and
+  Linux Chrome, from Firefox and from Safari, which is most shop counters, and
+  a scanner that works on some machines is one nobody trusts. Both read on the
+  device with nothing sent anywhere; the bundled one is loaded only when the
+  camera is opened. The scanner stays open so a basket goes through in one
+  pass, beeps on each read, and counts a repeat of the same code only once the
+  packet has left the view — a timer instead of that rang up an extra tin
+  every time a cashier held one still. The same button on a product captures
+  its barcode.
+
+  The camera still needs a browser willing to hand one over: a page opened
+  straight from a file is often refused, and the shop then wants the till
+  served over https, or a USB scanner.
 - **Change is the number that matters.** Notes are tapped in as they are handed
   over — two 10,000s is two taps — and the change is the largest thing on the
   screen after the total.
