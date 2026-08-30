@@ -72,14 +72,30 @@ function parseData(raw: string | null): PosData {
   }
 }
 
-let data: PosData = parseData(
-  typeof localStorage === "undefined" ? null : localStorage.getItem(DATA_KEY),
-);
-let cart: CartLine[] = (() => {
-  if (typeof localStorage === "undefined") return [];
+/** Storage can be full, or blocked outright — a private window, a browser set
+    to block site data, or a page opened inside someone else's frame, where
+    even *reading* localStorage throws rather than returning null. The sale in
+    front of the cashier still has to complete, so every failure here is
+    surfaced as a banner and the till carries on in memory. */
+let writeError = "";
+
+const NO_STORAGE =
+  "This browser is not letting the till save. It still works, but nothing is kept when the page closes — open the file directly rather than inside another app, or allow site data for it.";
+
+function read(key: string): string | null {
   try {
-    return (JSON.parse(localStorage.getItem(CART_KEY) ?? "[]") ??
-      []) as CartLine[];
+    return localStorage.getItem(key);
+  } catch {
+    // Touching localStorage at all can throw. Say so once, and carry on.
+    writeError = NO_STORAGE;
+    return null;
+  }
+}
+
+let data: PosData = parseData(read(DATA_KEY));
+let cart: CartLine[] = (() => {
+  try {
+    return (JSON.parse(read(CART_KEY) ?? "[]") ?? []) as CartLine[];
   } catch {
     return [];
   }
@@ -91,18 +107,20 @@ function notify() {
   for (const listener of listeners) listener();
 }
 
-/** Storage can be full or blocked (private windows). The sale in front of the
-    cashier still has to complete, so a failed write is surfaced rather than
-    thrown. */
-let writeError = "";
-
 function persist(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     writeError = "";
-  } catch {
-    writeError =
-      "This browser is refusing to save. Sales are being kept in memory only — export a backup and free some space.";
+  } catch (cause) {
+    // Out of room is a different problem from not being allowed in, and the
+    // shop can only act on one of them.
+    const full =
+      cause instanceof DOMException &&
+      (cause.name === "QuotaExceededError" ||
+        cause.name === "NS_ERROR_DOM_QUOTA_REACHED");
+    writeError = full
+      ? "This browser is out of storage. Sales are being kept in memory only — export a backup from Settings, then free some space."
+      : NO_STORAGE;
   }
 }
 
