@@ -13,9 +13,7 @@
  * applies; use Netlify's own rate limiting if this endpoint gets abused.
  */
 
-import { handleLabChat } from "../../lab/agents";
-import { resolveSettings } from "../../lab/settings";
-import { settingsStore } from "../lib/store";
+import { handleLabChat, settingsFromProcess } from "../../lab/agents";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -38,15 +36,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const { slug, message, history, lang } = payload ?? {};
-  const { status, body } = await handleLabChat({
-    slug,
-    message,
-    history,
-    lang,
-    // Stored settings win over the deployed ones, so a change made in /admin
-    // takes effect here on the very next request.
-    settings: await resolveSettings(process.env as Record<string, string | undefined>, settingsStore()),
-  });
+  const { status, body } = await handleLabChat({ slug, message, history, lang, settings: settingsFromProcess() });
 
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
