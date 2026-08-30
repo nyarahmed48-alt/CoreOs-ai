@@ -85,6 +85,13 @@ Settings exports a JSON backup and restores one.
 - **Barcode scanners are keyboards.** Stray typing anywhere on the till screen
   is pushed into the scan box, so a scan rings up whatever the cashier last
   touched. An exact barcode wins; a search narrowed to one product also rings.
+- **The camera scans too**, for the shops that have a phone before they have a
+  scanner. It uses the browser's own `BarcodeDetector` — no library, nothing
+  leaves the device — and stays open so a whole basket goes through in one
+  pass, beeping on each read and ignoring the same code for a second so a
+  packet held in frame is not rung up twenty times. Chrome and Android have
+  the reader; Safari and Firefox do not, and there the scanner says so instead
+  of failing silently. The same button on a product captures its barcode.
 - **Change is the number that matters.** Notes are tapped in as they are handed
   over — two 10,000s is two taps — and the change is the largest thing on the
   screen after the total.

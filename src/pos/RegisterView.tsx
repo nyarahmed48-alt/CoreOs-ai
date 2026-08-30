@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Search, Trash2, X } from "lucide-react";
+import { Minus, Plus, ScanLine, Search, Trash2, X } from "lucide-react";
 import {
   addToCart,
   clearCart,
@@ -24,6 +24,7 @@ import {
 import { money } from "./money";
 import { Button, Empty } from "./ui";
 import { CheckoutModal } from "./CheckoutModal";
+import { CameraScanner } from "./CameraScanner";
 import type { Product } from "./types";
 
 export function RegisterView() {
@@ -34,6 +35,7 @@ export function RegisterView() {
   const [discount, setDiscount] = useState(0);
   const [checkingOut, setCheckingOut] = useState(false);
   const [basketOpen, setBasketOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [flash, setFlash] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -102,7 +104,8 @@ export function RegisterView() {
       {/* Shelf */}
       <div className="flex min-h-0 flex-1 flex-col border-[#1b2337] lg:border-e">
         <div className="border-b border-[#1b2337] px-3 py-3 sm:px-4">
-          <div className="relative">
+          <div className="flex gap-2">
+          <div className="relative flex-1">
             <Search
               size={17}
               className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-[#5b6480]"
@@ -132,6 +135,16 @@ export function RegisterView() {
                 <X size={16} />
               </button>
             ) : null}
+          </div>
+          <Button
+            variant="ghost"
+            className="h-[46px] shrink-0 px-3.5"
+            onClick={() => setScanning(true)}
+            aria-label="Scan with the camera"
+          >
+            <ScanLine size={18} />
+            <span className="hidden sm:inline">Camera</span>
+          </Button>
           </div>
 
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -300,6 +313,23 @@ export function RegisterView() {
         >
           {flash}
         </div>
+      ) : null}
+
+      {scanning ? (
+        <CameraScanner
+          title="Scan into the basket"
+          mode="continuous"
+          onClose={() => {
+            setScanning(false);
+            scanRef.current?.focus();
+          }}
+          onCode={(code) => {
+            const found = shelf.find((product) => product.barcode === code);
+            if (!found) return `Unknown barcode ${code}`;
+            addToCart(found.id);
+            return `${found.name} · ${money(found.price)}`;
+          }}
+        />
       ) : null}
 
       {checkingOut ? (

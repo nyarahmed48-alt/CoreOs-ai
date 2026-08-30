@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Package, Plus, Search, Tag } from "lucide-react";
+import { Package, Plus, ScanLine, Search, Tag } from "lucide-react";
 import {
   deleteCategory,
   newId,
@@ -26,6 +26,7 @@ import {
 } from "./store";
 import { amount, money, parseAmount } from "./money";
 import { Button, Empty, Field, Modal, Select } from "./ui";
+import { CameraScanner } from "./CameraScanner";
 import type { Product } from "./types";
 
 type Filter = "all" | "low" | "archived";
@@ -236,6 +237,7 @@ function ProductEditor({
 }) {
   const [draft, setDraft] = useState<Product>(product);
   const [error, setError] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   function save() {
     if (!draft.name.trim()) {
@@ -255,12 +257,23 @@ function ProductEditor({
           autoFocus
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
         />
-        <Field
-          label="Barcode"
-          value={draft.barcode}
-          hint="Scan into this box to capture it exactly. Leave empty for loose goods."
-          onChange={(event) => setDraft({ ...draft, barcode: event.target.value })}
-        />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Field
+              label="Barcode"
+              value={draft.barcode}
+              hint="Scan it with a USB scanner, the camera, or type it. Leave empty for loose goods."
+              onChange={(event) => setDraft({ ...draft, barcode: event.target.value })}
+            />
+          </div>
+          <Button
+            className="mb-6 shrink-0 px-3.5"
+            onClick={() => setScanning(true)}
+            aria-label="Capture the barcode with the camera"
+          >
+            <ScanLine size={17} />
+          </Button>
+        </div>
         <Select
           label="Category"
           value={draft.categoryId}
@@ -306,6 +319,18 @@ function ProductEditor({
         />
 
         {error ? <p className="text-[13px] text-[#f0879d]">{error}</p> : null}
+
+        {scanning ? (
+          <CameraScanner
+            title="Capture this barcode"
+            mode="once"
+            onClose={() => setScanning(false)}
+            onCode={(code) => {
+              setDraft((current) => ({ ...current, barcode: code }));
+              return code;
+            }}
+          />
+        ) : null}
 
         <div className="flex gap-2 pt-1">
           <Button variant="primary" className="flex-1" onClick={save}>
