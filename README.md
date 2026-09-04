@@ -27,6 +27,7 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
+orchestrator/         the Conductor — multi-agent build orchestration (own README)
 lab/agents.ts         shared agent runtime — roster, charter, provider calls
 lab/settings.ts       runtime model/key settings, shared by both hosts
 lab/admin-page.ts     the /admin page, served as a static string
@@ -126,7 +127,8 @@ npm run dev     # http://localhost:3000
 ```
 
 ```bash
-npm test           # the provider fallback chain, against a stand-in endpoint
+npm test           # provider fallback, Netlify routing, the orchestrator
+npm run orchestrate -- "<goal>"   # the multi-agent build system, dry by default
 npm run lint       # tsc --noEmit
 npm run build      # vite build + bundle the Express server to dist/
 npm run build:web  # vite build only — for Vercel / Netlify / static hosts
