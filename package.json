@@ -14,6 +14,7 @@
     "cf:dev": "npm run build:web && wrangler dev",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
+    "test": "tsx --test lab/*.test.mts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

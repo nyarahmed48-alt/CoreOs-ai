@@ -89,7 +89,32 @@ const openRouterUrl = (settings: LabSettings) =>
    is how a plain slow model once looked like a broken deployment. So we own
    the deadline: abort first, and return real JSON explaining what happened. */
 const ATTEMPT_TIMEOUT_MS = 15_000;
-const TOTAL_BUDGET_MS = 24_000;
+
+/* Must stay INSIDE the function-level deadline the hosts impose on themselves
+   (netlify/lib/deadline.ts, FUNCTION_DEADLINE_MS = 20s). It used to be 24s —
+   longer than that outer race — which meant the honest "we ran out of models"
+   answer below could never actually be reached on Netlify: the outer deadline
+   always fired first and returned a bare FUNCTION_TIMEOUT instead. Kept a few
+   seconds short so the reply still has time to serialise. */
+export const TOTAL_BUDGET_MS = 17_000;
+
+/* Never slice an attempt so thin that it cannot plausibly succeed. Below this,
+   we would burn the rest of the budget proving nothing. */
+const MIN_ATTEMPT_MS = 5_000;
+
+/**
+ * How long to give one attempt.
+ *
+ * A flat ceiling is wrong when models remain: the first slow model would eat
+ * the whole budget and the fallbacks — the entire point of the list — would
+ * never be tried. So while there is someone left to fall back to, an attempt
+ * gets at most half of what is left.
+ */
+const attemptBudget = (remaining: number, modelsLeft: number): number => {
+  if (modelsLeft <= 1) return Math.min(ATTEMPT_TIMEOUT_MS, remaining);
+  const half = Math.max(MIN_ATTEMPT_MS, Math.floor(remaining / 2));
+  return Math.min(ATTEMPT_TIMEOUT_MS, half, remaining);
+};
 
 /* OPENROUTER_MODEL is deliberately required rather than defaulted. Model ids
    on aggregators are renamed and retired constantly, and a hardcoded one that
@@ -149,10 +174,23 @@ function classify(status: number, body: string): FailureKind {
   return "other";
 }
 
-/** A failure worth trying the next model for. An exhausted or retired model is
- *  exactly that; a bad key or our own timeout would fail identically again. */
-const worthFallingBackFrom = (kind: FailureKind) =>
-  kind === "quota" || kind === "model" || kind === "other";
+/**
+ * A failure worth trying the next model for.
+ *
+ * Everything except "auth". An exhausted quota, a retired id, a model too slow
+ * to answer, a connection that dropped — none of those say anything about the
+ * *next* model in the list, so there is no reason not to ask it.
+ *
+ * "timeout" and "network" used to be excluded here on the reasoning that they
+ * "would fail identically again". That holds for a retry of the same model; it
+ * does not hold for a different one, and it is precisely the slow-model case
+ * the fallback list exists to survive. attemptBudget() is what makes trying
+ * the next one affordable after a timeout has already burned part of the clock.
+ *
+ * A bad key is the one genuine exception: it fails identically everywhere, and
+ * spending the budget rediscovering that only delays saying so.
+ */
+const worthFallingBackFrom = (kind: FailureKind) => kind !== "auth";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -170,6 +208,11 @@ export interface ReplyResult {
   text: string;
   /** True when the provider declined on safety grounds rather than failing. */
   refused: boolean;
+  /** 1-based position in the fallback list of the model that actually answered.
+   *  Anything above 1 means the site is running on a backup — worth knowing
+   *  before the last one runs out too. Never says *which* model: the roster
+   *  stays private. */
+  attempt: number;
 }
 
 /** One attempt against one model id. Throws ProviderError on any failure. */
@@ -179,7 +222,7 @@ async function callModel(
   apiKey: string,
   timeoutMs: number,
   settings: LabSettings,
-): Promise<ReplyResult> {
+): Promise<Omit<ReplyResult, "attempt">> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
 
@@ -262,12 +305,18 @@ export async function generateReply(
   const deadline = Date.now() + TOTAL_BUDGET_MS;
   let last: ProviderError | null = null;
 
-  for (const model of config.models) {
+  for (const [index, model] of config.models.entries()) {
     const remaining = deadline - Date.now();
     if (remaining <= 1_000) break; // No room for a real attempt; stop honestly.
 
+    const budget = attemptBudget(remaining, config.models.length - index);
+
     try {
-      return await callModel(model, request, config.apiKey, Math.min(ATTEMPT_TIMEOUT_MS, remaining), settings);
+      const reply = await callModel(model, request, config.apiKey, budget, settings);
+      if (index > 0) {
+        console.warn(`Answered by fallback #${index + 1} of ${config.models.length}.`);
+      }
+      return { ...reply, attempt: index + 1 };
     } catch (err) {
       const error = err instanceof ProviderError ? err : new ProviderError("other", null, String(err));
       last = error;
@@ -609,7 +658,7 @@ export async function checkLabHealth(settings: LabSettings): Promise<LabHealth> 
   }
 
   try {
-    await generateReply(
+    const reply = await generateReply(
       {
         system: "Reply with the single word OK.",
         messages: [{ role: "user", content: "ping" }],
@@ -621,8 +670,13 @@ export async function checkLabHealth(settings: LabSettings): Promise<LabHealth> 
     return {
       configured: true,
       modelsConfigured: config.models.length,
-      probe: { ok: true, ms: Date.now() - started },
-      hint: "Working.",
+      probe: { ok: true, answeredBy: reply.attempt, ms: Date.now() - started },
+      /* Working on a backup is still working, but it is not the same news:
+         say so while there is still a fallback left to lose. */
+      hint:
+        reply.attempt > 1
+          ? `Working, but the first ${reply.attempt - 1} model id(s) in OPENROUTER_MODEL did not answer. Check them against openrouter.ai/models — the site is running on a fallback.`
+          : "Working.",
     };
   } catch (err) {
     const kind: FailureKind = err instanceof ProviderError ? err.kind : "other";

@@ -123,6 +123,7 @@ npm run dev     # http://localhost:3000
 ```
 
 ```bash
+npm test           # the provider fallback chain, against a stand-in endpoint
 npm run lint       # tsc --noEmit
 npm run build      # vite build + bundle the Express server to dist/
 npm run build:web  # vite build only — for Vercel / Netlify / static hosts
@@ -153,6 +154,23 @@ no key is configured.
 OpenRouter speaks the OpenAI chat-completions shape, so the system prompt goes
 in as the first message rather than its own field. It is called with `fetch` —
 there is no provider SDK in the dependency list.
+
+`OPENROUTER_MODEL` takes **one id or several, comma-separated and tried in
+order**. This is the site's failover: free models carry a daily cap, and when
+the sandbox hits one every agent goes silent at once. With a second id listed,
+the site rides that out instead of going dark until somebody notices.
+
+A model is skipped when it is over its cap, unknown or retired, unreachable, or
+simply too slow to answer — anything except a rejected key, which fails
+identically down the whole list and is reported straight away rather than
+rediscovered five times. The whole chain runs against one budget, and each
+attempt is capped at roughly half of what is left so a slow model cannot spend
+the turn the next one needed. `/api/lab/health` reports *which position*
+answered, so running on a backup can be told apart from running on the primary
+while there is still a fallback left to lose.
+
+`npm test` covers this end to end, since it is the part of the runtime whose
+job is to behave well only when something else is behaving badly.
 
 **`OPENROUTER_MODEL` has no default and is required.** Model ids on aggregators
 get renamed and retired, and a stale hardcoded one fails as "model not found" —
