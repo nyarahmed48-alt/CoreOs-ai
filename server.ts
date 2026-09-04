@@ -1047,7 +1047,15 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    /* The SPA fallback: anything not matched above is a client-side route, so
+       serve the shell and let src/site/router.tsx sort it out.
+
+       Spelled "/{*splat}" rather than "*". Express 5 moved to path-to-regexp
+       v8, where a bare "*" is not a wildcard but a malformed parameter — it
+       throws at registration, before the server ever listens. A dependency
+       bump that silently turned every deep link into a crash at boot is worth
+       the four extra characters of syntax. */
+    app.get("/{*splat}", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
