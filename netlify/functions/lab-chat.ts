@@ -13,7 +13,9 @@
  * applies; use Netlify's own rate limiting if this endpoint gets abused.
  */
 
-import { handleLabChat, settingsFromProcess } from "../../lab/agents";
+import { handleLabChat } from "../../lab/agents";
+import { resolveSettings } from "../../lab/settings";
+import { settingsStore } from "../lib/settings-store";
 import { withDeadline } from "../lib/deadline";
 
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -43,13 +45,13 @@ export default async function handler(request: Request): Promise<Response> {
      this deployment" — so whatever hangs, say so in JSON before that happens. */
   return withDeadline(
     async () => {
-      const { status, body } = await handleLabChat({
-        slug,
-        message,
-        history,
-        lang,
-        settings: settingsFromProcess(),
-      });
+      /* Stored settings, not just the environment: a model saved at /admin
+         has to reach the agents, or the page reports a change it never made. */
+      const settings = await resolveSettings(
+        process.env as Record<string, string | undefined>,
+        settingsStore(),
+      );
+      const { status, body } = await handleLabChat({ slug, message, history, lang, settings });
       return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
     },
     () =>

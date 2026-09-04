@@ -1,7 +1,12 @@
 # Deploying CoreOs
 
-The site runs on **Cloudflare Workers**. Netlify still works and is left in
-place until the switch is finished, so nothing goes dark mid-move.
+The site runs on **Netlify**, and its agents run on **OpenRouter**. Those are
+the two moving parts; everything below is one of them.
+
+A Cloudflare Worker (`worker/`, `wrangler.toml`) is still in the repo and still
+works. It serves exactly the same endpoints from the same shared code, so it
+remains a working alternative rather than a half-finished migration — but
+Netlify is the host this document describes.
 
 ---
 
@@ -12,26 +17,21 @@ place until the switch is finished, so nothing goes dark mid-move.
 Go to **`https://<your-site>/admin`**, paste the admin token, and change either
 field. It takes effect on the very next request.
 
-**This works on Cloudflare only.** The Worker is the only target that serves
-`/admin` and reads a stored setting; the Netlify functions read the environment
-variables and nothing else, and there is no `/admin` rule in
-`public/_redirects`, so on Netlify that URL quietly returns the site shell.
-While the domain still points at Netlify, changing the model means changing
-`OPENROUTER_MODEL` in the Netlify dashboard and redeploying — the slow path this
-page exists to replace. Worth knowing *before* the model you are on goes dark,
-since that is when you would go looking for this.
-
-The setup below is one environment variable:
+This works on both hosts, from the same code. The only setup is one
+environment variable:
 
 | Name | Type | Value |
 |---|---|---|
 | `ADMIN_TOKEN` | Secret | any long random string — this is the password |
 
-Cloudflare: **Settings → Variables and Secrets**. Generate one with
+Netlify: **Site configuration → Environment variables**. Cloudflare:
+**Settings → Variables and Secrets**. Generate one with
 `openssl rand -base64 32`.
 
-Storage is a KV namespace; see step 3 below. Without it, `/admin` can still read
-the current settings but not save them, and says so.
+Storage needs no setup on Netlify — it uses Netlify Blobs, which is already
+there on any deployed site. On Cloudflare it needs a KV namespace. Without a
+store, `/admin` can still read the current settings but not save them, and says
+so rather than reporting a change it did not make.
 
 - **Model** — one id from [openrouter.ai/models](https://openrouter.ai/models),
   or several separated by commas. They are tried in order, so the second one
@@ -52,26 +52,29 @@ missing.
 
 ### 1. Connect the repo
 
-Cloudflare dashboard → **Workers & Pages** → **coreos-ai** → **Settings** →
-**Builds** → connect this GitHub repository.
+Netlify dashboard → **Add new site** → **Import an existing project** → this
+GitHub repository. `netlify.toml` already carries the build command, the publish
+directory and the routing, so the defaults it offers are the right ones.
 
 | Setting | Value |
 |---|---|
 | Branch | `main` |
-| Build command | *(leave empty)* |
-| Deploy command | `npm run deploy` |
+| Build command | `npm run build:web` |
+| Publish directory | `dist` |
+| Functions directory | `netlify/functions` |
 
-`npm run deploy` builds the site and then deploys it, in that order. Putting
-both in one command means a deploy can never run against a missing or stale
-`dist/`, which is the usual reason a first Cloudflare build fails with
-*"the directory specified by the assets.directory field does not exist"*.
+Every push to `main` then deploys on its own.
 
-Every push to `main` then deploys on its own. `wrangler.toml` already carries
-the rest of the configuration.
+> **On Cloudflare instead:** Workers & Pages → **coreos-ai** → Settings →
+> Builds, deploy command `npm run deploy`. That one command builds and then
+> deploys, in that order, so a deploy can never run against a missing `dist/` —
+> the usual reason a first Cloudflare build fails with *"the directory specified
+> by the assets.directory field does not exist"*.
 
 ### 2. Set the variables
 
-**Settings → Variables and Secrets.**
+Netlify: **Site configuration → Environment variables**. Cloudflare:
+**Settings → Variables and Secrets**.
 
 | Name | Type | What it is |
 |---|---|---|
@@ -90,16 +93,18 @@ openssl rand -base64 32
 
 ### 3. Create the settings store
 
-Without this, `/admin` can read settings but not save them, and the model stays
-whatever the environment variable says.
+**On Netlify there is nothing to do.** Netlify Blobs is available to every
+deployed function, and `/admin` uses it as soon as the site is live.
+
+On Cloudflare it is a KV namespace:
 
 ```
 npx wrangler kv namespace create LAB_CONFIG
 ```
 
 That prints an id. Uncomment the last block of `wrangler.toml`, paste the id in,
-commit, push. The site works fine without this — it just falls back to
-environment variables and says so.
+commit, push. The site works fine without a store on either host — it falls back
+to environment variables and says so.
 
 ---
 
@@ -126,22 +131,16 @@ never the model ids, never the provider's own error text.
 
 ---
 
-## Finishing the move off Netlify
+## If you move hosts later
 
-Do this only once the Worker is serving a real deployment and
-`/api/lab/health` returns `"ok": true` on the Cloudflare URL.
+The canonical URLs in `index.html` (canonical, `og:url`, `og:image`, hreflang),
+`public/robots.txt` and `public/sitemap.xml` all say `coreosai.netlify.app`. On
+Netlify that is correct and there is nothing to do.
 
-1. Point the domain at the Worker (**Workers & Pages → coreos-ai → Settings →
-   Domains and Routes**).
-2. Update the host in `index.html` (canonical, `og:url`, `og:image`,
-   hreflang), `public/robots.txt`, and `public/sitemap.xml`. They all still say
-   `coreosai.netlify.app`.
-3. Resubmit the sitemap in Google Search Console.
-4. Only then delete `netlify.toml`, `netlify/`, and the Netlify function rules
-   in `public/_redirects`.
-
-Leaving step 4 until last means a bad deploy can be undone by pointing DNS
-back.
+If the domain ever moves, change those three files and resubmit the sitemap in
+Google Search Console — and change them *after* the new host is serving and its
+`/api/lab/health` returns `"ok": true`, not before. Pointing the canonical tag
+at a host that is not answering yet is how a working site gets deindexed.
 
 ---
 

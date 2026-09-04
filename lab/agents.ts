@@ -6,9 +6,9 @@
 /**
  * The CoreOS agent runtime, shared by every deployment target.
  *
- * server.ts (Express — Cloud Run, Render) and the serverless functions under
- * api/ and netlify/functions/ (Vercel, Netlify) all import from here, so the
- * agent roster and the rules they answer under are defined exactly once.
+ * server.ts (Express, for local development), the Netlify functions that serve
+ * the site, and the Cloudflare Worker all import from here, so the agent roster
+ * and the rules they answer under are defined exactly once.
  *
  * Nothing in this file is bundled into the browser build.
  */

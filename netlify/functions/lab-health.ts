@@ -16,12 +16,14 @@
  * key, never the model ids, never a provider error string.
  */
 
-import { checkLabHealth, settingsFromProcess } from "../../lab/agents";
+import { checkLabHealth } from "../../lab/agents";
+import { resolveSettings } from "../../lab/settings";
+import { settingsStore } from "../lib/settings-store";
 import { withDeadline } from "../lib/deadline";
 
 /* Bumped whenever this function changes, so the running build can be
    identified from its own output instead of guessed at. */
-const BUILD = "pr-26";
+const BUILD = "netlify-parity";
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -33,7 +35,11 @@ export default async function handler(request: Request): Promise<Response> {
 
   return withDeadline(
     async () => {
-      const health = await checkLabHealth(settingsFromProcess());
+      /* The probe has to run on the settings a real request would use,
+         stored ones included, or a green health check would mean nothing. */
+      const health = await checkLabHealth(
+        await resolveSettings(process.env as Record<string, string | undefined>, settingsStore()),
+      );
       return new Response(JSON.stringify({ build: BUILD, ...health }, null, 2), {
         // A cached health check is a lie, so make that explicit to every hop.
         status: health.probe.ok ? 200 : 503,

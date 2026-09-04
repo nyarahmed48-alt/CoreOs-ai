@@ -28,12 +28,15 @@ refreshes work.
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
 lab/agents.ts         shared agent runtime — roster, charter, provider calls
-api/lab/chat.ts       Vercel serverless entry point for the sandbox
-netlify/functions/    Netlify entry point for the sandbox
-public/_redirects     SPA + function routing for Netlify
-vercel.json           Vercel build + rewrite config
-netlify.toml          Netlify build + redirect config
-render.yaml           Render blueprint
+lab/settings.ts       runtime model/key settings, shared by both hosts
+lab/admin-page.ts     the /admin page, served as a static string
+netlify/functions/    the site's endpoints: chat, agents, health, settings, admin
+netlify/lib/          the Blobs settings store and the invocation deadline
+public/_redirects     SPA + function routing — the file Netlify actually obeys
+netlify.toml          Netlify build + redirect config (mirrors _redirects)
+worker/               Cloudflare Worker — the same endpoints, alternative host
+wrangler.toml         Cloudflare config
+supabase/             the manager console's schema and RLS posture
 src/
   main.tsx            entry point
   Root.tsx            route table; lazy-loads the manager console
@@ -182,20 +185,21 @@ switched off.
 
 The server honours `$PORT`, so it runs on any Node host with no extra config.
 
-**Vercel or Netlify**: `vercel.json` and `netlify.toml` are both in the repo.
-Import the repository on either platform and it picks up the build command, the
-SPA rewrite, and the sandbox function (`api/lab/chat.ts` on Vercel,
-`netlify/functions/lab-chat.ts` on Netlify). Add your provider key in the
-project's environment variables.
+The site runs on **Netlify**. `netlify.toml` carries the build command, the
+publish directory and the routing, so importing the repository is enough —
+then add `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` and `ADMIN_TOKEN` in **Site
+configuration → Environment variables**. See [DEPLOY.md](DEPLOY.md).
 
-**Render**: `render.yaml` is a blueprint — connect the repository at
-render.com and set your provider key in the dashboard.
+A **Cloudflare Worker** (`worker/`, `wrangler.toml`) serves the same endpoints
+from the same shared code and remains a working alternative: `npm run deploy`.
 
-**Google Cloud Run**:
-
-```bash
-gcloud run deploy coreos --source . --region <region> --allow-unauthenticated
-```
+Both hosts serve the whole site — `/api/lab/chat`, `/api/lab/agents`,
+`/api/lab/health`, `/api/lab/settings` and `/admin` — from `lab/`. The only
+host-specific pieces are the transport and where settings are stored (Netlify
+Blobs, Cloudflare KV). `netlify/routes.test.mts` checks that the two routing
+files agree and that every rule points at a function that exists, because
+Netlify silently prefers `public/_redirects` and a rule that lives only in
+`netlify.toml` is a route that 404s in production.
 
 > **Static-only deploys.** Dragging the built `dist/` folder onto a host gives
 > you the whole site *except* the agent sandbox — there is no function to answer
@@ -203,6 +207,8 @@ gcloud run deploy coreos --source . --region <region> --allow-unauthenticated
 > deployment and point at the contact address. Deploy from Git instead if you
 > want the agents live.
 
-Note that `data/*.json` is written at runtime. On hosts with ephemeral disks
-(Render's free plan, Cloud Run, serverless) those files reset — fine for the
-seeded demo data, but move to a real database before relying on it.
+`data/*.json` is written at runtime by the Express server, and only the Express
+server. Serverless functions have no persistent disk and the Worker has no disk
+at all, so the manager console at `/manager` has nothing behind it in
+production — its endpoints exist only in `server.ts`. `supabase/` holds the
+schema that replaces those files; see [supabase/README.md](supabase/README.md).

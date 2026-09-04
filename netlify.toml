@@ -3,11 +3,23 @@
   publish = "dist"
   functions = "netlify/functions"
 
-# The agent sandbox. Must come before the SPA catch-all below, or the
-# catch-all would swallow it and return index.html instead.
+# These mirror public/_redirects, which is the file Netlify actually obeys when
+# both are present. Kept in step on purpose: this is the one a reader opens,
+# that is the one that runs. A rule added to only one of them is a route that
+# works locally and 404s in production, or the reverse.
+#
+# Order matters — the SPA catch-all is last, or it swallows every rule above it.
+
+# The agent sandbox.
 [[redirects]]
   from = "/api/lab/chat"
   to = "/.netlify/functions/lab-chat"
+  status = 200
+
+# The public roster: slugs and display names, never the engine mapping.
+[[redirects]]
+  from = "/api/lab/agents"
+  to = "/.netlify/functions/lab-agents"
   status = 200
 
 # Open this when the agents go quiet: it says why, rather than leaving the
@@ -15,6 +27,25 @@
 [[redirects]]
   from = "/api/lab/health"
   to = "/.netlify/functions/lab-health"
+  status = 200
+
+# Reading and changing the model or key without a deploy. Refuses outright
+# unless ADMIN_TOKEN is set on the deployment.
+[[redirects]]
+  from = "/api/lab/settings"
+  to = "/.netlify/functions/lab-settings"
+  status = 200
+
+# The page that drives it. Both spellings, so a trailing slash is not the
+# difference between a settings page and the site's 404.
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/admin"
+  status = 200
+
+[[redirects]]
+  from = "/admin/"
+  to = "/.netlify/functions/admin"
   status = 200
 
 # Client-side routing: every other path serves the app shell so /mission,

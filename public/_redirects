@@ -1,18 +1,33 @@
-# Read by BOTH hosts while the move to Cloudflare is in progress, so it has to
-# stay valid for each.
+# Netlify's routing table. This file wins over netlify.toml, so a rule missing
+# here is a route that 404s no matter what the toml says — that is exactly how
+# /api/lab/health once returned the SPA shell instead of JSON.
 #
-# Netlify: these are the live rules. netlify.toml carries the same ones, but
-# this file wins, so a rule missing here is a route that 404s — that is exactly
-# how /api/lab/health returned the SPA instead of JSON.
+# netlify.toml carries the same rules. Both are kept in step deliberately: the
+# toml is the one a reader looks at first, and this is the one Netlify obeys.
 #
-# Cloudflare: this file is honoured too, but wrangler.toml sets
-# run_worker_first for /api/*, and that runs before any asset logic. So the
-# Netlify function rule below never applies there — the Worker answers first.
-# The catch-all is correct on both.
-#
-# Order matters: the SPA catch-all is last, or it would swallow the API paths
-# and answer them with index.html.
+# Order matters. The SPA catch-all is last, or it swallows everything above it
+# and answers each one with index.html — which the console reads as "no sandbox
+# on this deployment", the least useful thing it could conclude.
 
+# The agent sandbox.
 /api/lab/chat      /.netlify/functions/lab-chat      200
+
+# The public roster: slugs and display names, never the engine mapping.
+/api/lab/agents    /.netlify/functions/lab-agents    200
+
+# Open this when the agents go quiet. It says why, rather than leaving the
+# browser's one generic message to cover every possible cause.
 /api/lab/health    /.netlify/functions/lab-health    200
+
+# Reading and changing the model or key at runtime. Refuses outright unless
+# ADMIN_TOKEN is set on the deployment.
+/api/lab/settings  /.netlify/functions/lab-settings  200
+
+# The page that drives it. Both spellings, so a trailing slash is not the
+# difference between a settings page and the site's 404.
+/admin             /.netlify/functions/admin         200
+/admin/            /.netlify/functions/admin         200
+
+# Client-side routing: every other path serves the app shell, so /mission,
+# /coreos-ai, /contact and friends survive a refresh or a shared link.
 /*                 /index.html                       200
