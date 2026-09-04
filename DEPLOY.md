@@ -12,20 +12,26 @@ place until the switch is finished, so nothing goes dark mid-move.
 Go to **`https://<your-site>/admin`**, paste the admin token, and change either
 field. It takes effect on the very next request.
 
-This works on **both hosts** — Netlify today, Cloudflare when that switch
-happens. The only setup is one environment variable:
+**This works on Cloudflare only.** The Worker is the only target that serves
+`/admin` and reads a stored setting; the Netlify functions read the environment
+variables and nothing else, and there is no `/admin` rule in
+`public/_redirects`, so on Netlify that URL quietly returns the site shell.
+While the domain still points at Netlify, changing the model means changing
+`OPENROUTER_MODEL` in the Netlify dashboard and redeploying — the slow path this
+page exists to replace. Worth knowing *before* the model you are on goes dark,
+since that is when you would go looking for this.
+
+The setup below is one environment variable:
 
 | Name | Type | Value |
 |---|---|---|
 | `ADMIN_TOKEN` | Secret | any long random string — this is the password |
 
-Netlify: **Site configuration → Environment variables**. Cloudflare:
-**Settings → Variables and Secrets**. Generate one with `openssl rand -base64 32`.
+Cloudflare: **Settings → Variables and Secrets**. Generate one with
+`openssl rand -base64 32`.
 
-Storage needs no setup on Netlify — it uses Netlify Blobs, which is already
-there. On Cloudflare it needs a KV namespace; see step 3 below. Without
-storage, `/admin` can still read the current settings but not save them, and
-says so.
+Storage is a KV namespace; see step 3 below. Without it, `/admin` can still read
+the current settings but not save them, and says so.
 
 - **Model** — one id from [openrouter.ai/models](https://openrouter.ai/models),
   or several separated by commas. They are tried in order, so the second one
@@ -108,7 +114,12 @@ happened:
 | `kind: "quota"` | Out of credit or over the free daily cap |
 | `kind: "auth"` | Key missing, revoked, or not allowed for that model |
 | `kind: "model"` | A model id is unknown or retired |
-| `kind: "timeout"` | The model is too slow — put a faster one first |
+| `kind: "timeout"` | Every model in the list was too slow — put a faster one first |
+
+It also reports `answeredBy`: which position in `OPENROUTER_MODEL` actually
+answered. Anything above 1 means the site is running on a fallback and the ids
+before it need looking at — from outside, that is indistinguishable from a
+healthy site right up until the last one runs out too.
 
 Safe to leave public. It returns states and status codes only: never the key,
 never the model ids, never the provider's own error text.
