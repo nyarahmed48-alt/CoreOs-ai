@@ -59,6 +59,9 @@ export const ADMIN_PAGE = `<!doctype html>
   .bad { border-color: #7a2b32; color: #ff9ba4; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 6px 0 0;
        font-size: 14px; }
+  button.ghost { background: transparent; color: #cfd6f5; border: 1px solid #2a3350;
+                 margin-inline-start: 8px; }
+  button.ghost:hover { background: #161d33; }
   dt { color: #6b7392; }
   dd { margin: 0; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
 </style>
@@ -99,6 +102,19 @@ export const ADMIN_PAGE = `<!doctype html>
     <p class="hint">Type a single space and save to clear it and fall back to the environment variable.</p>
 
     <button id="save">Save</button>
+    <button id="test" class="ghost">Test now</button>
+    <p class="hint">
+      Test makes one real call through the same path the agents use and says
+      what came back — so a swap can be confirmed here rather than by opening
+      the site and guessing at a silent failure.
+    </p>
+
+    <dl id="probe" hidden>
+      <dt>Result</dt><dd id="p-result">—</dd>
+      <dt>Answered by</dt><dd id="p-by">—</dd>
+      <dt>Round trip</dt><dd id="p-ms">—</dd>
+      <dt>What to do</dt><dd id="p-hint">—</dd>
+    </dl>
   </fieldset>
 
   <div id="state" class="state" hidden></div>
@@ -148,6 +164,35 @@ export const ADMIN_PAGE = `<!doctype html>
     catch (e) { $("panel").hidden = true; say(e.message, "bad"); }
   };
 
+  /* /api/lab/health needs no token: it reports states and status codes only,
+     never the key, the model ids, or the provider's own error text. */
+  $("test").onclick = async function () {
+    say("Testing…");
+    $("probe").hidden = true;
+    try {
+      var res = await fetch("/api/lab/health", { headers: { accept: "application/json" } });
+      var h = await res.json();
+      $("probe").hidden = false;
+      $("p-result").textContent = h.probe && h.probe.ok
+        ? "working"
+        : "failed — " + ((h.probe && h.probe.kind) || "unknown")
+          + ((h.probe && h.probe.status) ? " (HTTP " + h.probe.status + ")" : "");
+      /* answeredBy is the position in the fallback list that replied. Anything
+         above 1 means the site is running on a backup — which looks identical
+         to healthy from outside, right up until the last one runs out too. */
+      var by = h.probe && h.probe.answeredBy;
+      $("p-by").textContent = by
+        ? (by === 1 ? "the first id" : "fallback #" + by + " — the ids before it did not answer")
+        : "—";
+      $("p-ms").textContent = h.probe && h.probe.ms != null ? h.probe.ms + " ms" : "—";
+      $("p-hint").textContent = h.hint || "—";
+      say(h.probe && h.probe.ok ? "Working." : "Not working — see below.",
+          h.probe && h.probe.ok ? "ok" : "bad");
+    } catch (e) {
+      say("Could not reach /api/lab/health on this deployment.", "bad");
+    }
+  };
+
   $("save").onclick = async function () {
     var payload = { model: $("model").value };
     var key = $("key").value;
@@ -159,7 +204,10 @@ export const ADMIN_PAGE = `<!doctype html>
       await call("PUT", payload);
       $("key").value = "";
       paint(await call("GET"));
-      say("Saved. Live on the next request.", "ok");
+      say("Saved. Checking it answers…", "ok");
+      /* The reason anyone is on this page is that something stopped working,
+         so prove the new setting before saying the job is done. */
+      $("test").click();
     } catch (e) { say(e.message, "bad"); }
   };
 </script>
