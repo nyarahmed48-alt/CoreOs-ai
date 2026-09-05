@@ -19,13 +19,20 @@
 import { isConfigured, publicAgentList } from "../../lab/agents";
 import { resolveSettings } from "../../lab/settings";
 import { settingsStore } from "../lib/settings-store";
+import { preflight, withCors } from "../lib/cors";
 
 export default async function handler(request: Request): Promise<Response> {
+  /* The operator console calls this cross-origin; see ../lib/cors.ts. */
+  const pre = preflight(request);
+  if (pre) return pre;
+
   if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }), {
-      status: 405,
-      headers: { "content-type": "application/json", allow: "GET" },
-    });
+    return withCors(
+      new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }), {
+        status: 405,
+        headers: { "content-type": "application/json", allow: "GET" },
+      }),
+    );
   }
 
   const settings = await resolveSettings(
@@ -33,12 +40,14 @@ export default async function handler(request: Request): Promise<Response> {
     settingsStore(),
   );
 
-  return new Response(JSON.stringify({ agents: publicAgentList(), live: isConfigured(settings) }), {
+  return withCors(
+    new Response(JSON.stringify({ agents: publicAgentList(), live: isConfigured(settings) }), {
     headers: {
       "content-type": "application/json",
       /* Whether the sandbox is live changes the moment someone saves a key at
          /admin, so this must not be served from a cache. */
-      "cache-control": "no-store",
-    },
-  });
+        "cache-control": "no-store",
+      },
+    }),
+  );
 }

@@ -20,12 +20,17 @@ import { checkLabHealth } from "../../lab/agents";
 import { resolveSettings } from "../../lab/settings";
 import { settingsStore } from "../lib/settings-store";
 import { withDeadline } from "../lib/deadline";
+import { preflight, withCors } from "../lib/cors";
 
 /* Bumped whenever this function changes, so the running build can be
    identified from its own output instead of guessed at. */
 const BUILD = "netlify-parity";
 
 export default async function handler(request: Request): Promise<Response> {
+  /* The operator console calls this cross-origin; see ../lib/cors.ts. */
+  const pre = preflight(request);
+  if (pre) return pre;
+
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }), {
       status: 405,
@@ -33,7 +38,8 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
-  return withDeadline(
+  return withCors(
+    await withDeadline(
     async () => {
       /* The probe has to run on the settings a real request would use,
          stored ones included, or a green health check would mean nothing. */
@@ -62,5 +68,6 @@ export default async function handler(request: Request): Promise<Response> {
         ),
         { status: 504, headers: { "content-type": "application/json", "cache-control": "no-store" } },
       ),
+    ),
   );
 }

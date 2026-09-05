@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CoreOs Operator</title>
+<!--
+  CoreOs Operator — your console, on your machine.
+
+  Not a website. This file is for the one person who runs the deployments: it
+  lists the sites you have live, tells you whether each one's AI is answering,
+  and changes the model on any of them without opening Netlify.
+
+  Open it: double-click. Nothing to install, nothing to build, no server.
+
+  ---------------------------------------------------------------------------
+  WHAT IT NEEDS
+
+  1. Your OpenRouter key — pasted once, in Account. It is kept in this
+     browser's localStorage and never written into this file, so sending
+     someone the file sends them no credential.
+
+  2. For each deployment you want to CONTROL rather than just watch: the site's
+     ADMIN_TOKEN, the value set in its Netlify environment. Without it the
+     console can still read that site's health; with it, it can change the
+     site's model and key from here.
+
+  Both stay on this machine. Anyone using this browser can read them back, so
+  treat this file the way you treat the tokens.
+
+  ---------------------------------------------------------------------------
+  IF A DEPLOYMENT SHOWS "unreachable"
+
+  Its endpoints need the CORS headers added in netlify/lib/cors.ts — a browser
+  refuses a cross-origin call before it is ever sent. Deploy that branch and the
+  site becomes controllable from here.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  :root{
+    --ground:#f1f3ea;--surface:#fff;--surface-2:#e8ebdf;--line:#d3d9c6;--line-soft:#e2e6d8;
+    --text:#11151e;--text-2:#59636f;--text-3:#838d99;
+    --accent:#1878dc;--accent-2:#6c7bf0;--accent-ink:#fff;
+    --ok:#1c7a4b;--ok-bg:#dcefe2;--warn:#9d6a0d;--warn-bg:#f6ecd3;
+    --crit:#ab392e;--crit-bg:#f6dedb;--idle:#6b7480;--idle-bg:#e4e7dc;--r:11px;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#070a11;--surface:#0e131d;--surface-2:#151c29;--line:#232c3d;--line-soft:#1a2231;
+    --text:#e6eaf1;--text-2:#8f99a9;--text-3:#6b7484;
+    --accent:#4f9ef2;--accent-2:#8f9bf7;--accent-ink:#07101d;
+    --ok:#45bd80;--ok-bg:#10281d;--warn:#dda948;--warn-bg:#2b2211;
+    --crit:#e97063;--crit-bg:#2e1614;--idle:#7d8695;--idle-bg:#1a2130;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--text);
+       font:400 14px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.02em}
+  .mono,code,input.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+  a{color:var(--accent)}
+  :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:5px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 18px}
+
+  header.top{border-bottom:1px solid var(--line-soft);background:var(--surface)}
+  header.top .wrap{display:flex;align-items:center;gap:12px;height:58px}
+  .lockup{display:flex;align-items:center;gap:9px}
+  .lockup b{font:700 18px/1 "Space Grotesk",sans-serif;letter-spacing:-.03em}
+  .lockup span{font-weight:500;color:var(--text-2);font-size:18px}
+  nav{display:flex;gap:2px;margin-inline-start:auto}
+  nav button{appearance:none;border:0;background:transparent;color:var(--text-2);cursor:pointer;
+             font:500 13.5px/1 inherit;padding:8px 12px;border-radius:8px}
+  nav button:hover{color:var(--text);background:var(--surface-2)}
+  nav button[aria-current="true"]{background:var(--accent);color:var(--accent-ink)}
+
+  main{padding:26px 0 70px}
+  h2{font-size:20px;margin:0 0 5px}
+  .lede{color:var(--text-2);margin:0 0 20px;max-width:70ch}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+  .panel > .body{padding:16px}
+  .panel > .head{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .panel > .head h3{margin:0;font-size:15px}
+
+  .btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--text);
+       font:500 13px/1 inherit;padding:9px 14px;border-radius:8px;cursor:pointer}
+  .btn:hover{background:var(--surface-2)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{color:var(--crit)} .btn.danger:hover{background:var(--crit-bg)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.sm{padding:6px 11px;font-size:12.5px}
+
+  .field{margin-bottom:13px}
+  .field label{display:block;font:500 10.5px/1 Inter,sans-serif;letter-spacing:.08em;
+               text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;font:400 13.5px/1.5 inherit;color:var(--text);
+    background:var(--ground);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .field .help{font-size:12.5px;color:var(--text-2);margin:6px 0 0}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .said{font-size:12.5px;color:var(--ok)}
+  .bad-msg{font-size:12.5px;color:var(--crit)}
+
+  /* deployments */
+  .dep{border-bottom:1px solid var(--line-soft)}
+  .dep:last-child{border-bottom:0}
+  .dep .top{display:flex;align-items:center;gap:11px;padding:14px 16px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;font:500 11.5px/1 Inter,sans-serif;
+        padding:5px 9px;border-radius:6px;white-space:nowrap}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .pill.ok{color:var(--ok);background:var(--ok-bg)}
+  .pill.bad{color:var(--crit);background:var(--crit-bg)}
+  .pill.warn{color:var(--warn);background:var(--warn-bg)}
+  .pill.idle{color:var(--idle);background:var(--idle-bg)}
+  .dep .name{font-weight:500}
+  .dep .url{font:400 12px/1 "JetBrains Mono",monospace;color:var(--text-3);margin-top:3px;word-break:break-all}
+  .dep .acts{margin-inline-start:auto;display:flex;gap:7px;flex-wrap:wrap}
+  .dep .detail{padding:0 16px 15px;font-size:13px;color:var(--text-2)}
+  .dep dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0 0 12px}
+  .dep dt{color:var(--text-3)}
+  .dep dd{margin:0;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--text)}
+
+  /* models */
+  .mfilters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .chip{appearance:none;font:500 12.5px/1 inherit;padding:7px 12px;border-radius:999px;
+        border:1px solid var(--line);background:var(--surface);color:var(--text-2);cursor:pointer}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .mfilters input{flex:1 1 200px;min-width:160px;font:400 13px/1 inherit;color:var(--text);
+                  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 14px}
+  .mlist{max-height:400px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+  .mrow{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+  .mrow:last-child{border-bottom:0}
+  .mrow .id{flex:1 1 auto;min-width:0;font:400 12.5px/1.4 "JetBrains Mono",monospace;word-break:break-all}
+  .mrow .free{font:500 10.5px/1 Inter,sans-serif;color:var(--ok);background:var(--ok-bg);padding:4px 7px;border-radius:5px}
+  .mrow .ctx{font:400 11.5px/1 "JetBrains Mono",monospace;color:var(--text-3);white-space:nowrap}
+
+  .chain{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-bottom:12px}
+  .link{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+  .link:last-child{border-bottom:0}
+  .pos{width:24px;height:24px;flex:none;border-radius:6px;display:grid;place-items:center;
+       font:500 11.5px/1 "JetBrains Mono",monospace;background:var(--surface-2);color:var(--text-2)}
+  .link.primary .pos{background:var(--accent);color:var(--accent-ink)}
+  .link .id{flex:1 1 auto;min-width:0;font:400 12.5px/1.4 "JetBrains Mono",monospace;word-break:break-all}
+  .link .role{font:500 11px/1 Inter,sans-serif;color:var(--text-3);white-space:nowrap}
+  .out{background:var(--surface-2);border-radius:8px;padding:12px 14px;margin-top:12px}
+  .out .val{font:400 12.5px/1.6 "JetBrains Mono",monospace;word-break:break-all;
+            background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:13.5px}
+  .kv dt{color:var(--text-2)}
+  .kv dd{margin:0;font-family:"JetBrains Mono",monospace;font-size:13px}
+  .bar{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+  .bar span{display:block;height:100%;background:var(--accent)}
+
+  pre.reply{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:8px;
+            padding:13px;margin:12px 0 0;font-size:13px;line-height:1.6;font-family:inherit}
+  .empty{padding:26px;text-align:center;color:var(--text-2);font-size:13.5px}
+  .warnbox{background:var(--warn-bg);border-radius:8px;padding:12px 14px;font-size:13px;margin-top:12px}
+  .warnbox b{color:var(--warn)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="lockup">
+      <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="#edf2e4" stroke="var(--line)" stroke-width="2"></circle>
+        <path d="M92 50 C 62 38, 48 32, 34 18 C 46 38, 46 62, 34 82 C 48 68, 62 62, 92 50 Z" fill="#05060a"></path>
+      </svg>
+      <b>coreOs</b><span>Operator</span>
+    </div>
+    <nav>
+      <button type="button" data-view="deployments" aria-current="true">Deployments</button>
+      <button type="button" data-view="models">Models</button>
+      <button type="button" data-view="test">Test</button>
+      <button type="button" data-view="account">Account</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================================================= deployments ==== -->
+  <div id="view-deployments">
+    <h2>Deployments</h2>
+    <p class="lede">Every site you run, and whether its AI is answering right now.
+      Add the admin token for a site and you can change its model from here — no Netlify, no redeploy.</p>
+
+    <div class="panel">
+      <div class="head">
+        <h3>Your sites</h3>
+        <div class="row" style="margin-inline-start:auto">
+          <button class="btn sm" type="button" id="check-all">Check all</button>
+        </div>
+      </div>
+      <div id="deps"></div>
+      <div class="empty" id="deps-empty">No sites yet. Add one below.</div>
+    </div>
+
+    <div class="panel">
+      <div class="head"><h3>Add a site</h3></div>
+      <div class="body">
+        <div class="field">
+          <label for="d-name">Name</label>
+          <input id="d-name" type="text" placeholder="CoreOs — production" />
+        </div>
+        <div class="field">
+          <label for="d-url">URL</label>
+          <input id="d-url" class="mono" type="url" placeholder="https://coreosai.netlify.app" />
+          <p class="help">The site's root. The console works out the endpoints from it.</p>
+        </div>
+        <div class="field">
+          <label for="d-token">Admin token — optional</label>
+          <input id="d-token" type="password" autocomplete="off" placeholder="the site's ADMIN_TOKEN" />
+          <p class="help">Leave blank to watch the site. Add it to control it: change the model and key from here.</p>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="d-add">Add site</button>
+          <span class="said" id="d-said" hidden>Added</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================== models ==== -->
+  <div id="view-models" hidden>
+    <h2>Models</h2>
+    <p class="lede">Live from OpenRouter. Build a chain — the first id that answers serves the request —
+      then push it to a deployment, or copy it for a Netlify variable.</p>
+
+    <div class="panel">
+      <div class="head"><h3>The chain</h3><span class="row" style="margin-inline-start:auto"><span class="said" id="chain-said" hidden>Copied</span></span></div>
+      <div class="body">
+        <div class="chain" id="chain"></div>
+        <div class="out">
+          <div class="field" style="margin:0">
+            <label>OPENROUTER_MODEL / AI_MODEL</label>
+            <div class="val" id="chain-value">— nothing chosen —</div>
+          </div>
+          <div class="row" style="margin-top:11px">
+            <button class="btn" type="button" id="chain-copy">Copy</button>
+            <select id="push-target" style="max-width:260px;font:400 13px/1.5 inherit;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:8px;padding:9px 11px"></select>
+            <button class="btn primary" type="button" id="chain-push">Push to site</button>
+            <span class="said" id="push-said" hidden></span>
+          </div>
+          <p class="help" id="push-help" style="margin-top:9px"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="head"><h3>Available</h3><span class="row" style="margin-inline-start:auto"><button class="btn sm" type="button" id="load-models">Reload</button></span></div>
+      <div class="body">
+        <div class="mfilters">
+          <button class="chip" data-cost="free" aria-pressed="true">Free only</button>
+          <button class="chip" data-cost="all" aria-pressed="false">All</button>
+          <input id="m-q" type="search" placeholder="Filter by name or vendor…" aria-label="Filter models" />
+        </div>
+        <div class="mlist" id="mlist"><div class="empty" id="m-empty">Add your OpenRouter key in Account, then reload.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== test ==== -->
+  <div id="view-test" hidden>
+    <h2>Test a model</h2>
+    <p class="lede">One real call, straight to the provider. Use it to vet a model before putting it in a chain.</p>
+    <div class="panel">
+      <div class="body">
+        <div class="field">
+          <label for="t-model">Model id</label>
+          <input id="t-model" class="mono" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free" />
+        </div>
+        <div class="field">
+          <label for="t-prompt">Prompt</label>
+          <textarea id="t-prompt" rows="3">Write one sentence a Kurdish barber shop could send to a customer who is 10 minutes late.</textarea>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="t-send">Send</button>
+          <span class="said" id="t-meta" hidden></span>
+        </div>
+        <pre class="reply" id="t-reply" hidden></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== account ==== -->
+  <div id="view-account" hidden>
+    <h2>Account</h2>
+    <p class="lede">Your OpenRouter key, and what is left on it.</p>
+
+    <div class="panel">
+      <div class="head"><h3>Key</h3></div>
+      <div class="body">
+        <div class="field">
+          <label for="or-key">OpenRouter API key</label>
+          <input id="or-key" type="password" autocomplete="off" placeholder="sk-or-v1-…" />
+          <p class="help">Kept in this browser only, never written into this file.
+            Get one at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="or-save">Save</button>
+          <button class="btn" type="button" id="or-check">Check</button>
+          <button class="btn danger" type="button" id="or-forget">Forget</button>
+          <span class="said" id="or-said" hidden></span>
+        </div>
+        <div id="or-info" hidden style="margin-top:16px">
+          <dl class="kv">
+            <dt>Label</dt><dd id="k-label">—</dd>
+            <dt>Used</dt><dd id="k-usage">—</dd>
+            <dt>Limit</dt><dd id="k-limit">—</dd>
+            <dt>Tier</dt><dd id="k-tier">—</dd>
+          </dl>
+          <div class="bar" id="k-bar" hidden><span id="k-bar-fill" style="width:0%"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="head"><h3>Where this data lives</h3></div>
+      <div class="body" style="padding-top:14px">
+        <p style="margin:0;color:var(--text-2)">
+          Your OpenRouter key and each site's admin token are held in this browser's storage,
+          on this machine. They are never written into the file, so sending someone this file
+          sends them no credential — but anyone using this browser can read them back. Treat the
+          file the way you treat the tokens.
+        </p>
+        <div class="warnbox">
+          <b>A site showing “unreachable”</b> needs the CORS headers from
+          <code>netlify/lib/cors.ts</code> deployed. A browser refuses a cross-origin call before
+          it is ever sent, so until that is live the console can only watch sites, not control them.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var LS = "coreos-operator";
+  var state = { key: "", deployments: [], chain: [] };
+  try {
+    var saved = JSON.parse(localStorage.getItem(LS) || "null");
+    if (saved && typeof saved === "object") state = Object.assign(state, saved);
+  } catch (e) { /* private mode: run without persistence */ }
+
+  var models = [];
+  var cost = "free";
+  var mQuery = "";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+  var save = function () {
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
+  };
+  var flash = function (el, text) {
+    el.textContent = text; el.hidden = false;
+    setTimeout(function () { el.hidden = true; }, 2200);
+  };
+  var money = function (n) {
+    var v = Number(n);
+    return isFinite(v) ? "$" + v.toFixed(v < 1 ? 4 : 2) : "—";
+  };
+
+  /* -------------------------------------------------------------- views */
+
+  Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (b) {
+    b.addEventListener("click", function () {
+      var v = b.getAttribute("data-view");
+      Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (o) {
+        o.setAttribute("aria-current", String(o === b));
+      });
+      ["deployments", "models", "test", "account"].forEach(function (name) {
+        $("view-" + name).hidden = name !== v;
+      });
+      if (v === "models" && !models.length && state.key) loadModels();
+      window.scrollTo(0, 0);
+    });
+  });
+
+  /* -------------------------------------------------------- deployments */
+
+  /* A site's endpoints follow from its root, so the operator pastes one URL
+     rather than four. Trailing slashes are trimmed because "site.com/" +
+     "/api/..." is a 404 nobody enjoys diagnosing. */
+  var endpoint = function (dep, path) { return dep.url.replace(/\/+$/, "") + path; };
+
+  function renderDeps() {
+    $("deps-empty").hidden = state.deployments.length > 0;
+    $("deps").innerHTML = state.deployments.map(function (d, i) {
+      var s = d.status || {};
+      var cls = s.state === "ok" ? "ok" : s.state === "unconfigured" ? "warn"
+              : s.state === "unreachable" || s.state === "failing" ? "bad" : "idle";
+      var label = s.state === "ok" ? "Working"
+                : s.state === "failing" ? "Not answering"
+                : s.state === "unconfigured" ? "No key set"
+                : s.state === "unreachable" ? "Unreachable" : "Not checked";
+      return '<div class="dep">'
+        + '<div class="top">'
+        +   '<span class="pill ' + cls + '"><span class="dot"></span>' + label + '</span>'
+        +   '<div><div class="name">' + esc(d.name || "Untitled") + '</div>'
+        +   '<div class="url">' + esc(d.url) + '</div></div>'
+        +   '<div class="acts">'
+        +     '<button class="btn sm check" data-i="' + i + '">Check</button>'
+        +     (d.token ? '<button class="btn sm load" data-i="' + i + '">Settings</button>' : "")
+        +     '<button class="btn sm danger del" data-i="' + i + '">Remove</button>'
+        +   "</div>"
+        + "</div>"
+        + (s.state && s.state !== "unchecked"
+            ? '<div class="detail"><dl>'
+              + (s.provider ? "<dt>Provider</dt><dd>" + esc(s.provider) + "</dd>" : "")
+              + (s.models != null ? "<dt>Models listed</dt><dd>" + s.models + "</dd>" : "")
+              + (s.answeredBy ? "<dt>Answered by</dt><dd>" + (s.answeredBy === 1 ? "the first id" : "fallback #" + s.answeredBy) + "</dd>" : "")
+              + (s.ms != null ? "<dt>Round trip</dt><dd>" + s.ms + " ms</dd>" : "")
+              + (s.model ? "<dt>Model in force</dt><dd>" + esc(s.model) + "</dd>" : "")
+              + "</dl>" + (s.hint ? esc(s.hint) : "") + "</div>"
+            : "")
+        + "</div>";
+    }).join("");
+
+    var sel = $("push-target");
+    sel.innerHTML = state.deployments.length
+      ? state.deployments.map(function (d, i) {
+          return '<option value="' + i + '"' + (d.token ? "" : " disabled") + ">"
+            + esc(d.name || d.url) + (d.token ? "" : " — no admin token") + "</option>";
+        }).join("")
+      : '<option value="">no sites added</option>';
+  }
+
+  /** One health call. Never throws — an unreachable site is a status, not an error. */
+  async function check(dep) {
+    dep.status = { state: "checking" };
+    renderDeps();
+    try {
+      var res = await fetch(endpoint(dep, "/api/lab/health"), { headers: { accept: "application/json" } });
+      var d = await res.json();
+      var probe = d.probe || {};
+      dep.status = {
+        state: !d.configured ? "unconfigured" : probe.ok ? "ok" : "failing",
+        models: d.modelsConfigured,
+        answeredBy: probe.answeredBy,
+        ms: probe.ms,
+        hint: d.hint,
+      };
+    } catch (err) {
+      /* A browser cannot distinguish "blocked by CORS" from "host is down", so
+         say what to check rather than picking one and being wrong. */
+      dep.status = {
+        state: "unreachable",
+        hint: "No answer. Either the site is down, or its endpoints have no CORS headers yet — see netlify/lib/cors.ts.",
+      };
+    }
+    save(); renderDeps();
+  }
+
+  /** Read the settings a site is actually running on. Needs its admin token. */
+  async function loadSettings(dep) {
+    if (!dep.token) return;
+    try {
+      var res = await fetch(endpoint(dep, "/api/lab/settings"), {
+        headers: { "x-admin-token": dep.token, accept: "application/json" },
+      });
+      var d = await res.json();
+      if (!res.ok) {
+        dep.status = Object.assign({}, dep.status, { hint: d.message || d.error || "Settings refused." });
+      } else {
+        dep.status = Object.assign({}, dep.status || { state: "unchecked" }, {
+          model: (d.model && d.model.effective) || "not set",
+          hint: "Key " + ((d.apiKey && d.apiKey.preview) || "not set")
+              + " · from " + ((d.apiKey && d.apiKey.from) || "?")
+              + (d.updatedAt ? " · changed " + d.updatedAt : ""),
+        });
+      }
+    } catch (err) {
+      dep.status = Object.assign({}, dep.status, { hint: "Could not reach the settings endpoint." });
+    }
+    save(); renderDeps();
+  }
+
+  $("deps").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-i]");
+    if (!b) return;
+    var dep = state.deployments[Number(b.getAttribute("data-i"))];
+    if (!dep) return;
+    if (b.classList.contains("check")) check(dep);
+    else if (b.classList.contains("load")) loadSettings(dep);
+    else if (b.classList.contains("del")) {
+      state.deployments.splice(state.deployments.indexOf(dep), 1);
+      save(); renderDeps();
+    }
+  });
+
+  $("check-all").addEventListener("click", function () {
+    state.deployments.forEach(check);
+  });
+
+  $("d-add").addEventListener("click", function () {
+    var url = $("d-url").value.trim();
+    if (!/^https?:\/\//.test(url)) {
+      flash($("d-said"), "Give a full URL, starting with https://");
+      return;
+    }
+    state.deployments.push({
+      name: $("d-name").value.trim() || url.replace(/^https?:\/\//, ""),
+      url: url,
+      token: $("d-token").value.trim(),
+      status: { state: "unchecked" },
+    });
+    $("d-name").value = ""; $("d-url").value = ""; $("d-token").value = "";
+    save(); renderDeps();
+    flash($("d-said"), "Added");
+    check(state.deployments[state.deployments.length - 1]);
+  });
+
+  /* -------------------------------------------------------------- models */
+
+  async function loadModels() {
+    $("m-empty").textContent = "Loading…";
+    try {
+      var res = await fetch("https://openrouter.ai/api/v1/models");
+      var d = await res.json();
+      models = (d.data || []).map(function (m) {
+        var p = m.pricing || {};
+        var free = Number(p.prompt) === 0 && Number(p.completion) === 0;
+        return { id: m.id, name: m.name || m.id, ctx: m.context_length || 0, free: free };
+      }).sort(function (a, b) { return a.id.localeCompare(b.id); });
+      renderModels();
+    } catch (err) {
+      $("m-empty").textContent = "Could not reach openrouter.ai/api/v1/models.";
+    }
+  }
+
+  function renderModels() {
+    var q = mQuery.trim().toLowerCase();
+    var list = models.filter(function (m) {
+      if (cost === "free" && !m.free) return false;
+      return !q || (m.id + " " + m.name).toLowerCase().indexOf(q) > -1;
+    });
+    if (!list.length) {
+      $("mlist").innerHTML = '<div class="empty">Nothing matches that.</div>';
+      return;
+    }
+    $("mlist").innerHTML = list.slice(0, 200).map(function (m) {
+      var inChain = state.chain.indexOf(m.id) > -1;
+      return '<div class="mrow">'
+        + '<span class="id">' + esc(m.id) + "</span>"
+        + (m.free ? '<span class="free">free</span>' : "")
+        + '<span class="ctx">' + (m.ctx ? (m.ctx / 1000).toFixed(0) + "k" : "") + "</span>"
+        + '<button class="btn sm add-model" data-id="' + esc(m.id) + '"' + (inChain ? " disabled" : "") + ">"
+        + (inChain ? "in chain" : "Add") + "</button>"
+        + "</div>";
+    }).join("");
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".chip[data-cost]"), function (c) {
+    c.addEventListener("click", function () {
+      cost = c.getAttribute("data-cost");
+      Array.prototype.forEach.call(document.querySelectorAll(".chip[data-cost]"), function (o) {
+        o.setAttribute("aria-pressed", String(o === c));
+      });
+      renderModels();
+    });
+  });
+  $("m-q").addEventListener("input", function () { mQuery = this.value; renderModels(); });
+  $("load-models").addEventListener("click", loadModels);
+
+  $("mlist").addEventListener("click", function (e) {
+    var b = e.target.closest(".add-model");
+    if (!b) return;
+    var id = b.getAttribute("data-id");
+    if (state.chain.indexOf(id) === -1) state.chain.push(id);
+    save(); renderChain(); renderModels();
+  });
+
+  function renderChain() {
+    $("chain-value").textContent = state.chain.length ? state.chain.join(", ") : "— nothing chosen —";
+    if (!state.chain.length) {
+      $("chain").innerHTML = '<div class="empty">Pick models below. The first that answers serves the request; the rest are what keep the site up when it will not.</div>';
+      return;
+    }
+    $("chain").innerHTML = state.chain.map(function (id, i) {
+      return '<div class="link' + (i === 0 ? " primary" : "") + '">'
+        + '<span class="pos">' + (i + 1) + "</span>"
+        + '<span class="id">' + esc(id) + "</span>"
+        + '<span class="role">' + (i === 0 ? "serves requests" : "backup " + i) + "</span>"
+        + '<button class="btn sm up" data-i="' + i + '"' + (i === 0 ? " disabled" : "") + ">↑</button>"
+        + '<button class="btn sm danger rm" data-i="' + i + '">×</button>'
+        + "</div>";
+    }).join("");
+  }
+
+  $("chain").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-i]");
+    if (!b) return;
+    var i = Number(b.getAttribute("data-i"));
+    if (b.classList.contains("rm")) state.chain.splice(i, 1);
+    else if (b.classList.contains("up") && i > 0) {
+      var t = state.chain[i - 1]; state.chain[i - 1] = state.chain[i]; state.chain[i] = t;
+    }
+    save(); renderChain(); renderModels();
+  });
+
+  $("chain-copy").addEventListener("click", function () {
+    if (!state.chain.length) return;
+    var text = state.chain.join(", ");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash($("chain-said"), "Copied"); },
+        function () { flash($("chain-said"), "Select the value and copy it"); });
+    } else flash($("chain-said"), "Select the value and copy it");
+  });
+
+  $("chain-push").addEventListener("click", async function () {
+    var dep = state.deployments[Number($("push-target").value)];
+    if (!dep || !dep.token) { flash($("push-said"), "That site has no admin token"); return; }
+    if (!state.chain.length) { flash($("push-said"), "The chain is empty"); return; }
+
+    $("chain-push").disabled = true;
+    $("push-help").textContent = "Pushing to " + dep.url + " …";
+    try {
+      var res = await fetch(endpoint(dep, "/api/lab/settings"), {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-admin-token": dep.token },
+        body: JSON.stringify({ model: state.chain.join(", ") }),
+      });
+      var d = await res.json();
+      if (res.ok) {
+        flash($("push-said"), "Pushed");
+        /* Live on the next request, so prove it rather than assume it. */
+        $("push-help").textContent = "Saved. Checking the site answers on it…";
+        await check(dep);
+        await loadSettings(dep);
+        $("push-help").textContent = "Done — see the site's row under Deployments.";
+      } else {
+        $("push-help").textContent = d.message || d.error || "The site refused the change.";
+      }
+    } catch (err) {
+      $("push-help").textContent = "Could not reach that site's settings endpoint.";
+    }
+    $("chain-push").disabled = false;
+  });
+
+  /* ---------------------------------------------------------------- test */
+
+  $("t-send").addEventListener("click", async function () {
+    var model = $("t-model").value.trim() || state.chain[0];
+    if (!model) { flash($("t-meta"), "Give a model id"); return; }
+    if (!state.key) { flash($("t-meta"), "Add your OpenRouter key in Account"); return; }
+
+    $("t-send").disabled = true;
+    $("t-reply").hidden = false;
+    $("t-reply").textContent = "Thinking…";
+    var started = Date.now();
+    try {
+      var res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + state.key },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 700,
+          messages: [{ role: "user", content: $("t-prompt").value }],
+        }),
+      });
+      var d = await res.json();
+      if (!res.ok || d.error) {
+        $("t-reply").textContent = (d.error && d.error.message) || ("HTTP " + res.status);
+      } else {
+        $("t-reply").textContent = ((d.choices || [])[0] || {}).message
+          ? d.choices[0].message.content : "(empty reply)";
+        flash($("t-meta"), (Date.now() - started) + " ms");
+      }
+    } catch (err) {
+      $("t-reply").textContent = "The request could not be sent.";
+    }
+    $("t-send").disabled = false;
+  });
+
+  /* ------------------------------------------------------------- account */
+
+  $("or-save").addEventListener("click", function () {
+    state.key = $("or-key").value.trim();
+    save();
+    flash($("or-said"), "Saved");
+    if (state.key) checkKey();
+  });
+  $("or-forget").addEventListener("click", function () {
+    state.key = ""; $("or-key").value = ""; $("or-info").hidden = true;
+    save(); flash($("or-said"), "Forgotten");
+  });
+  $("or-check").addEventListener("click", function () { $("or-save").click(); });
+
+  async function checkKey() {
+    if (!state.key) return;
+    try {
+      var res = await fetch("https://openrouter.ai/api/v1/key", {
+        headers: { authorization: "Bearer " + state.key },
+      });
+      var d = await res.json();
+      if (!res.ok) { flash($("or-said"), "Key rejected"); return; }
+      var k = d.data || {};
+      $("or-info").hidden = false;
+      $("k-label").textContent = k.label || "—";
+      $("k-usage").textContent = money(k.usage);
+      $("k-limit").textContent = k.limit == null ? "no limit set" : money(k.limit);
+      $("k-tier").textContent = k.is_free_tier ? "free tier" : "paid";
+      if (k.limit) {
+        var pct = Math.min(100, (Number(k.usage) / Number(k.limit)) * 100);
+        $("k-bar").hidden = false;
+        $("k-bar-fill").style.width = pct.toFixed(1) + "%";
+      } else {
+        $("k-bar").hidden = true;
+      }
+    } catch (err) {
+      flash($("or-said"), "Could not reach OpenRouter");
+    }
+  }
+
+  /* --------------------------------------------------------------- boot */
+
+  $("or-key").value = state.key;
+  renderDeps();
+  renderChain();
+  if (state.key) { checkKey(); loadModels(); }
+})();
+</script>
+</body>
+</html>

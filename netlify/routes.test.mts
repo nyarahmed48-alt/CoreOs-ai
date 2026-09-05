@@ -102,3 +102,55 @@ describe("Netlify routing", () => {
     }
   });
 });
+
+describe("cross-origin access for the operator console", () => {
+  /* The console runs from a file on the operator's own machine, so its origin
+     is `null` and every call is cross-origin. Without these the browser
+     refuses the request before it is sent, and the console can read a
+     deployment's health but never change its model — the one thing it is for. */
+  const ORIGIN_SENSITIVE = ["lab-health", "lab-settings", "lab-agents"];
+
+  it("answers a preflight on every endpoint the console drives", async () => {
+    for (const name of ORIGIN_SENSITIVE) {
+      const mod = (await import(`./functions/${name}.ts`)) as {
+        default: (r: Request) => Promise<Response>;
+      };
+      const res = await mod.default(
+        new Request("https://site.test/x", { method: "OPTIONS" }),
+      );
+      assert.equal(res.status, 204, `${name} should answer a preflight`);
+      assert.equal(res.headers.get("access-control-allow-origin"), "*", name);
+      assert.match(
+        res.headers.get("access-control-allow-headers") ?? "",
+        /x-admin-token/,
+        `${name} must allow the header that makes the request preflighted`,
+      );
+    }
+  });
+
+  it("puts the headers on a real response too, not only the preflight", async () => {
+    /* A preflight that passes and a response the browser then refuses to hand
+       over is the same outcome as no CORS at all. */
+    const mod = (await import("./functions/lab-agents.ts")) as {
+      default: (r: Request) => Promise<Response>;
+    };
+    const res = await mod.default(new Request("https://site.test/api/lab/agents"));
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+  });
+
+  it("still refuses settings without the token", async () => {
+    /* CORS opens the door to the check, not past it. */
+    const mod = (await import("./functions/lab-settings.ts")) as {
+      default: (r: Request) => Promise<Response>;
+    };
+    process.env.ADMIN_TOKEN = "the-real-token";
+    const res = await mod.default(
+      new Request("https://site.test/api/lab/settings", {
+        method: "GET",
+        headers: { "x-admin-token": "guess" },
+      }),
+    );
+    assert.equal(res.status, 401);
+    delete process.env.ADMIN_TOKEN;
+  });
+});
