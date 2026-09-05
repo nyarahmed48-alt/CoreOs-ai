@@ -5,35 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CoreOs Operator</title>
 <!--
-  CoreOs Operator — your console, on your machine.
+  CoreOs Operator — your console. One file, your machine, no customer side.
 
-  Not a website. This file is for the one person who runs the deployments: it
-  lists the sites you have live, tells you whether each one's AI is answering,
-  and changes the model on any of them without opening Netlify.
+  It watches every site and system you run, tells you when one's AI stops
+  answering, and fixes it: finds a model that actually works, pushes it to the
+  broken site, confirms the site answers again, and remembers what worked so
+  the next fix is faster.
 
-  Open it: double-click. Nothing to install, nothing to build, no server.
+  Open it: double-click. Nothing to install.
 
   ---------------------------------------------------------------------------
   WHAT IT NEEDS
 
-  1. Your OpenRouter key — pasted once, in Account. It is kept in this
-     browser's localStorage and never written into this file, so sending
-     someone the file sends them no credential.
+  Account   your OpenRouter key — used to list models and to TEST a candidate
+            before pushing it anywhere.
+  Per site  the site's ADMIN_TOKEN, the value in its Netlify environment.
+            Without it a site is watch-only; with it, fixable from here.
 
-  2. For each deployment you want to CONTROL rather than just watch: the site's
-     ADMIN_TOKEN, the value set in its Netlify environment. Without it the
-     console can still read that site's health; with it, it can change the
-     site's model and key from here.
-
-  Both stay on this machine. Anyone using this browser can read them back, so
-  treat this file the way you treat the tokens.
+  Both live in this browser's storage. Neither is written into this file, so
+  sending someone the file sends them no credential — but anyone using this
+  browser can read them back. Treat the file the way you treat the tokens.
 
   ---------------------------------------------------------------------------
-  IF A DEPLOYMENT SHOWS "unreachable"
+  WHAT "FIX" ACTUALLY DOES
 
-  Its endpoints need the CORS headers added in netlify/lib/cors.ts — a browser
-  refuses a cross-origin call before it is ever sent. Deploy that branch and the
-  site becomes controllable from here.
+  It is rule-based, not magic, and it never pushes a model it has not just
+  proved works:
+
+    quota    the model hit its cap        → find a working one, push it first
+    model    the id is retired or wrong   → same
+    timeout  too slow for a function      → same, preferring one already fast here
+    auth     the key is rejected          → NOT fixable by swapping models.
+                                            Paste a new key and it pushes that.
+    network / unreachable                 → nothing to fix from here; reported.
+
+  Every attempt is written to the Log with what broke, what was tried, and
+  whether the site came back. A model that answers gets remembered per site and
+  tried first next time — that is the whole of the "learning", and it is
+  deliberately something you can read rather than a black box.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -57,36 +66,40 @@
   body{margin:0;background:var(--ground);color:var(--text);
        font:400 14px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
   h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.02em}
-  .mono,code,input.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+  .mono,code{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
   a{color:var(--accent)}
   :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:5px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   .wrap{max-width:1000px;margin:0 auto;padding:0 18px}
 
-  header.top{border-bottom:1px solid var(--line-soft);background:var(--surface)}
+  header.top{border-bottom:1px solid var(--line-soft);background:var(--surface);position:sticky;top:0;z-index:20}
   header.top .wrap{display:flex;align-items:center;gap:12px;height:58px}
   .lockup{display:flex;align-items:center;gap:9px}
   .lockup b{font:700 18px/1 "Space Grotesk",sans-serif;letter-spacing:-.03em}
   .lockup span{font-weight:500;color:var(--text-2);font-size:18px}
-  nav{display:flex;gap:2px;margin-inline-start:auto}
+  nav{display:flex;gap:2px;margin-inline-start:auto;flex-wrap:wrap}
   nav button{appearance:none;border:0;background:transparent;color:var(--text-2);cursor:pointer;
-             font:500 13.5px/1 inherit;padding:8px 12px;border-radius:8px}
+             font:500 13.5px/1 inherit;padding:8px 12px;border-radius:8px;position:relative}
   nav button:hover{color:var(--text);background:var(--surface-2)}
   nav button[aria-current="true"]{background:var(--accent);color:var(--accent-ink)}
+  nav .count{font:500 11px/1 "JetBrains Mono",monospace;margin-inline-start:5px;opacity:.75}
 
-  main{padding:26px 0 70px}
+  main{padding:24px 0 70px}
   h2{font-size:20px;margin:0 0 5px}
-  .lede{color:var(--text-2);margin:0 0 20px;max-width:70ch}
+  .lede{color:var(--text-2);margin:0 0 18px;max-width:72ch}
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
   .panel > .body{padding:16px}
-  .panel > .head{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .panel > .head{padding:13px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .panel > .head h3{margin:0;font-size:15px}
+  .spacer{margin-inline-start:auto}
 
   .btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--text);
        font:500 13px/1 inherit;padding:9px 14px;border-radius:8px;cursor:pointer}
   .btn:hover{background:var(--surface-2)}
   .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   .btn.primary:hover{filter:brightness(1.08)}
+  .btn.fix{background:var(--warn);border-color:var(--warn);color:#fff}
+  .btn.fix:hover{filter:brightness(1.08)}
   .btn.danger{color:var(--crit)} .btn.danger:hover{background:var(--crit-bg)}
   .btn:disabled{opacity:.5;cursor:default}
   .btn.sm{padding:6px 11px;font-size:12.5px}
@@ -99,12 +112,7 @@
   .field .help{font-size:12.5px;color:var(--text-2);margin:6px 0 0}
   .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
   .said{font-size:12.5px;color:var(--ok)}
-  .bad-msg{font-size:12.5px;color:var(--crit)}
 
-  /* deployments */
-  .dep{border-bottom:1px solid var(--line-soft)}
-  .dep:last-child{border-bottom:0}
-  .dep .top{display:flex;align-items:center;gap:11px;padding:14px 16px;flex-wrap:wrap}
   .pill{display:inline-flex;align-items:center;gap:6px;font:500 11.5px/1 Inter,sans-serif;
         padding:5px 9px;border-radius:6px;white-space:nowrap}
   .pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -112,29 +120,39 @@
   .pill.bad{color:var(--crit);background:var(--crit-bg)}
   .pill.warn{color:var(--warn);background:var(--warn-bg)}
   .pill.idle{color:var(--idle);background:var(--idle-bg)}
+
+  .dep{border-bottom:1px solid var(--line-soft)}
+  .dep:last-child{border-bottom:0}
+  .dep .top{display:flex;align-items:center;gap:11px;padding:13px 16px;flex-wrap:wrap}
   .dep .name{font-weight:500}
   .dep .url{font:400 12px/1 "JetBrains Mono",monospace;color:var(--text-3);margin-top:3px;word-break:break-all}
-  .dep .acts{margin-inline-start:auto;display:flex;gap:7px;flex-wrap:wrap}
-  .dep .detail{padding:0 16px 15px;font-size:13px;color:var(--text-2)}
-  .dep dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0 0 12px}
+  .dep .acts{margin-inline-start:auto;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .dep .detail{padding:0 16px 14px}
+  .dep dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0 0 10px;font-size:13px}
   .dep dt{color:var(--text-3)}
   .dep dd{margin:0;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--text)}
+  .diag{border-radius:8px;padding:11px 13px;font-size:13px;margin-bottom:10px}
+  .diag.bad{background:var(--crit-bg)} .diag.warn{background:var(--warn-bg)}
+  .diag b{display:block;margin-bottom:3px}
+  .known{font-size:12px;color:var(--text-3);margin-top:8px}
+  .known code{background:var(--surface-2);padding:2px 6px;border-radius:4px;margin-inline-end:5px;font-size:11.5px}
 
-  /* models */
+  .toggle{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer}
+  .toggle input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+
   .mfilters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
   .chip{appearance:none;font:500 12.5px/1 inherit;padding:7px 12px;border-radius:999px;
         border:1px solid var(--line);background:var(--surface);color:var(--text-2);cursor:pointer}
   .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   .mfilters input{flex:1 1 200px;min-width:160px;font:400 13px/1 inherit;color:var(--text);
                   background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 14px}
-  .mlist{max-height:400px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
-  .mrow{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+  .mlist{max-height:360px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+  .mrow{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px solid var(--line-soft)}
   .mrow:last-child{border-bottom:0}
   .mrow .id{flex:1 1 auto;min-width:0;font:400 12.5px/1.4 "JetBrains Mono",monospace;word-break:break-all}
   .mrow .free{font:500 10.5px/1 Inter,sans-serif;color:var(--ok);background:var(--ok-bg);padding:4px 7px;border-radius:5px}
-  .mrow .ctx{font:400 11.5px/1 "JetBrains Mono",monospace;color:var(--text-3);white-space:nowrap}
 
-  .chain{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-bottom:12px}
+  .chain{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
   .link{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
   .link:last-child{border-bottom:0}
   .pos{width:24px;height:24px;flex:none;border-radius:6px;display:grid;place-items:center;
@@ -146,12 +164,19 @@
   .out .val{font:400 12.5px/1.6 "JetBrains Mono",monospace;word-break:break-all;
             background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
 
+  .log-entry{padding:12px 16px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .log-entry:last-child{border-bottom:0}
+  .log-entry .when{font:400 11.5px/1 "JetBrains Mono",monospace;color:var(--text-3)}
+  .log-entry .what{margin-top:5px}
+  .log-entry .what b{font-weight:500}
+  .log-entry .steps{margin:7px 0 0;padding-inline-start:18px;color:var(--text-2);font-size:12.5px}
+  .log-entry .steps li{margin:2px 0}
+
   .kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:13.5px}
   .kv dt{color:var(--text-2)}
   .kv dd{margin:0;font-family:"JetBrains Mono",monospace;font-size:13px}
   .bar{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-top:8px}
   .bar span{display:block;height:100%;background:var(--accent)}
-
   pre.reply{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:8px;
             padding:13px;margin:12px 0 0;font-size:13px;line-height:1.6;font-family:inherit}
   .empty{padding:26px;text-align:center;color:var(--text-2);font-size:13.5px}
@@ -172,9 +197,9 @@
       <b>coreOs</b><span>Operator</span>
     </div>
     <nav>
-      <button type="button" data-view="deployments" aria-current="true">Deployments</button>
+      <button type="button" data-view="systems" aria-current="true">Systems<span class="count" id="c-systems"></span></button>
       <button type="button" data-view="models">Models</button>
-      <button type="button" data-view="test">Test</button>
+      <button type="button" data-view="log">Log<span class="count" id="c-log"></span></button>
       <button type="button" data-view="account">Account</button>
     </nav>
   </div>
@@ -182,25 +207,31 @@
 
 <main class="wrap">
 
-  <!-- ================================================= deployments ==== -->
-  <div id="view-deployments">
-    <h2>Deployments</h2>
-    <p class="lede">Every site you run, and whether its AI is answering right now.
-      Add the admin token for a site and you can change its model from here — no Netlify, no redeploy.</p>
+  <!-- ===================================================== systems ==== -->
+  <div id="view-systems">
+    <h2>Systems</h2>
+    <p class="lede">Every site and system you run. Add a system's admin token and this console can
+      diagnose it and push a fix — find a model that works, put it in front, and confirm the system answers again.</p>
 
     <div class="panel">
       <div class="head">
-        <h3>Your sites</h3>
-        <div class="row" style="margin-inline-start:auto">
-          <button class="btn sm" type="button" id="check-all">Check all</button>
+        <h3>Watching</h3>
+        <div class="row spacer">
+          <label class="toggle"><input type="checkbox" id="watch-on" /> Re-check every
+            <select id="watch-mins" style="font:400 12.5px/1 inherit;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:6px;padding:4px 6px">
+              <option value="2">2 min</option><option value="5" selected>5 min</option>
+              <option value="15">15 min</option><option value="60">1 hour</option>
+            </select>
+          </label>
+          <button class="btn sm" type="button" id="check-all">Check all now</button>
         </div>
       </div>
       <div id="deps"></div>
-      <div class="empty" id="deps-empty">No sites yet. Add one below.</div>
+      <div class="empty" id="deps-empty">No systems yet. Add one below.</div>
     </div>
 
     <div class="panel">
-      <div class="head"><h3>Add a site</h3></div>
+      <div class="head"><h3>Add a system</h3></div>
       <div class="body">
         <div class="field">
           <label for="d-name">Name</label>
@@ -209,16 +240,16 @@
         <div class="field">
           <label for="d-url">URL</label>
           <input id="d-url" class="mono" type="url" placeholder="https://coreosai.netlify.app" />
-          <p class="help">The site's root. The console works out the endpoints from it.</p>
+          <p class="help">The system's root. The console works out its endpoints.</p>
         </div>
         <div class="field">
-          <label for="d-token">Admin token — optional</label>
-          <input id="d-token" type="password" autocomplete="off" placeholder="the site's ADMIN_TOKEN" />
-          <p class="help">Leave blank to watch the site. Add it to control it: change the model and key from here.</p>
+          <label for="d-token">Admin token</label>
+          <input id="d-token" type="password" autocomplete="off" placeholder="that system's ADMIN_TOKEN" />
+          <p class="help">Without it the console can watch but not fix. Generate one with <code>openssl rand -base64 32</code> and set it in the system's environment.</p>
         </div>
         <div class="row">
-          <button class="btn primary" type="button" id="d-add">Add site</button>
-          <span class="said" id="d-said" hidden>Added</span>
+          <button class="btn primary" type="button" id="d-add">Add system</button>
+          <span class="said" id="d-said" hidden></span>
         </div>
       </div>
     </div>
@@ -227,11 +258,11 @@
   <!-- ====================================================== models ==== -->
   <div id="view-models" hidden>
     <h2>Models</h2>
-    <p class="lede">Live from OpenRouter. Build a chain — the first id that answers serves the request —
-      then push it to a deployment, or copy it for a Netlify variable.</p>
+    <p class="lede">Live from OpenRouter. Build a preferred chain — it is what the console reaches for
+      first when it has to fix a system.</p>
 
     <div class="panel">
-      <div class="head"><h3>The chain</h3><span class="row" style="margin-inline-start:auto"><span class="said" id="chain-said" hidden>Copied</span></span></div>
+      <div class="head"><h3>Preferred chain</h3><span class="said spacer" id="chain-said" hidden></span></div>
       <div class="body">
         <div class="chain" id="chain"></div>
         <div class="out">
@@ -241,9 +272,8 @@
           </div>
           <div class="row" style="margin-top:11px">
             <button class="btn" type="button" id="chain-copy">Copy</button>
-            <select id="push-target" style="max-width:260px;font:400 13px/1.5 inherit;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:8px;padding:9px 11px"></select>
-            <button class="btn primary" type="button" id="chain-push">Push to site</button>
-            <span class="said" id="push-said" hidden></span>
+            <select id="push-target" style="max-width:250px;font:400 13px/1.5 inherit;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:8px;padding:9px 11px"></select>
+            <button class="btn primary" type="button" id="chain-push">Push to system</button>
           </div>
           <p class="help" id="push-help" style="margin-top:9px"></p>
         </div>
@@ -251,45 +281,35 @@
     </div>
 
     <div class="panel">
-      <div class="head"><h3>Available</h3><span class="row" style="margin-inline-start:auto"><button class="btn sm" type="button" id="load-models">Reload</button></span></div>
+      <div class="head"><h3>Available</h3><span class="spacer"><button class="btn sm" type="button" id="load-models">Reload</button></span></div>
       <div class="body">
         <div class="mfilters">
           <button class="chip" data-cost="free" aria-pressed="true">Free only</button>
           <button class="chip" data-cost="all" aria-pressed="false">All</button>
-          <input id="m-q" type="search" placeholder="Filter by name or vendor…" aria-label="Filter models" />
+          <input id="m-q" type="search" placeholder="Filter…" aria-label="Filter models" />
         </div>
         <div class="mlist" id="mlist"><div class="empty" id="m-empty">Add your OpenRouter key in Account, then reload.</div></div>
       </div>
     </div>
   </div>
 
-  <!-- ======================================================== test ==== -->
-  <div id="view-test" hidden>
-    <h2>Test a model</h2>
-    <p class="lede">One real call, straight to the provider. Use it to vet a model before putting it in a chain.</p>
+  <!-- ========================================================= log ==== -->
+  <div id="view-log" hidden>
+    <h2>Log</h2>
+    <p class="lede">What broke, what the console did about it, and whether it worked.
+      This is the record — nothing is fixed silently.</p>
     <div class="panel">
-      <div class="body">
-        <div class="field">
-          <label for="t-model">Model id</label>
-          <input id="t-model" class="mono" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free" />
-        </div>
-        <div class="field">
-          <label for="t-prompt">Prompt</label>
-          <textarea id="t-prompt" rows="3">Write one sentence a Kurdish barber shop could send to a customer who is 10 minutes late.</textarea>
-        </div>
-        <div class="row">
-          <button class="btn primary" type="button" id="t-send">Send</button>
-          <span class="said" id="t-meta" hidden></span>
-        </div>
-        <pre class="reply" id="t-reply" hidden></pre>
-      </div>
+      <div class="head"><h3>Incidents</h3><span class="spacer"><button class="btn sm danger" type="button" id="log-clear">Clear</button></span></div>
+      <div id="log"></div>
+      <div class="empty" id="log-empty">Nothing has gone wrong yet.</div>
     </div>
   </div>
 
   <!-- ===================================================== account ==== -->
   <div id="view-account" hidden>
     <h2>Account</h2>
-    <p class="lede">Your OpenRouter key, and what is left on it.</p>
+    <p class="lede">Your OpenRouter key. The console uses it to list models and to test a candidate
+      before it pushes one anywhere.</p>
 
     <div class="panel">
       <div class="head"><h3>Key</h3></div>
@@ -297,13 +317,12 @@
         <div class="field">
           <label for="or-key">OpenRouter API key</label>
           <input id="or-key" type="password" autocomplete="off" placeholder="sk-or-v1-…" />
-          <p class="help">Kept in this browser only, never written into this file.
-            Get one at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+          <p class="help">Kept in this browser only. Get one at
+            <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
         </div>
         <div class="row">
           <button class="btn primary" type="button" id="or-save">Save</button>
-          <button class="btn" type="button" id="or-check">Check</button>
-          <button class="btn danger" type="button" id="or-forget">Forget</button>
+          <button class="btn" type="button" id="or-forget">Forget</button>
           <span class="said" id="or-said" hidden></span>
         </div>
         <div id="or-info" hidden style="margin-top:16px">
@@ -319,18 +338,30 @@
     </div>
 
     <div class="panel">
-      <div class="head"><h3>Where this data lives</h3></div>
+      <div class="head"><h3>Test a model</h3></div>
+      <div class="body">
+        <div class="field">
+          <label for="t-model">Model id</label>
+          <input id="t-model" class="mono" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free" />
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="t-send">Send a ping</button>
+          <span class="said" id="t-meta" hidden></span>
+        </div>
+        <pre class="reply" id="t-reply" hidden></pre>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="head"><h3>Where this lives</h3></div>
       <div class="body" style="padding-top:14px">
-        <p style="margin:0;color:var(--text-2)">
-          Your OpenRouter key and each site's admin token are held in this browser's storage,
-          on this machine. They are never written into the file, so sending someone this file
-          sends them no credential — but anyone using this browser can read them back. Treat the
-          file the way you treat the tokens.
-        </p>
+        <p style="margin:0;color:var(--text-2)">Your key and each system's admin token are in this browser's
+          storage, on this machine. They are never written into the file — sending someone this file sends them
+          no credential — but anyone using this browser can read them back.</p>
         <div class="warnbox">
-          <b>A site showing “unreachable”</b> needs the CORS headers from
-          <code>netlify/lib/cors.ts</code> deployed. A browser refuses a cross-origin call before
-          it is ever sent, so until that is live the console can only watch sites, not control them.
+          <b>A system showing “unreachable”</b> needs the CORS headers from <code>netlify/lib/cors.ts</code>
+          deployed. A browser refuses a cross-origin call before it is sent, so until that is live the console
+          can only watch, not fix.
         </div>
       </div>
     </div>
@@ -343,15 +374,13 @@
   "use strict";
 
   var LS = "coreos-operator";
-  var state = { key: "", deployments: [], chain: [] };
+  var state = { key: "", deployments: [], chain: [], incidents: [], watch: { on: false, mins: 5 } };
   try {
     var saved = JSON.parse(localStorage.getItem(LS) || "null");
     if (saved && typeof saved === "object") state = Object.assign(state, saved);
   } catch (e) { /* private mode: run without persistence */ }
 
-  var models = [];
-  var cost = "free";
-  var mQuery = "";
+  var models = [], cost = "free", mQuery = "", timer = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) {
@@ -359,19 +388,22 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   };
-  var save = function () {
-    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
-  };
+  var save = function () { try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {} };
   var flash = function (el, text) {
     el.textContent = text; el.hidden = false;
-    setTimeout(function () { el.hidden = true; }, 2200);
+    setTimeout(function () { el.hidden = true; }, 2600);
   };
   var money = function (n) {
     var v = Number(n);
     return isFinite(v) ? "$" + v.toFixed(v < 1 ? 4 : 2) : "—";
   };
+  var endpoint = function (dep, path) { return dep.url.replace(/\/+$/, "") + path; };
+  var clock = function (iso) {
+    var d = new Date(iso);
+    return isNaN(d) ? "" : d.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+  };
 
-  /* -------------------------------------------------------------- views */
+  /* ============================================================ views == */
 
   Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (b) {
     b.addEventListener("click", function () {
@@ -379,111 +411,270 @@
       Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (o) {
         o.setAttribute("aria-current", String(o === b));
       });
-      ["deployments", "models", "test", "account"].forEach(function (name) {
-        $("view-" + name).hidden = name !== v;
-      });
-      if (v === "models" && !models.length && state.key) loadModels();
+      ["systems", "models", "log", "account"].forEach(function (n) { $("view-" + n).hidden = n !== v; });
+      if (v === "models" && !models.length) loadModels();
       window.scrollTo(0, 0);
     });
   });
 
-  /* -------------------------------------------------------- deployments */
+  /* ======================================================= diagnosis == */
 
-  /* A site's endpoints follow from its root, so the operator pastes one URL
-     rather than four. Trailing slashes are trimmed because "site.com/" +
-     "/api/..." is a 404 nobody enjoys diagnosing. */
-  var endpoint = function (dep, path) { return dep.url.replace(/\/+$/, "") + path; };
-
-  function renderDeps() {
-    $("deps-empty").hidden = state.deployments.length > 0;
-    $("deps").innerHTML = state.deployments.map(function (d, i) {
-      var s = d.status || {};
-      var cls = s.state === "ok" ? "ok" : s.state === "unconfigured" ? "warn"
-              : s.state === "unreachable" || s.state === "failing" ? "bad" : "idle";
-      var label = s.state === "ok" ? "Working"
-                : s.state === "failing" ? "Not answering"
-                : s.state === "unconfigured" ? "No key set"
-                : s.state === "unreachable" ? "Unreachable" : "Not checked";
-      return '<div class="dep">'
-        + '<div class="top">'
-        +   '<span class="pill ' + cls + '"><span class="dot"></span>' + label + '</span>'
-        +   '<div><div class="name">' + esc(d.name || "Untitled") + '</div>'
-        +   '<div class="url">' + esc(d.url) + '</div></div>'
-        +   '<div class="acts">'
-        +     '<button class="btn sm check" data-i="' + i + '">Check</button>'
-        +     (d.token ? '<button class="btn sm load" data-i="' + i + '">Settings</button>' : "")
-        +     '<button class="btn sm danger del" data-i="' + i + '">Remove</button>'
-        +   "</div>"
-        + "</div>"
-        + (s.state && s.state !== "unchecked"
-            ? '<div class="detail"><dl>'
-              + (s.provider ? "<dt>Provider</dt><dd>" + esc(s.provider) + "</dd>" : "")
-              + (s.models != null ? "<dt>Models listed</dt><dd>" + s.models + "</dd>" : "")
-              + (s.answeredBy ? "<dt>Answered by</dt><dd>" + (s.answeredBy === 1 ? "the first id" : "fallback #" + s.answeredBy) + "</dd>" : "")
-              + (s.ms != null ? "<dt>Round trip</dt><dd>" + s.ms + " ms</dd>" : "")
-              + (s.model ? "<dt>Model in force</dt><dd>" + esc(s.model) + "</dd>" : "")
-              + "</dl>" + (s.hint ? esc(s.hint) : "") + "</div>"
-            : "")
-        + "</div>";
-    }).join("");
-
-    var sel = $("push-target");
-    sel.innerHTML = state.deployments.length
-      ? state.deployments.map(function (d, i) {
-          return '<option value="' + i + '"' + (d.token ? "" : " disabled") + ">"
-            + esc(d.name || d.url) + (d.token ? "" : " — no admin token") + "</option>";
-        }).join("")
-      : '<option value="">no sites added</option>';
+  /**
+   * What is wrong, and whether this console can do anything about it.
+   *
+   * Only three kinds are fixable from here, and they are all the same fix:
+   * the model is the problem, so find one that is not. A rejected key cannot
+   * be fixed by swapping models — saying so is more use than trying.
+   */
+  function diagnose(dep) {
+    var s = dep.status || {};
+    if (s.state === "ok") return null;
+    if (s.state === "unreachable") {
+      return { kind: "unreachable", fixable: false,
+        summary: "No answer from the system.",
+        detail: "Either it is down, or its endpoints have no CORS headers yet — a browser refuses the call before sending it." };
+    }
+    if (s.state === "unconfigured") {
+      return { kind: "unconfigured", fixable: !!dep.token,
+        summary: "No model is configured on this system.",
+        detail: "Nothing is set for it to answer with. A fix will pick a working model and push it." };
+    }
+    var k = s.kind || "other";
+    if (k === "quota") return { kind: k, fixable: !!dep.token,
+      summary: "The model is over its cap.",
+      detail: "Free models reset daily. A fix finds one that still answers and puts it in front." };
+    if (k === "model") return { kind: k, fixable: !!dep.token,
+      summary: "A model id is unknown or retired.",
+      detail: "Ids get renamed and withdrawn. A fix replaces it with one that exists and answers." };
+    if (k === "timeout") return { kind: k, fixable: !!dep.token,
+      summary: "The model is too slow for a serverless function.",
+      detail: "A fix puts a model that answered quickly here in front of it." };
+    if (k === "auth") return { kind: k, fixable: false,
+      summary: "The system's API key is rejected.",
+      detail: "Swapping models will not help — the key fails on every one. Paste a new key below to push it." };
+    if (k === "network") return { kind: k, fixable: false,
+      summary: "The system could not reach its provider.",
+      detail: "Usually transient. Check the provider's status page; the next re-check may clear it." };
+    return { kind: k, fixable: !!dep.token,
+      summary: "The system's AI is not answering.",
+      detail: "Cause unrecognised. A fix will try a known-good model and see whether that clears it." };
   }
 
-  /** One health call. Never throws — an unreachable site is a status, not an error. */
-  async function check(dep) {
-    dep.status = { state: "checking" };
-    renderDeps();
+  /* ========================================================= the fix == */
+
+  /** Candidates, best first: what worked here before, then your chain, then free models. */
+  function candidates(dep) {
+    var seen = {}, out = [];
+    var push = function (id) { if (id && !seen[id]) { seen[id] = 1; out.push(id); } };
+    (dep.knownGood || []).forEach(push);
+    state.chain.forEach(push);
+    models.filter(function (m) { return m.free; }).slice(0, 12).forEach(function (m) { push(m.id); });
+    return out.slice(0, 10);
+  }
+
+  /** One real call through OpenRouter. Returns ms, or throws. */
+  async function ping(model) {
+    var started = Date.now();
+    var res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + state.key },
+      body: JSON.stringify({ model: model, max_tokens: 8,
+        messages: [{ role: "user", content: "Reply with the single word OK." }] }),
+    });
+    var d = await res.json().catch(function () { return null; });
+    if (!res.ok || (d && d.error)) {
+      throw new Error((d && d.error && d.error.message) || ("HTTP " + res.status));
+    }
+    return Date.now() - started;
+  }
+
+  /**
+   * Diagnose, fix, verify, remember.
+   *
+   * The verify step is the point. Pushing a model because it is on a list is
+   * how one broken id becomes another; this only pushes something it has just
+   * watched answer, and then re-checks the system rather than assuming.
+   */
+  async function fix(dep) {
+    var d = diagnose(dep);
+    if (!d || !d.fixable) return;
+    if (!state.key) { setBusy(dep, "Add your OpenRouter key in Account first."); return; }
+
+    var steps = [];
+    var list = candidates(dep);
+    if (!list.length) {
+      steps.push("No candidate models — load the Models list or set a preferred chain.");
+      record(dep, d, steps, false);
+      return;
+    }
+
+    var working = null, ms = 0;
+    for (var i = 0; i < list.length && !working; i++) {
+      setBusy(dep, "Testing " + list[i] + " …");
+      try {
+        ms = await ping(list[i]);
+        working = list[i];
+        steps.push("Tested " + list[i] + " — answered in " + ms + " ms.");
+      } catch (err) {
+        steps.push("Tested " + list[i] + " — " + err.message);
+      }
+    }
+
+    if (!working) {
+      steps.push("No candidate answered. Nothing was pushed.");
+      record(dep, d, steps, false);
+      setBusy(dep, null);
+      return;
+    }
+
+    /* Keep the rest of the chain behind the one that works, so this is a
+       reordering rather than throwing away everything else. */
+    var chain = [working].concat(state.chain.filter(function (m) { return m !== working; })).slice(0, 4);
+
+    setBusy(dep, "Pushing " + working + " …");
+    try {
+      var res = await fetch(endpoint(dep, "/api/lab/settings"), {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-admin-token": dep.token },
+        body: JSON.stringify({ model: chain.join(", ") }),
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        steps.push("The system refused the change — " + (body.message || body.error || res.status));
+        record(dep, d, steps, false);
+        setBusy(dep, null);
+        return;
+      }
+      steps.push("Pushed: " + chain.join(", "));
+    } catch (err) {
+      steps.push("Could not reach the system's settings endpoint.");
+      record(dep, d, steps, false);
+      setBusy(dep, null);
+      return;
+    }
+
+    setBusy(dep, "Confirming the system answers…");
+    await check(dep, true);
+    var healed = (dep.status || {}).state === "ok";
+    steps.push(healed ? "The system answers again." : "The system still is not answering.");
+
+    if (healed) {
+      /* Remember what worked here. This is the whole of the learning: next
+         time this system breaks, the model that fixed it is tried first. */
+      dep.knownGood = [working].concat((dep.knownGood || []).filter(function (m) { return m !== working; })).slice(0, 5);
+    }
+    record(dep, d, steps, healed);
+    setBusy(dep, null);
+  }
+
+  function setBusy(dep, text) { dep.busy = text; renderDeps(); }
+
+  function record(dep, d, steps, ok) {
+    state.incidents.unshift({
+      at: new Date().toISOString(),
+      site: dep.name || dep.url,
+      kind: d.kind,
+      summary: d.summary,
+      steps: steps,
+      ok: ok,
+    });
+    state.incidents = state.incidents.slice(0, 60);
+    save(); renderDeps(); renderLog();
+  }
+
+  /* ==================================================== deployments == */
+
+  async function check(dep, quiet) {
+    if (!quiet) { dep.busy = "Checking…"; renderDeps(); }
     try {
       var res = await fetch(endpoint(dep, "/api/lab/health"), { headers: { accept: "application/json" } });
       var d = await res.json();
       var probe = d.probe || {};
       dep.status = {
         state: !d.configured ? "unconfigured" : probe.ok ? "ok" : "failing",
-        models: d.modelsConfigured,
-        answeredBy: probe.answeredBy,
-        ms: probe.ms,
-        hint: d.hint,
+        kind: probe.kind, models: d.modelsConfigured,
+        answeredBy: probe.answeredBy, ms: probe.ms, hint: d.hint,
       };
     } catch (err) {
-      /* A browser cannot distinguish "blocked by CORS" from "host is down", so
-         say what to check rather than picking one and being wrong. */
-      dep.status = {
-        state: "unreachable",
-        hint: "No answer. Either the site is down, or its endpoints have no CORS headers yet — see netlify/lib/cors.ts.",
-      };
+      dep.status = { state: "unreachable" };
     }
+    dep.checkedAt = new Date().toISOString();
+    if (!quiet) dep.busy = null;
     save(); renderDeps();
   }
 
-  /** Read the settings a site is actually running on. Needs its admin token. */
   async function loadSettings(dep) {
     if (!dep.token) return;
+    dep.busy = "Reading settings…"; renderDeps();
     try {
       var res = await fetch(endpoint(dep, "/api/lab/settings"), {
         headers: { "x-admin-token": dep.token, accept: "application/json" },
       });
       var d = await res.json();
-      if (!res.ok) {
-        dep.status = Object.assign({}, dep.status, { hint: d.message || d.error || "Settings refused." });
-      } else {
-        dep.status = Object.assign({}, dep.status || { state: "unchecked" }, {
-          model: (d.model && d.model.effective) || "not set",
-          hint: "Key " + ((d.apiKey && d.apiKey.preview) || "not set")
-              + " · from " + ((d.apiKey && d.apiKey.from) || "?")
-              + (d.updatedAt ? " · changed " + d.updatedAt : ""),
-        });
-      }
+      dep.settings = res.ok
+        ? { model: (d.model && d.model.effective) || "not set",
+            key: (d.apiKey && d.apiKey.preview) || "not set",
+            from: (d.apiKey && d.apiKey.from) || "?" }
+        : { error: d.message || d.error || "Refused." };
     } catch (err) {
-      dep.status = Object.assign({}, dep.status, { hint: "Could not reach the settings endpoint." });
+      dep.settings = { error: "Could not reach the settings endpoint." };
     }
-    save(); renderDeps();
+    dep.busy = null; save(); renderDeps();
+  }
+
+  function renderDeps() {
+    $("deps-empty").hidden = state.deployments.length > 0;
+    $("c-systems").textContent = state.deployments.length ? " " + state.deployments.length : "";
+
+    $("deps").innerHTML = state.deployments.map(function (d, i) {
+      var s = d.status || {}, diag = diagnose(d);
+      var cls = s.state === "ok" ? "ok" : s.state === "unconfigured" ? "warn"
+              : (s.state === "failing" || s.state === "unreachable") ? "bad" : "idle";
+      var label = s.state === "ok" ? "Working" : s.state === "failing" ? "Not answering"
+                : s.state === "unconfigured" ? "No model set"
+                : s.state === "unreachable" ? "Unreachable" : "Not checked";
+
+      return '<div class="dep">'
+        + '<div class="top">'
+        +   '<span class="pill ' + cls + '"><span class="dot"></span>' + label + "</span>"
+        +   '<div><div class="name">' + esc(d.name || "Untitled") + "</div>"
+        +   '<div class="url">' + esc(d.url) + (d.checkedAt ? " · " + clock(d.checkedAt) : "") + "</div></div>"
+        +   '<div class="acts">'
+        +     (d.busy ? '<span class="said" style="color:var(--text-2)">' + esc(d.busy) + "</span>" : "")
+        +     (diag && diag.fixable ? '<button class="btn sm fix do-fix" data-i="' + i + '">Fix it</button>' : "")
+        +     '<button class="btn sm check" data-i="' + i + '">Check</button>'
+        +     (d.token ? '<button class="btn sm load" data-i="' + i + '">Settings</button>' : "")
+        +     '<button class="btn sm danger del" data-i="' + i + '">Remove</button>'
+        +   "</div></div>"
+        + '<div class="detail">'
+        +   (diag ? '<div class="diag ' + (diag.fixable ? "warn" : "bad") + '"><b>' + esc(diag.summary) + "</b>"
+                    + esc(diag.detail)
+                    + (!d.token && diag.kind !== "auth" && diag.kind !== "unreachable" && diag.kind !== "network"
+                        ? " Add this system's admin token to fix it from here." : "")
+                    + "</div>" : "")
+        +   (s.state && s.state !== "unchecked"
+              ? "<dl>"
+                + (s.models != null ? "<dt>Models listed</dt><dd>" + s.models + "</dd>" : "")
+                + (s.answeredBy ? "<dt>Answered by</dt><dd>" + (s.answeredBy === 1 ? "the first id" : "fallback #" + s.answeredBy) + "</dd>" : "")
+                + (s.ms != null ? "<dt>Round trip</dt><dd>" + s.ms + " ms</dd>" : "")
+                + (d.settings && d.settings.model ? "<dt>Model in force</dt><dd>" + esc(d.settings.model) + "</dd>" : "")
+                + (d.settings && d.settings.key ? "<dt>Key</dt><dd>" + esc(d.settings.key) + " · " + esc(d.settings.from) + "</dd>" : "")
+                + "</dl>" : "")
+        +   (d.settings && d.settings.error ? '<div class="diag bad">' + esc(d.settings.error) + "</div>" : "")
+        +   ((d.knownGood || []).length
+              ? '<div class="known">Worked here before: ' + d.knownGood.map(function (m) {
+                  return "<code>" + esc(m) + "</code>"; }).join("") + "</div>"
+              : "")
+        + "</div></div>";
+    }).join("");
+
+    var sel = $("push-target");
+    sel.innerHTML = state.deployments.length
+      ? state.deployments.map(function (d, i) {
+          return '<option value="' + i + '"' + (d.token ? "" : " disabled") + ">"
+            + esc(d.name || d.url) + (d.token ? "" : " — no token") + "</option>";
+        }).join("")
+      : '<option value="">no systems added</option>';
   }
 
   $("deps").addEventListener("click", function (e) {
@@ -492,6 +683,7 @@
     var dep = state.deployments[Number(b.getAttribute("data-i"))];
     if (!dep) return;
     if (b.classList.contains("check")) check(dep);
+    else if (b.classList.contains("do-fix")) fix(dep);
     else if (b.classList.contains("load")) loadSettings(dep);
     else if (b.classList.contains("del")) {
       state.deployments.splice(state.deployments.indexOf(dep), 1);
@@ -499,29 +691,41 @@
     }
   });
 
-  $("check-all").addEventListener("click", function () {
-    state.deployments.forEach(check);
-  });
+  $("check-all").addEventListener("click", function () { state.deployments.forEach(function (d) { check(d); }); });
 
   $("d-add").addEventListener("click", function () {
     var url = $("d-url").value.trim();
-    if (!/^https?:\/\//.test(url)) {
-      flash($("d-said"), "Give a full URL, starting with https://");
-      return;
-    }
-    state.deployments.push({
+    if (!/^https?:\/\//.test(url)) { flash($("d-said"), "Give a full URL, starting with https://"); return; }
+    var dep = {
       name: $("d-name").value.trim() || url.replace(/^https?:\/\//, ""),
-      url: url,
-      token: $("d-token").value.trim(),
-      status: { state: "unchecked" },
-    });
+      url: url, token: $("d-token").value.trim(), knownGood: [], status: { state: "unchecked" },
+    };
+    state.deployments.push(dep);
     $("d-name").value = ""; $("d-url").value = ""; $("d-token").value = "";
-    save(); renderDeps();
-    flash($("d-said"), "Added");
-    check(state.deployments[state.deployments.length - 1]);
+    save(); renderDeps(); flash($("d-said"), "Added");
+    check(dep);
   });
 
-  /* -------------------------------------------------------------- models */
+  /* ======================================================== watching == */
+
+  function arm() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (!state.watch.on) return;
+    /* Re-checking is cheap; fixing is not, and it changes a live system — so a
+       sweep only ever checks, and leaves Fix it to a deliberate press. */
+    timer = setInterval(function () {
+      state.deployments.forEach(function (d) { check(d, true); });
+    }, Math.max(2, Number(state.watch.mins)) * 60000);
+  }
+
+  $("watch-on").addEventListener("change", function () {
+    state.watch.on = this.checked; save(); arm();
+  });
+  $("watch-mins").addEventListener("change", function () {
+    state.watch.mins = Number(this.value); save(); arm();
+  });
+
+  /* ========================================================== models == */
 
   async function loadModels() {
     $("m-empty").textContent = "Loading…";
@@ -530,12 +734,11 @@
       var d = await res.json();
       models = (d.data || []).map(function (m) {
         var p = m.pricing || {};
-        var free = Number(p.prompt) === 0 && Number(p.completion) === 0;
-        return { id: m.id, name: m.name || m.id, ctx: m.context_length || 0, free: free };
+        return { id: m.id, free: Number(p.prompt) === 0 && Number(p.completion) === 0 };
       }).sort(function (a, b) { return a.id.localeCompare(b.id); });
       renderModels();
     } catch (err) {
-      $("m-empty").textContent = "Could not reach openrouter.ai/api/v1/models.";
+      $("m-empty").textContent = "Could not reach openrouter.ai.";
     }
   }
 
@@ -543,21 +746,15 @@
     var q = mQuery.trim().toLowerCase();
     var list = models.filter(function (m) {
       if (cost === "free" && !m.free) return false;
-      return !q || (m.id + " " + m.name).toLowerCase().indexOf(q) > -1;
+      return !q || m.id.toLowerCase().indexOf(q) > -1;
     });
-    if (!list.length) {
-      $("mlist").innerHTML = '<div class="empty">Nothing matches that.</div>';
-      return;
-    }
+    if (!list.length) { $("mlist").innerHTML = '<div class="empty">Nothing matches that.</div>'; return; }
     $("mlist").innerHTML = list.slice(0, 200).map(function (m) {
       var inChain = state.chain.indexOf(m.id) > -1;
-      return '<div class="mrow">'
-        + '<span class="id">' + esc(m.id) + "</span>"
+      return '<div class="mrow"><span class="id">' + esc(m.id) + "</span>"
         + (m.free ? '<span class="free">free</span>' : "")
-        + '<span class="ctx">' + (m.ctx ? (m.ctx / 1000).toFixed(0) + "k" : "") + "</span>"
         + '<button class="btn sm add-model" data-id="' + esc(m.id) + '"' + (inChain ? " disabled" : "") + ">"
-        + (inChain ? "in chain" : "Add") + "</button>"
-        + "</div>";
+        + (inChain ? "in chain" : "Add") + "</button></div>";
     }).join("");
   }
 
@@ -572,7 +769,6 @@
   });
   $("m-q").addEventListener("input", function () { mQuery = this.value; renderModels(); });
   $("load-models").addEventListener("click", loadModels);
-
   $("mlist").addEventListener("click", function (e) {
     var b = e.target.closest(".add-model");
     if (!b) return;
@@ -584,17 +780,16 @@
   function renderChain() {
     $("chain-value").textContent = state.chain.length ? state.chain.join(", ") : "— nothing chosen —";
     if (!state.chain.length) {
-      $("chain").innerHTML = '<div class="empty">Pick models below. The first that answers serves the request; the rest are what keep the site up when it will not.</div>';
+      $("chain").innerHTML = '<div class="empty">Pick models below. This is what the console reaches for first when it fixes a system.</div>';
       return;
     }
     $("chain").innerHTML = state.chain.map(function (id, i) {
       return '<div class="link' + (i === 0 ? " primary" : "") + '">'
         + '<span class="pos">' + (i + 1) + "</span>"
         + '<span class="id">' + esc(id) + "</span>"
-        + '<span class="role">' + (i === 0 ? "serves requests" : "backup " + i) + "</span>"
+        + '<span class="role">' + (i === 0 ? "first choice" : "then " + i) + "</span>"
         + '<button class="btn sm up" data-i="' + i + '"' + (i === 0 ? " disabled" : "") + ">↑</button>"
-        + '<button class="btn sm danger rm" data-i="' + i + '">×</button>'
-        + "</div>";
+        + '<button class="btn sm danger rm" data-i="' + i + '">×</button></div>';
     }).join("");
   }
 
@@ -614,15 +809,14 @@
     var text = state.chain.join(", ");
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () { flash($("chain-said"), "Copied"); },
-        function () { flash($("chain-said"), "Select the value and copy it"); });
-    } else flash($("chain-said"), "Select the value and copy it");
+        function () { flash($("chain-said"), "Select it and copy"); });
+    } else flash($("chain-said"), "Select it and copy");
   });
 
   $("chain-push").addEventListener("click", async function () {
     var dep = state.deployments[Number($("push-target").value)];
-    if (!dep || !dep.token) { flash($("push-said"), "That site has no admin token"); return; }
-    if (!state.chain.length) { flash($("push-said"), "The chain is empty"); return; }
-
+    if (!dep || !dep.token) { $("push-help").textContent = "That system has no admin token."; return; }
+    if (!state.chain.length) { $("push-help").textContent = "The chain is empty."; return; }
     $("chain-push").disabled = true;
     $("push-help").textContent = "Pushing to " + dep.url + " …";
     try {
@@ -631,71 +825,52 @@
         headers: { "content-type": "application/json", "x-admin-token": dep.token },
         body: JSON.stringify({ model: state.chain.join(", ") }),
       });
-      var d = await res.json();
-      if (res.ok) {
-        flash($("push-said"), "Pushed");
-        /* Live on the next request, so prove it rather than assume it. */
-        $("push-help").textContent = "Saved. Checking the site answers on it…";
-        await check(dep);
+      var d = await res.json().catch(function () { return {}; });
+      if (!res.ok) { $("push-help").textContent = d.message || d.error || "Refused."; }
+      else {
+        $("push-help").textContent = "Saved. Confirming the system answers on it…";
+        await check(dep, true);
         await loadSettings(dep);
-        $("push-help").textContent = "Done — see the site's row under Deployments.";
-      } else {
-        $("push-help").textContent = d.message || d.error || "The site refused the change.";
+        $("push-help").textContent = (dep.status || {}).state === "ok"
+          ? "Done — the system answers on the new chain."
+          : "Saved, but the system still is not answering. See Systems.";
       }
     } catch (err) {
-      $("push-help").textContent = "Could not reach that site's settings endpoint.";
+      $("push-help").textContent = "Could not reach that system.";
     }
     $("chain-push").disabled = false;
   });
 
-  /* ---------------------------------------------------------------- test */
+  /* ============================================================= log == */
 
-  $("t-send").addEventListener("click", async function () {
-    var model = $("t-model").value.trim() || state.chain[0];
-    if (!model) { flash($("t-meta"), "Give a model id"); return; }
-    if (!state.key) { flash($("t-meta"), "Add your OpenRouter key in Account"); return; }
+  function renderLog() {
+    $("log-empty").hidden = state.incidents.length > 0;
+    $("c-log").textContent = state.incidents.length ? " " + state.incidents.length : "";
+    $("log").innerHTML = state.incidents.map(function (e) {
+      return '<div class="log-entry">'
+        + '<div class="when">' + esc(clock(e.at)) + "</div>"
+        + '<div class="what"><span class="pill ' + (e.ok ? "ok" : "bad") + '"><span class="dot"></span>'
+        + (e.ok ? "Fixed" : "Not fixed") + "</span> <b>" + esc(e.site) + "</b> — " + esc(e.summary) + "</div>"
+        + '<ol class="steps">' + e.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol>"
+        + "</div>";
+    }).join("");
+  }
 
-    $("t-send").disabled = true;
-    $("t-reply").hidden = false;
-    $("t-reply").textContent = "Thinking…";
-    var started = Date.now();
-    try {
-      var res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer " + state.key },
-        body: JSON.stringify({
-          model: model,
-          max_tokens: 700,
-          messages: [{ role: "user", content: $("t-prompt").value }],
-        }),
-      });
-      var d = await res.json();
-      if (!res.ok || d.error) {
-        $("t-reply").textContent = (d.error && d.error.message) || ("HTTP " + res.status);
-      } else {
-        $("t-reply").textContent = ((d.choices || [])[0] || {}).message
-          ? d.choices[0].message.content : "(empty reply)";
-        flash($("t-meta"), (Date.now() - started) + " ms");
-      }
-    } catch (err) {
-      $("t-reply").textContent = "The request could not be sent.";
-    }
-    $("t-send").disabled = false;
+  $("log-clear").addEventListener("click", function () {
+    state.incidents = []; save(); renderLog();
   });
 
-  /* ------------------------------------------------------------- account */
+  /* ========================================================= account == */
 
   $("or-save").addEventListener("click", function () {
-    state.key = $("or-key").value.trim();
-    save();
+    state.key = $("or-key").value.trim(); save();
     flash($("or-said"), "Saved");
-    if (state.key) checkKey();
+    if (state.key) { checkKey(); loadModels(); }
   });
   $("or-forget").addEventListener("click", function () {
     state.key = ""; $("or-key").value = ""; $("or-info").hidden = true;
     save(); flash($("or-said"), "Forgotten");
   });
-  $("or-check").addEventListener("click", function () { $("or-save").click(); });
 
   async function checkKey() {
     if (!state.key) return;
@@ -712,22 +887,34 @@
       $("k-limit").textContent = k.limit == null ? "no limit set" : money(k.limit);
       $("k-tier").textContent = k.is_free_tier ? "free tier" : "paid";
       if (k.limit) {
-        var pct = Math.min(100, (Number(k.usage) / Number(k.limit)) * 100);
         $("k-bar").hidden = false;
-        $("k-bar-fill").style.width = pct.toFixed(1) + "%";
-      } else {
-        $("k-bar").hidden = true;
-      }
-    } catch (err) {
-      flash($("or-said"), "Could not reach OpenRouter");
-    }
+        $("k-bar-fill").style.width = Math.min(100, (Number(k.usage) / Number(k.limit)) * 100).toFixed(1) + "%";
+      } else $("k-bar").hidden = true;
+    } catch (err) { flash($("or-said"), "Could not reach OpenRouter"); }
   }
 
-  /* --------------------------------------------------------------- boot */
+  $("t-send").addEventListener("click", async function () {
+    var model = $("t-model").value.trim() || state.chain[0];
+    if (!model) { flash($("t-meta"), "Give a model id"); return; }
+    if (!state.key) { flash($("t-meta"), "Save your key first"); return; }
+    $("t-send").disabled = true;
+    $("t-reply").hidden = false; $("t-reply").textContent = "Pinging…";
+    try {
+      var ms = await ping(model);
+      $("t-reply").textContent = "Answered in " + ms + " ms.";
+      flash($("t-meta"), "OK");
+    } catch (err) {
+      $("t-reply").textContent = err.message;
+    }
+    $("t-send").disabled = false;
+  });
+
+  /* ============================================================ boot == */
 
   $("or-key").value = state.key;
-  renderDeps();
-  renderChain();
+  $("watch-on").checked = !!state.watch.on;
+  $("watch-mins").value = String(state.watch.mins || 5);
+  renderDeps(); renderChain(); renderLog(); arm();
   if (state.key) { checkKey(); loadModels(); }
 })();
 </script>
