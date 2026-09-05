@@ -108,6 +108,35 @@ to environment variables and says so.
 
 ---
 
+## The drop-in AI endpoint
+
+`netlify/functions/ai.ts` is a second, self-contained way to run the assistant,
+built so the AI can be changed without a developer and without touching code.
+It registers its own routes, so it needs nothing in `netlify.toml` or
+`public/_redirects` — the file is the whole install.
+
+**Site configuration → Environment variables:**
+
+| Name | |
+|---|---|
+| `AI_API_KEY` | The key from whichever provider you use |
+| `AI_MODEL` | One model id, or several comma-separated |
+| `AI_PROVIDER` | `openrouter` (default), `openai`, `anthropic`, `groq`, `deepseek`, `mistral`, `together`, `xai`, `gemini`, or `custom` with `AI_BASE_URL` |
+
+Save, then **Deploys → Trigger deploy**. Netlify only hands new variables to a
+new build, so a saved change does nothing until the site is rebuilt.
+
+Then open **`/ai`**: it says whether the assistant is working, which provider is
+in force, which position in `AI_MODEL` answered, and what to change if it is
+not. It has a box to send it a test message. No token, no secrets shown — it
+reports states and counts only.
+
+`AI_MODEL` takes a list for the same reason `OPENROUTER_MODEL` does: free models
+carry a daily cap, and a second id is what keeps the site answering when the
+first hits it.
+
+---
+
 ## Checking it works
 
 `https://<your-site>/api/lab/health` makes one real call and reports what
