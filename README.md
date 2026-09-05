@@ -27,7 +27,7 @@ refreshes work.
 ```
 index.html            page shell, title, favicon (inline SVG mark)
 server.ts             Express API + Vite dev middleware + static serving
-orchestrator/         the Conductor — multi-agent build orchestration (own README)
+orchestrator.ts       the Conductor — multi-agent build orchestration, one file
 lab/agents.ts         shared agent runtime — roster, charter, provider calls
 lab/settings.ts       runtime model/key settings, shared by both hosts
 lab/admin-page.ts     the /admin page, served as a static string
@@ -182,6 +182,53 @@ get renamed and retired, and a stale hardcoded one fails as "model not found" �
 an error that points nowhere near the cause. Being unconfigured and saying so is
 better. Setting the key without the model logs what to do and leaves the agents
 switched off.
+
+## The Conductor
+
+`orchestrator.ts` is a multi-agent build orchestrator. Give it a goal; it breaks
+the goal into a task graph, assigns each task to a specialist agent, runs
+independent tasks in parallel, has a QA agent review anything that wrote code,
+and sends rejected work back to whoever wrote it.
+
+```bash
+npm run orchestrate -- "Add a /api/waitlist endpoint"          # dry run
+npm run orchestrate -- "Add a /api/waitlist endpoint" --apply  # writes files
+```
+
+| Option | |
+| --- | --- |
+| `--apply` | Write files. Without it, nothing touches disk. |
+| `--workspace <dir>` | The only directory agents may read or write. Default: cwd. |
+| `--out <file>` | Write the build log as Markdown instead of to stdout. |
+| `--max-attempts <n>` | Times a task may be re-assigned after QA rejects it. Default 2. |
+
+| Agent | Does | May use |
+| --- | --- | --- |
+| **designer** | Architecture, schemas, API contracts | read, list |
+| **frontend** | React / TypeScript / Tailwind | read, list, **write** |
+| **backend** | API routes, serverless functions, SQL | read, list, **write** |
+| **qa** | Review, typecheck, tests, the verdict | read, list, **run checks** |
+
+The grants are the design. The designer cannot write — an architect who edits
+the code is not reviewable. QA cannot write either: a reviewer that silently
+fixes what it finds leaves nobody able to tell what was wrong, and the same
+defect returns next time. So QA returns a verdict and the Conductor re-assigns
+the task to its author with the defects attached.
+
+**The tool highway is the security boundary.** Paths are confined to one
+workspace root, checked after resolution *and* after symlinks are followed.
+Commands are never assembled from model output — agents ask for a named check
+and the argv is hardcoded, spawned with `shell: false`, so a check named
+`typecheck; rm -rf /` is looked up, missed and refused rather than executed.
+
+It calls `generateReply()` like everything else here, so it inherits the
+OpenRouter fallback chain — worth having, since a run makes many calls and a
+free model's daily cap is a real risk mid-run. Use a comma-separated
+`OPENROUTER_MODEL`.
+
+Tests are in `orchestrator.test.mts`: 56 cases, no key and no network, the
+provider injected. `npm run lint` type-checks the repository, then this file
+again under `strict`.
 
 ## Deploying
 

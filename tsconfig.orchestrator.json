@@ -1,11 +1,10 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "strict": true,
-    "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node"]
   },
-  "include": ["**/*.ts", "**/*.mts"]
+  "include": ["orchestrator.ts", "orchestrator.test.mts", "lab/**/*.ts"]
 }
