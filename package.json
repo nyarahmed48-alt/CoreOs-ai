@@ -14,7 +14,7 @@
     "cf:dev": "npm run build:web && wrangler dev",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
-    "test": "tsx --test lab/*.test.mts netlify/*.test.mts orchestrator.test.mts",
+    "test": "tsx --test lab/*.test.mts netlify/*.test.mts orchestrator.test.mts coreos-app.test.mts",
     "lint": "tsc --noEmit && tsc -p tsconfig.orchestrator.json --noEmit",
     "orchestrate": "tsx orchestrator.ts"
   },

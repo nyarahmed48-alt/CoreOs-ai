@@ -4,7 +4,7 @@
  */
 
 /**
- * The drop-in AI endpoint, against a stand-in provider.
+ * The whole app, against a stand-in provider.
  *
  * The whole promise of this file is that swapping the AI is three environment
  * variables and a redeploy — so what has to be true is that the variables are
@@ -20,7 +20,7 @@ import { after, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 
-import handler from "./functions/ai.ts";
+import handler from "./coreos-app.ts";
 
 /** One request the stand-in received, as the provider would have seen it. */
 interface Seen {
@@ -103,7 +103,7 @@ beforeEach(() => {
 describe("configuration", () => {
   it("says exactly which variables are missing rather than failing vaguely", async () => {
     configure({});
-    const res = await get("/api/ai/health");
+    const res = await get("/api/coreos/health");
     const body = (await res.json()) as { configured: boolean; missing: string[]; hint: string };
 
     assert.equal(res.status, 503);
@@ -116,13 +116,13 @@ describe("configuration", () => {
     /* Adding this file must not require renaming variables on a site that is
        already running. */
     configure({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "m", OPENROUTER_BASE_URL: BASE });
-    const res = await get("/api/ai/health");
+    const res = await get("/api/coreos/health");
     assert.equal(res.status, 200);
   });
 
   it("names AI_BASE_URL as missing when the provider is custom", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_PROVIDER: "custom" });
-    const body = (await (await get("/api/ai/health")).json()) as { missing: string[] };
+    const body = (await (await get("/api/coreos/health")).json()) as { missing: string[] };
     assert.deepEqual(body.missing, ["AI_BASE_URL"]);
   });
 });
@@ -130,21 +130,26 @@ describe("configuration", () => {
 describe("switching provider", () => {
   it("reports the provider it was pointed at", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_PROVIDER: "groq", AI_BASE_URL: BASE });
-    const body = (await (await get("/api/ai/health")).json()) as { provider: string };
+    const body = (await (await get("/api/coreos/health")).json()) as { provider: string };
     assert.equal(body.provider, "Groq");
   });
 
   it("sends an OpenAI-shaped request by default, system first", async () => {
     configure({ AI_API_KEY: "sk-test", AI_MODEL: "m", AI_BASE_URL: BASE });
-    await post("/api/ai/chat", { message: "hi", system: "BE BRIEF" });
+    await post("/api/coreos/chat", { slug: "verano", message: "hi" });
 
     const call = seen.at(-1);
     assert.ok(call);
     assert.match(call.url, /\/chat\/completions$/);
     assert.equal(call.headers.authorization, "Bearer sk-test");
+
     const messages = call.body.messages as Array<{ role: string; content: string }>;
     assert.equal(messages[0].role, "system");
-    assert.equal(messages[0].content, "BE BRIEF");
+    /* The prompt is assembled here from the agent's own brief plus the
+       charter — the caller does not get to supply it, which is what keeps a
+       visitor from talking an agent out of its rules. */
+    assert.match(messages[0].content, /You are "Verano"/);
+    assert.match(messages[0].content, /never present yourself as a replacement/);
     assert.equal(messages.at(-1)?.content, "hi");
   });
 
@@ -155,7 +160,7 @@ describe("switching provider", () => {
     dialect = "anthropic";
     configure({ AI_API_KEY: "sk-ant", AI_MODEL: "claude-x", AI_PROVIDER: "anthropic", AI_BASE_URL: BASE });
 
-    const res = await post("/api/ai/chat", { message: "hi", system: "BE BRIEF" });
+    const res = await post("/api/coreos/chat", { slug: "verano", message: "hi" });
     const body = (await res.json()) as { text: string };
 
     const call = seen.at(-1);
@@ -163,14 +168,14 @@ describe("switching provider", () => {
     assert.match(call.url, /\/messages$/);
     assert.equal(call.headers["x-api-key"], "sk-ant");
     assert.equal(call.headers["anthropic-version"], "2023-06-01");
-    assert.equal(call.body.system, "BE BRIEF", "system is a field, not a message");
+    assert.match(String(call.body.system), /You are "Verano"/, "system is a field, not a message");
     assert.equal((call.body.messages as unknown[]).length, 1, "and is not also in the messages");
     assert.equal(body.text, "hello from anthropic", "the content[] shape is read back");
   });
 
   it("never puts the key in a reply", async () => {
     configure({ AI_API_KEY: "sk-secret-value", AI_MODEL: "m", AI_BASE_URL: BASE });
-    const text = await (await get("/api/ai/health")).text();
+    const text = await (await get("/api/coreos/health")).text();
     assert.doesNotMatch(text, /sk-secret-value/);
   });
 });
@@ -182,7 +187,7 @@ describe("the model chain", () => {
     script = { "model-a": "quota" };
     configure({ AI_API_KEY: "k", AI_MODEL: "model-a, model-b", AI_BASE_URL: BASE });
 
-    const body = (await (await post("/api/ai/chat", { message: "hi" })).json()) as {
+    const body = (await (await post("/api/coreos/chat", { slug: "verano", message: "hi" })).json()) as {
       text: string;
       answeredBy: number;
     };
@@ -194,7 +199,7 @@ describe("the model chain", () => {
   it("falls through a provider-side failure too", async () => {
     script = { "model-a": "boom" };
     configure({ AI_API_KEY: "k", AI_MODEL: "model-a,model-b", AI_BASE_URL: BASE });
-    const body = (await (await post("/api/ai/chat", { message: "hi" })).json()) as { answeredBy: number };
+    const body = (await (await post("/api/coreos/chat", { slug: "verano", message: "hi" })).json()) as { answeredBy: number };
     assert.equal(body.answeredBy, 2);
   });
 
@@ -204,15 +209,15 @@ describe("the model chain", () => {
     script = { "model-a": "auth", "model-b": "ok" };
     configure({ AI_API_KEY: "k", AI_MODEL: "model-a,model-b", AI_BASE_URL: BASE });
 
-    const res = await post("/api/ai/chat", { message: "hi" });
-    assert.equal(res.status, 503);
-    assert.deepEqual(seen.map((c) => c.body.model), ["model-a"]);
+    const res = await post("/api/coreos/chat", { slug: "verano", message: "hi" });
+    assert.equal(res.status, 502);
+    assert.deepEqual(seen.map((c) => c.body.model), ["model-a"], "the second id is never tried");
   });
 
   it("says which id answered, so a fallback can be told from the primary", async () => {
     script = { "model-a": "quota" };
     configure({ AI_API_KEY: "k", AI_MODEL: "model-a,model-b", AI_BASE_URL: BASE });
-    const body = (await (await get("/api/ai/health")).json()) as { answeredBy: number; hint: string };
+    const body = (await (await get("/api/coreos/health")).json()) as { answeredBy: number; hint: string };
     assert.equal(body.answeredBy, 2);
     assert.match(body.hint, /running on a fallback/);
   });
@@ -220,7 +225,7 @@ describe("the model chain", () => {
   it("reports the failure kind when the whole chain is exhausted", async () => {
     script = { "model-a": "quota", "model-b": "quota" };
     configure({ AI_API_KEY: "k", AI_MODEL: "model-a,model-b", AI_BASE_URL: BASE });
-    const body = (await (await get("/api/ai/health")).json()) as { kind: string; hint: string };
+    const body = (await (await get("/api/coreos/health")).json()) as { kind: string; hint: string };
     assert.equal(body.kind, "quota");
     assert.match(body.hint, /daily cap/);
   });
@@ -229,23 +234,24 @@ describe("the model chain", () => {
 describe("the chat route", () => {
   it("answers a well-formed request", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    const body = (await (await post("/api/ai/chat", { message: "hi" })).json()) as { text: string };
+    const body = (await (await post("/api/coreos/chat", { slug: "verano", message: "hi" })).json()) as { text: string };
     assert.equal(body.text, "hello from openai-shaped");
   });
 
   it("refuses an empty message", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    assert.equal((await post("/api/ai/chat", { message: "   " })).status, 400);
+    assert.equal((await post("/api/coreos/chat", { slug: "verano", message: "   " })).status, 400);
   });
 
   it("refuses a message past the cap", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    assert.equal((await post("/api/ai/chat", { message: "x".repeat(5_000) })).status, 400);
+    assert.equal((await post("/api/coreos/chat", { slug: "verano", message: "x".repeat(5_000) })).status, 400);
   });
 
   it("drops malformed history rather than passing it to the provider", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    await post("/api/ai/chat", {
+    await post("/api/coreos/chat", {
+      slug: "verano",
       message: "hi",
       history: [{ role: "user", content: "kept" }, { role: "wizard", content: "dropped" }, "nonsense"],
     });
@@ -259,28 +265,32 @@ describe("the chat route", () => {
        the caller's business either. */
     script = { m: "boom" };
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    const text = await (await post("/api/ai/chat", { message: "hi" })).text();
+    const text = await (await post("/api/coreos/chat", { slug: "verano", message: "hi" })).text();
     assert.doesNotMatch(text, /upstream failure/);
     assert.doesNotMatch(text, /\bm\b.*500/);
   });
 
   it("says plainly that nothing is configured rather than erroring", async () => {
+    /* Unconfigured is a supported state, not a fault: the visitor gets a
+       readable answer in their own language that repeats their question, and
+       whoever deployed it is told exactly which variables to set. */
     configure({});
-    const res = await post("/api/ai/chat", { message: "hi" });
-    const body = (await res.json()) as { error: string; message: string };
-    assert.equal(res.status, 503);
-    assert.equal(body.error, "NOT_CONFIGURED");
-    assert.match(body.message, /AI_API_KEY and AI_MODEL/);
+    const res = await post("/api/coreos/chat", { slug: "verano", message: "hi", lang: "en" });
+    const body = (await res.json()) as { text: string; unconfigured: boolean };
+    assert.equal(res.status, 200);
+    assert.equal(body.unconfigured, true);
+    assert.match(body.text, /AI_API_KEY and AI_MODEL are set/);
+    assert.match(body.text, /Verano/);
   });
 });
 
 describe("the page", () => {
-  it("serves HTML at /ai", async () => {
+  it("serves the site at /", async () => {
     configure({ AI_API_KEY: "k", AI_MODEL: "m", AI_BASE_URL: BASE });
-    const res = await get("/ai");
+    const res = await get("/");
     assert.match(res.headers.get("content-type") ?? "", /text\/html/);
-    assert.match(res.headers.get("x-robots-tag") ?? "", /noindex/);
     const html = await res.text();
-    assert.match(html, /AI_MODEL/, "it should tell you which variables to set");
+    assert.match(html, /AI_MODEL/, "the status panel names the variables to set");
+    assert.match(html, /coreOs/, "and it is the site, not a bare endpoint");
   });
 });

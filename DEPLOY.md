@@ -108,14 +108,15 @@ to environment variables and says so.
 
 ---
 
-## The drop-in AI endpoint
+## The whole app in one file
 
-`netlify/functions/ai.ts` is a second, self-contained way to run the assistant,
-built so the AI can be changed without a developer and without touching code.
-It registers its own routes, so it needs nothing in `netlify.toml` or
-`public/_redirects` — the file is the whole install.
+`coreos-app.ts` is the entire product as a single Netlify function: the site,
+all 31 agents, the chat that talks to them, and a status panel. No build step
+and no framework. It registers its own routes, so there is nothing to add to
+`netlify.toml` and no rule to remember in `public/_redirects`.
 
-**Site configuration → Environment variables:**
+1. Put it at `netlify/functions/coreos-app.ts`.
+2. **Site configuration → Environment variables:**
 
 | Name | |
 |---|---|
@@ -123,17 +124,20 @@ It registers its own routes, so it needs nothing in `netlify.toml` or
 | `AI_MODEL` | One model id, or several comma-separated |
 | `AI_PROVIDER` | `openrouter` (default), `openai`, `anthropic`, `groq`, `deepseek`, `mistral`, `together`, `xai`, `gemini`, or `custom` with `AI_BASE_URL` |
 
-Save, then **Deploys → Trigger deploy**. Netlify only hands new variables to a
-new build, so a saved change does nothing until the site is rebuilt.
+3. **Deploys → Trigger deploy.** Netlify only hands new variables to a *new*
+   build, so saving one changes nothing until the site is rebuilt.
 
-Then open **`/ai`**: it says whether the assistant is working, which provider is
-in force, which position in `AI_MODEL` answered, and what to change if it is
-not. It has a box to send it a test message. No token, no secrets shown — it
-reports states and counts only.
+Then open the site and press **Status**: it says whether the assistant is
+working, which provider is in force, and which position in `AI_MODEL` answered.
+Changing the AI later is a variable and a redeploy — no code, no developer.
 
 `AI_MODEL` takes a list for the same reason `OPENROUTER_MODEL` does: free models
-carry a daily cap, and a second id is what keeps the site answering when the
-first hits it.
+carry a daily cap, and when the first hits it every agent goes quiet at once.
+
+The key, the model ids, the provider's error text and each agent's system brief
+never reach the browser. `GET /api/coreos/agents` returns slugs, names and
+public copy only — the codenames are the point of the testing programme, and a
+tester who can see the model behind one judges the badge instead of the answer.
 
 ---
 
