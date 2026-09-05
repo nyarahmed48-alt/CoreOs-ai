@@ -13,7 +13,7 @@
  */
 
 import { waves } from "./graph";
-import type { RunReport, TaskRun } from "./types";
+import type { RunEvent, RunReport, TaskRun } from "./types";
 
 const ICON: Record<TaskRun["status"], string> = {
   done: "✓",
@@ -106,7 +106,7 @@ export function formatReport(report: RunReport): string {
 }
 
 /** A one-line-per-event stream, for watching a run as it happens. */
-export function formatEvent(event: import("./types").RunEvent): string {
+export function formatEvent(event: RunEvent): string {
   switch (event.kind) {
     case "plan":
       return `plan · ${event.plan.tasks.length} tasks`;
