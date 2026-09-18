@@ -495,6 +495,19 @@ const sha256 = (function () {
 
 const PASSWORD_ROUNDS = 5000;
 
+/**
+ * The owner's account, ready on first open — no sign-up step.
+ *
+ * Only the salt and the derived hash are stored here, never the password
+ * itself. It is seeded once: if an account with this email already exists in
+ * this browser, its own password is left alone.
+ */
+const SEED_ADMIN = {
+  email: ADMIN_EMAIL,
+  salt: "3718901501b210b99e08ac78",
+  hash: "abe49f2ddf47e5e65df622c16eebf69e7abf6f706a05a870919dd23a24785d0b",
+};
+
 function derivePassword(password, salt) {
   let digest = salt + ":" + password;
   for (let i = 0; i < PASSWORD_ROUNDS; i++) digest = sha256(digest);
@@ -530,6 +543,20 @@ function repairBootstrapAdmin() {
     admin.status = "approved";
     save();
   }
+}
+
+function seedAdminAccount() {
+  if (findUser(SEED_ADMIN.email)) return;
+  db.users.push({
+    id: uid(),
+    email: SEED_ADMIN.email,
+    salt: SEED_ADMIN.salt,
+    hash: SEED_ADMIN.hash,
+    role: "admin",
+    status: "approved",
+    createdAt: new Date().toISOString(),
+  });
+  save();
 }
 
 function registerAccount(email, password) {
@@ -1785,6 +1812,7 @@ function commitModal() {
   if (modal.kind === "confirm-reset") {
     db = blankDb();
     db.entries = demoEntries();
+    seedAdminAccount();
     save();
     S.modal = null;
     Object.assign(S, { view: "entries", editingId: null, draft: null, query: "", status: "all", type: "all" });
@@ -2002,6 +2030,7 @@ document.addEventListener("keydown", (event) => {
     db.entries = demoEntries();
     save();
   }
+  seedAdminAccount();
   repairBootstrapAdmin();
   applyTheme();
   render();
