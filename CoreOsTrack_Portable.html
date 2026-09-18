@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CoreOs Track — Portable</title>
+<!--
+  CoreOs Track — single-file portable build.
+
+  Everything (styles, app logic, PDF writer) lives in this one file. No CDN, no
+  build step, no network: save it anywhere and open it in a browser.
+
+  Storage: this build keeps accounts and entries in the browser's localStorage,
+  so data stays on the device that opened the file. The approval gate here is a
+  workflow gate, not a security boundary — anyone with the file and devtools can
+  read the store. Use the Next.js + Postgres build in coreos-track/ when access
+  control has to hold against people, not just guide them.
+-->
+<style>
+  :root {
+    --canvas: #08080f;
+    --surface: #101019;
+    --surface-2: #16161f;
+    --surface-3: #1d1d29;
+    --line: #262633;
+    --ink: #e9e9f2;
+    --muted: #8b8ba6;
+    --accent: #7c6cf5;
+    --accent-soft: #221f4a;
+    --accent-ink: #b9b0ff;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --display: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    --canvas: #f5f5fa;
+    --surface: #ffffff;
+    --surface-2: #f2f2f7;
+    --surface-3: #e9e9f1;
+    --line: #dedee8;
+    --ink: #16161f;
+    --muted: #5d5d76;
+    --accent: #5b4bd6;
+    --accent-soft: #eceaff;
+    --accent-ink: #4b3ec7;
+    --success: #15803d;
+    --warning: #b45309;
+    --danger: #dc2626;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .display { font-family: var(--display); letter-spacing: -0.01em; }
+
+  a { color: var(--accent-ink); }
+
+  ::selection { background: var(--accent); color: #fff; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- primitives ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+  }
+
+  .field {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    font: inherit;
+    transition: border-color .15s ease;
+  }
+  .field:focus { outline: none; border-color: var(--accent); }
+  .field::placeholder { color: var(--muted); }
+  textarea.field { min-height: 90px; resize: vertical; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: var(--surface-2);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: filter .15s ease, background .15s ease;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn.ghost { border-color: var(--line); background: var(--surface-2); }
+  .btn.danger { border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: transparent; color: var(--danger); }
+  .btn.sm { padding: 7px 11px; font-size: 13px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    display: inline-flex;
+    padding: 4px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface-3);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .badge.active { border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); color: var(--accent-ink); }
+  .badge.paid, .badge.completed { border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+  .badge.pending { border-color: color-mix(in srgb, var(--warning) 40%, transparent); background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+  .badge.cancelled { border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+
+  .muted { color: var(--muted); }
+  .success { color: var(--success); }
+  .warning { color: var(--warning); }
+  .danger-text { color: var(--danger); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- shell ---------- */
+  .shell { display: flex; min-height: 100%; }
+
+  .sidebar {
+    width: 232px;
+    flex: 0 0 232px;
+    border-right: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .wordmark { font-family: var(--display); font-weight: 700; letter-spacing: .35em; font-size: 17px; padding-left: 10px; }
+  .nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .nav button {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 12px;
+    background: none; border: none; color: var(--muted);
+    font: inherit; text-align: left; cursor: pointer; width: 100%;
+  }
+  .nav button:hover { background: var(--surface-2); color: var(--ink); }
+  .nav button[aria-current="page"] { background: var(--accent-soft); color: var(--ink); }
+  .nav svg { width: 16px; height: 16px; flex: 0 0 16px; }
+  .sidebar-foot { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 12px; }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--canvas);
+  }
+  .topbar h1 { margin: 0; font-size: 22px; }
+  .topbar-tools { display: flex; align-items: center; gap: 8px; }
+  .content { padding: 24px; display: grid; gap: 20px; align-content: start; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow-x: auto; }
+  table { width: 100%; min-width: 880px; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 14px 16px;
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); font-weight: 400;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: 14px 16px; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .code-cell { color: var(--accent-ink); font-weight: 600; }
+  .row-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .empty { padding: 56px 16px; text-align: center; color: var(--muted); }
+
+  /* ---------- layout helpers ---------- */
+  .grid { display: grid; gap: 16px; }
+  .filters { display: grid; gap: 12px; grid-template-columns: 2fr 1fr 1fr auto; }
+  .stat-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .stat-value { font-family: var(--display); font-size: 30px; font-weight: 600; margin-top: 10px; }
+  .two-col { display: grid; gap: 20px; grid-template-columns: 360px 1fr; align-items: start; }
+  .half { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; align-items: start; }
+  .form-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+  .form-grid .span { grid-column: 1 / -1; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .actions-right { display: flex; gap: 12px; justify-content: flex-end; }
+  .bar { height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .list { border: 1px solid var(--line); border-radius: 12px; max-height: 420px; overflow-y: auto; }
+  .list button, .list .row {
+    width: 100%; display: flex; gap: 12px; justify-content: space-between;
+    padding: 12px 14px; background: none; border: none; border-bottom: 1px solid var(--line);
+    color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  }
+  .list button:last-child, .list .row:last-child { border-bottom: none; }
+  .list button:hover { background: var(--surface-2); }
+  .list button[aria-pressed="true"] { background: var(--accent-soft); }
+  .people { display: grid; }
+  .people > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .people > li:last-child { border-bottom: none; }
+  ul.people { list-style: none; margin: 0; padding: 0; }
+  pre.preview { margin: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 11px; line-height: 1.7; max-height: 380px; overflow: auto; }
+
+  /* ---------- auth ---------- */
+  .auth-wrap { min-height: 100%; display: grid; place-items: center; padding: 40px 16px; }
+  .auth { width: 100%; max-width: 420px; display: grid; gap: 22px; }
+  .auth-brand { text-align: center; display: grid; gap: 8px; }
+  .auth-brand .wordmark { padding: 0; font-size: 22px; }
+
+  /* ---------- modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0,0,0,.7);
+    display: grid; align-items: start; justify-items: center;
+    padding: 40px 16px; overflow-y: auto;
+  }
+  .modal { width: 100%; max-width: 560px; }
+  .modal.wide { max-width: 760px; }
+  .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .modal h2 { margin: 0; font-size: 18px; }
+  .diff { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; }
+  .diff del { color: var(--danger); }
+  .diff ins { color: var(--success); text-decoration: none; }
+  .notice { padding: 12px 14px; border-radius: 12px; font-size: 12px; }
+  .notice.error { border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .notice.ok { border: 1px solid color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+  .notice.info { border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+
+  /* ---------- receipt preview ---------- */
+  .paper { position: relative; overflow: hidden; border-radius: 12px; background: #fff; color: #111827; box-shadow: 0 24px 48px rgba(0,0,0,.35); }
+  .paper .marks { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding: 24px 0; pointer-events: none; }
+  .paper .marks span { font-family: var(--display); font-weight: 800; font-size: clamp(20px, 4vw, 34px); letter-spacing: .12em; color: #4338ca; opacity: .08; transform: rotate(-30deg); white-space: nowrap; }
+  .paper-head { position: relative; display: flex; justify-content: space-between; gap: 16px; padding: 26px 30px; background: #6d6ef0; color: #fff; }
+  .paper-head .brand { font-family: var(--display); font-size: 30px; font-weight: 700; }
+  .paper-head .sub { font-size: 10px; letter-spacing: .25em; opacity: .85; margin-top: 4px; }
+  .paper-body { position: relative; padding: 26px 30px 30px; display: grid; gap: 22px; }
+  .paper-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .paper-meta .k { font-size: 10px; letter-spacing: .15em; color: #6b7280; }
+  .paper-meta .v { font-weight: 700; margin-top: 3px; }
+  .paper table { min-width: 0; }
+  .paper th { color: #6b7280; border-bottom: none; background: #f3f4f6; padding: 9px 12px; }
+  .paper td { border-bottom: 1px solid #e5e7eb; padding: 14px 12px; }
+  .paper .total { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #111827; padding-top: 14px; }
+  .paper .total b { font-family: var(--display); font-size: 22px; color: #4338ca; }
+  .paper .note { background: #f9fafb; border-radius: 8px; padding: 14px; }
+  .paper .note .k { font-size: 10px; letter-spacing: .15em; color: #6b7280; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1100px) {
+    .two-col, .half { grid-template-columns: 1fr; }
+    .filters { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 860px) {
+    .shell { flex-direction: column; }
+    .sidebar { width: 100%; flex: none; flex-direction: row; align-items: center; gap: 12px; overflow-x: auto; padding: 12px 16px; border-right: none; border-bottom: 1px solid var(--line); }
+    .sidebar .wordmark { display: none; }
+    .nav { flex-direction: row; gap: 6px; }
+    .nav button { padding: 8px 12px; white-space: nowrap; }
+    .sidebar-foot { border-top: none; padding-top: 0; grid-auto-flow: column; align-items: center; }
+    .sidebar-foot .who { display: none; }
+    .content, .topbar { padding-left: 16px; padding-right: 16px; }
+    .filters, .form-grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root" class="auth-wrap"></div>
+<script>
+/* =========================================================================
+   CoreOs Track — portable build
+   1. utilities   2. storage   3. accounts   4. currencies
+   5. PDF writer  6. views     7. actions    8. boot
+   ========================================================================= */
+"use strict";
+
+/* ---------------------------------------------------------------- 1. utils */
+
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+/** Escape text for safe interpolation into an HTML template string. */
+function esc(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function uid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomInt(maxExclusive) {
+  return crypto.getRandomValues(new Uint32Array(1))[0] % maxExclusive;
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function icon(name) {
+  /* Inline 16px line icons — same family as the Next.js build, no icon CDN. */
+  const paths = {
+    entries: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    stats: '<path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/>',
+    receipt: '<path d="M5 3h14v18l-3-2-3 2-3-2-3 2z"/><path d="M8 8h8M8 12h8"/>',
+    export: '<path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 21h16"/>',
+    security: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    edit: '<path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>',
+    pdf: '<path d="M14 3H7a1 1 0 00-1 1v16a1 1 0 001 1h10a1 1 0 001-1V7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h4"/>',
+    check: '<path d="M4 12l5 5L20 6"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>',
+    moon: '<path d="M20 14a8 8 0 01-10-10 8 8 0 1010 10z"/>',
+    out: '<path d="M10 4H5v16h5"/><path d="M15 8l4 4-4 4"/><path d="M19 12H9"/>',
+    ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+    pause: '<path d="M9 5v14M15 5v14"/>',
+    play: '<path d="M7 4l12 8-12 8z"/>',
+    link: '<path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M18 14v5H5V6h5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    lock: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',
+    eye: '<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
+  };
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">' +
+    (paths[name] || "") + "</svg>";
+}
+
+/* -------------------------------------------------------------- 2. storage */
+
+const STORE_KEY = "coreos.track.v1";
+const ADMIN_EMAIL = "nyarahmed48@gmail.com";
+
+let db = null;
+
+function blankDb() {
+  return {
+    version: 1,
+    users: [],
+    entries: [],
+    prefs: { currency: "USD", theme: "dark" },
+    sessionUserId: null,
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return Object.assign(blankDb(), parsed, {
+        prefs: Object.assign(blankDb().prefs, parsed.prefs || {}),
+      });
+    }
+  } catch (err) {
+    console.warn("CoreOs Track: could not read saved data, starting fresh.", err);
+  }
+  return blankDb();
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  } catch (err) {
+    /* Private windows and blocked site data: the app still runs for this session. */
+    console.warn("CoreOs Track: this browser refused to save data.", err);
+  }
+}
+
+/** Demo rows so a first open shows a working board rather than an empty shell. */
+function demoEntries() {
+  const rows = [
+    ["XA8661", "Ahmed Mahmood", "Demo website", 0, "USD", "active", "2026-08-15", "", "", ""],
+    ["YE8058", "Lana Ahmed", "AI tutor app", 1000, "IQD", "paid", "2026-07-19", "", "", ""],
+    ["OL9400", "Nyar", "Website tracking system", 250, "USD", "active", "2026-07-04", "2026-09-28", "CO needed and added.", "https://example.com/tracking"],
+    ["OB2094", "Nyar - change order", "Website", 120, "USD", "pending", "2026-06-29", "", "Scope-of-work correction.", ""],
+    ["XN1775", "Hala", "Website", 480, "USD", "completed", "2026-06-21", "", "For multi operations.", ""],
+  ];
+  const now = new Date().toISOString();
+  return rows.map((r) => ({
+    id: uid(), code: r[0], name: r[1], type: r[2], amount: r[3], currency: r[4],
+    status: r[5], date: r[6], dueDate: r[7], notes: r[8], linkUrl: r[9],
+    createdAt: now, updatedAt: now,
+  }));
+}
+
+/* ------------------------------------------------------------- 3. accounts */
+
+/**
+ * SHA-256 (FIPS 180-4), written out so the file needs no crypto.subtle and no
+ * network. Passwords are salted and stretched before they touch storage.
+ */
+const sha256 = (function () {
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+
+  return function hash(message) {
+    const bytes = Array.from(new TextEncoder().encode(message));
+    const bitLength = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    for (let i = 7; i >= 0; i--) bytes.push((bitLength / Math.pow(2, i * 8)) & 0xff);
+
+    const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+               0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Uint32Array(64);
+
+    for (let block = 0; block < bytes.length; block += 64) {
+      for (let i = 0; i < 16; i++) {
+        const o = block + i * 4;
+        w[i] = (bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3];
+      }
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e;
+        e = (d + t1) >>> 0;
+        d = c; c = b; b = a;
+        a = (t1 + t2) >>> 0;
+      }
+      const next = [a, b, c, d, e, f, g, h];
+      for (let i = 0; i < 8; i++) H[i] = (H[i] + next[i]) >>> 0;
+    }
+    return H.map((x) => x.toString(16).padStart(8, "0")).join("");
+  };
+})();
+
+const PASSWORD_ROUNDS = 5000;
+
+function derivePassword(password, salt) {
+  let digest = salt + ":" + password;
+  for (let i = 0; i < PASSWORD_ROUNDS; i++) digest = sha256(digest);
+  return digest;
+}
+
+function newSalt() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)),
+    (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function findUser(email) {
+  const needle = normalizeEmail(email);
+  return db.users.find((u) => u.email === needle) || null;
+}
+
+function currentUser() {
+  return db.users.find((u) => u.id === db.sessionUserId) || null;
+}
+
+/**
+ * The bootstrap admin can never be locked out: whenever it signs up or signs
+ * in, admin + approved are re-asserted on the stored record.
+ */
+function repairBootstrapAdmin() {
+  const admin = findUser(ADMIN_EMAIL);
+  if (admin && (admin.role !== "admin" || admin.status !== "approved")) {
+    admin.role = "admin";
+    admin.status = "approved";
+    save();
+  }
+}
+
+function registerAccount(email, password) {
+  const address = normalizeEmail(email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) throw new Error("Enter a valid email address.");
+  if (String(password).length < 8) throw new Error("Password must be at least 8 characters.");
+  if (findUser(address)) throw new Error("An account with that email already exists.");
+
+  const isBootstrapAdmin = address === ADMIN_EMAIL;
+  const salt = newSalt();
+  const user = {
+    id: uid(),
+    email: address,
+    salt,
+    hash: derivePassword(password, salt),
+    role: isBootstrapAdmin ? "admin" : "member",
+    status: isBootstrapAdmin ? "approved" : "pending",
+    createdAt: new Date().toISOString(),
+  };
+  db.users.push(user);
+  db.sessionUserId = user.id;
+  save();
+  return user;
+}
+
+function signIn(email, password) {
+  const address = normalizeEmail(email);
+  if (address === ADMIN_EMAIL) repairBootstrapAdmin();
+
+  const user = findUser(address);
+  if (!user || derivePassword(password, user.salt) !== user.hash) {
+    throw new Error("Email or password is incorrect.");
+  }
+  if (user.status === "denied") throw new Error("Access for this account was declined.");
+
+  db.sessionUserId = user.id;
+  save();
+  return user;
+}
+
+function signOut() {
+  db.sessionUserId = null;
+  save();
+}
+
+/* ------------------------------------------------------------ 4. currency */
+
+const CURRENCIES = {
+  USD: { name: "US Dollar", symbol: "$", perUsd: 1 },
+  IQD: { name: "Iraqi Dinar", symbol: "ع.د", perUsd: 1310 },
+  EUR: { name: "Euro", symbol: "€", perUsd: 0.92 },
+  GBP: { name: "British Pound", symbol: "£", perUsd: 0.78 },
+  JPY: { name: "Japanese Yen", symbol: "¥", perUsd: 151 },
+  CNY: { name: "Chinese Yuan", symbol: "¥", perUsd: 7.24 },
+  AED: { name: "UAE Dirham", symbol: "د.إ", perUsd: 3.67 },
+  SAR: { name: "Saudi Riyal", symbol: "﷼", perUsd: 3.75 },
+  TRY: { name: "Turkish Lira", symbol: "₺", perUsd: 32.4 },
+  INR: { name: "Indian Rupee", symbol: "₹", perUsd: 83.3 },
+  CAD: { name: "Canadian Dollar", symbol: "C$", perUsd: 1.36 },
+  AUD: { name: "Australian Dollar", symbol: "A$", perUsd: 1.52 },
+  CHF: { name: "Swiss Franc", symbol: "Fr", perUsd: 0.89 },
+  JOD: { name: "Jordanian Dinar", symbol: "د.ا", perUsd: 0.709 },
+  EGP: { name: "Egyptian Pound", symbol: "E£", perUsd: 48.5 },
+  QAR: { name: "Qatari Riyal", symbol: "ر.ق", perUsd: 3.64 },
+  KWD: { name: "Kuwaiti Dinar", symbol: "د.ك", perUsd: 0.307 },
+};
+const CURRENCY_CODES = Object.keys(CURRENCIES);
+const STATUSES = ["active", "pending", "paid", "completed", "paused", "cancelled"];
+const SETTLED = ["paid", "completed"];
+
+function baseCurrency() {
+  return CURRENCIES[db.prefs.currency] ? db.prefs.currency : "USD";
+}
+
+/** Convert between currencies with the built-in mid-market rates. */
+function convert(amount, from, to) {
+  const value = Number(amount) || 0;
+  if (from === to) return value;
+  const rateFrom = (CURRENCIES[from] || CURRENCIES.USD).perUsd;
+  const rateTo = (CURRENCIES[to] || CURRENCIES.USD).perUsd;
+  return (value / rateFrom) * rateTo;
+}
+
+function money(amount, code) {
+  const meta = CURRENCIES[code] || CURRENCIES.USD;
+  const whole = code === "IQD" || code === "JPY";
+  const body = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: whole || Number.isInteger(Number(amount)) ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  }).format(Number(amount) || 0);
+  return meta.symbol + " " + body;
+}
+
+/** `[2 uppercase letters][4 digits]`, e.g. XN1775 — unique across entries. */
+function generateCode() {
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const code =
+      LETTERS[randomInt(26)] + LETTERS[randomInt(26)] +
+      String(randomInt(10000)).padStart(4, "0");
+    if (!db.entries.some((e) => e.code === code)) return code;
+  }
+  throw new Error("Could not generate a free entry code — try again.");
+}
+
+/* ----------------------------------------------------------- 5. PDF writer */
+
+/**
+ * A small PDF 1.4 writer, just enough for a one-page receipt: Helvetica text,
+ * filled boxes, and a tiled diagonal watermark drawn through an ExtGState
+ * alpha. Written by hand so the file stays offline and dependency-free.
+ *
+ * WATERMARK_OPACITY stays low (8%) on purpose: the phrase must read as a
+ * security mark without competing with amounts, codes or transaction text.
+ */
+const PDF = (function () {
+  const PAGE_W = 595.28;
+  const PAGE_H = 841.89;
+  const WATERMARK_TEXT = "VOID IF COPIED";
+  const WATERMARK_OPACITY = 0.08;
+
+  /* Helvetica is a built-in font with no embedded metrics here, so widths are
+     approximated per character class — accurate enough to align and centre. */
+  function charWidth(ch, bold) {
+    if (ch === " ") return 278;
+    if (ch >= "0" && ch <= "9") return 556;
+    if (ch >= "A" && ch <= "Z") return bold ? 722 : 667;
+    if (ch >= "a" && ch <= "z") return bold ? 556 : 520;
+    if (".,:;'|!".indexOf(ch) >= 0) return 250;
+    return bold ? 600 : 545;
+  }
+
+  function textWidth(str, size, bold, tracking) {
+    let total = 0;
+    for (const ch of str) total += charWidth(ch, bold) / 1000 * size + (tracking || 0);
+    return total;
+  }
+
+  /* WinAnsi can't carry Arabic or typographic dashes — fold to plain ASCII. */
+  function ascii(value) {
+    return String(value == null ? "" : value)
+      .replace(/[‒-―−]/g, "-")
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/≈/g, "~")
+      .replace(/€/g, "EUR")
+      .replace(/[^\x20-\x7e]/g, "");
+  }
+
+  function pdfString(value) {
+    return ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  }
+
+  function rgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
+      .map((v) => v.toFixed(3)).join(" ");
+  }
+
+  /** Canvas-style drawing surface using top-down y, flushed into PDF operators. */
+  function surface() {
+    const ops = [];
+    const flip = (y) => PAGE_H - y;
+
+    return {
+      ops,
+      rect(x, y, w, h, color) {
+        ops.push("q " + rgb(color) + " rg " +
+          x.toFixed(2) + " " + flip(y + h).toFixed(2) + " " +
+          w.toFixed(2) + " " + h.toFixed(2) + " re f Q");
+      },
+      roundRect(x, y, w, h, r, color) {
+        const b = flip(y + h), t = flip(y), k = r * 0.5523;
+        ops.push([
+          "q", rgb(color), "rg",
+          (x + r).toFixed(2), b.toFixed(2), "m",
+          (x + w - r).toFixed(2), b.toFixed(2), "l",
+          (x + w - r + k).toFixed(2), b.toFixed(2), (x + w).toFixed(2), (b + r - k).toFixed(2), (x + w).toFixed(2), (b + r).toFixed(2), "c",
+          (x + w).toFixed(2), (t - r).toFixed(2), "l",
+          (x + w).toFixed(2), (t - r + k).toFixed(2), (x + w - r + k).toFixed(2), t.toFixed(2), (x + w - r).toFixed(2), t.toFixed(2), "c",
+          (x + r).toFixed(2), t.toFixed(2), "l",
+          (x + r - k).toFixed(2), t.toFixed(2), x.toFixed(2), (t - r + k).toFixed(2), x.toFixed(2), (t - r).toFixed(2), "c",
+          x.toFixed(2), (b + r).toFixed(2), "l",
+          x.toFixed(2), (b + r - k).toFixed(2), (x + r - k).toFixed(2), b.toFixed(2), (x + r).toFixed(2), b.toFixed(2), "c",
+          "f", "Q",
+        ].join(" "));
+      },
+      line(x1, y1, x2, y2, color, width) {
+        ops.push("q " + rgb(color) + " RG " + (width || 1) + " w " +
+          x1.toFixed(2) + " " + flip(y1).toFixed(2) + " m " +
+          x2.toFixed(2) + " " + flip(y2).toFixed(2) + " l S Q");
+      },
+      text(value, x, y, opts) {
+        const o = opts || {};
+        const size = o.size || 10;
+        const bold = !!o.bold;
+        const tracking = o.tracking || 0;
+        const body = pdfString(value);
+        if (!body) return;
+        let left = x;
+        if (o.align === "right") left = x - textWidth(ascii(value), size, bold, tracking);
+        else if (o.align === "center") left = x - textWidth(ascii(value), size, bold, tracking) / 2;
+        ops.push([
+          "q", rgb(o.color || "#111827"), "rg", "BT",
+          bold ? "/F2" : "/F1", size, "Tf",
+          tracking ? tracking + " Tc" : "0 Tc",
+          left.toFixed(2), flip(y).toFixed(2), "Td",
+          "(" + body + ")", "Tj", "ET", "Q",
+        ].join(" "));
+      },
+      /** Rotated, semi-transparent text — the watermark. */
+      mark(value, x, y, size, color) {
+        const cos = Math.cos(-Math.PI / 6).toFixed(4);
+        const sin = Math.sin(-Math.PI / 6).toFixed(4);
+        ops.push([
+          "q", "/GS1 gs", rgb(color), "rg", "BT",
+          "/F2", size, "Tf", "3 Tc",
+          cos, sin, (-sin).toString(), cos,
+          x.toFixed(2), flip(y).toFixed(2), "Tm",
+          "(" + pdfString(value) + ")", "Tj", "ET", "Q",
+        ].join(" "));
+      },
+      build() { return ops.join("\n"); },
+    };
+  }
+
+  function assemble(content) {
+    const objects = [
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + PAGE_W + " " + PAGE_H + "]" +
+        " /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /ExtGState << /GS1 7 0 R >> >>" +
+        " /Contents 4 0 R >>",
+      "<< /Length " + content.length + " >>\nstream\n" + content + "\nendstream",
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+      "<< /Type /ExtGState /ca " + WATERMARK_OPACITY + " /CA " + WATERMARK_OPACITY + " >>",
+    ];
+
+    let out = "%PDF-1.4\n";
+    const offsets = [];
+    objects.forEach((obj, index) => {
+      offsets.push(out.length);
+      out += (index + 1) + " 0 obj\n" + obj + "\nendobj\n";
+    });
+
+    const xref = out.length;
+    out += "xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n";
+    offsets.forEach((offset) => {
+      out += String(offset).padStart(10, "0") + " 00000 n \n";
+    });
+    out += "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\n" +
+      "startxref\n" + xref + "\n%%EOF";
+    return out;
+  }
+
+  /** Draw a receipt for one entry and return the PDF as a binary string. */
+  function receipt(data) {
+    const s = surface();
+    const M = 40;
+    const W = PAGE_W - M * 2;
+    const INK = "#111827";
+    const GREY = "#6b7280";
+    const ACCENT = "#4338ca";
+
+    /* Watermark layer first, so every filled box below sits on top of it.
+       Rows alternate their start so the marks tile across the page instead of
+       stacking into one diagonal band. */
+    for (let row = 0; row < 7; row++) {
+      s.mark(WATERMARK_TEXT, row % 2 === 0 ? 26 : 196, 148 + row * 106, 30, ACCENT);
+    }
+
+    /* Header band */
+    s.roundRect(M, 36, W, 88, 8, "#6d6ef0");
+    s.text("CoreOS", M + 22, 78, { size: 26, bold: true, color: "#ffffff" });
+    s.text("OFFICIAL RECEIPT", M + 22, 98, { size: 7, tracking: 2, color: "#e6e6ff" });
+    s.text("CLIENT CODE", PAGE_W - M - 22, 68, { size: 7, tracking: 2, color: "#e6e6ff", align: "right" });
+    s.text(data.code, PAGE_W - M - 22, 92, { size: 18, bold: true, color: "#ffffff", align: "right" });
+
+    /* Meta grid */
+    const meta = [
+      ["RECEIPT NO.", data.receiptNo],
+      ["DATE ISSUED", data.issuedDate],
+      ["BILLED TO", data.name],
+      ["TYPE", data.type],
+      ["ENTRY DATE", data.entryDate],
+      ["STATUS", String(data.status).toUpperCase()],
+    ];
+    if (data.dueDate) meta.push(["DUE", data.dueDate]);
+
+    let metaTop = 164;
+    meta.forEach((pair, index) => {
+      const col = index % 2;
+      const x = M + 2 + col * (W / 2);
+      const y = metaTop + Math.floor(index / 2) * 44;
+      s.text(pair[0], x, y, { size: 7, tracking: 1.5, color: GREY });
+      s.text(pair[1], x, y + 15, { size: 11, bold: true, color: INK });
+    });
+
+    let y = metaTop + Math.ceil(meta.length / 2) * 44 + 14;
+
+    /* Line items */
+    s.rect(M, y, W, 24, "#f3f4f6");
+    s.text("DESCRIPTION", M + 12, y + 15, { size: 7, tracking: 1.5, color: GREY });
+    s.text("CURRENCY", M + W - 150, y + 15, { size: 7, tracking: 1.5, color: GREY, align: "right" });
+    s.text("AMOUNT", M + W - 12, y + 15, { size: 7, tracking: 1.5, color: GREY, align: "right" });
+    y += 24;
+
+    s.text(data.type + " service - " + data.name, M + 12, y + 22, { size: 10, color: INK });
+    s.text(data.currency, M + W - 150, y + 22, { size: 10, color: INK, align: "right" });
+    s.text(data.amountLabel, M + W - 12, y + 22, { size: 10, color: INK, align: "right" });
+    y += 34;
+    s.line(M, y, M + W, y, "#e5e7eb", 1);
+
+    /* Total */
+    y += 26;
+    s.line(M, y, M + W, y, INK, 2);
+    s.text("TOTAL DUE", M, y + 22, { size: 8, tracking: 2, color: GREY });
+    s.text(data.amountLabel, M + W, y + 26, { size: 20, bold: true, color: ACCENT, align: "right" });
+    y += 44;
+
+    /* Notes and reference link */
+    if (data.notes) {
+      s.roundRect(M, y, W, 52, 6, "#f9fafb");
+      s.text("NOTES", M + 14, y + 18, { size: 7, tracking: 1.5, color: GREY });
+      s.text(String(data.notes).slice(0, 92), M + 14, y + 36, { size: 10, color: INK });
+      y += 64;
+    }
+    if (data.linkUrl) {
+      s.roundRect(M, y, W, 52, 6, "#f9fafb");
+      s.text("REFERENCE LINK", M + 14, y + 18, { size: 7, tracking: 1.5, color: GREY });
+      s.text(String(data.linkUrl).slice(0, 92), M + 14, y + 36, { size: 10, color: ACCENT });
+      y += 64;
+    }
+
+    /* Footer */
+    s.line(M, PAGE_H - 52, PAGE_W - M, PAGE_H - 52, "#e5e7eb", 1);
+    s.text("Issued by " + data.issuedBy + " - Thank you for your business",
+      M, PAGE_H - 38, { size: 7, color: "#9ca3af" });
+    s.text(WATERMARK_TEXT + " - CoreOS " + data.code,
+      PAGE_W - M, PAGE_H - 38, { size: 7, color: "#9ca3af", align: "right" });
+
+    return assemble(s.build());
+  }
+
+  /** Hand the finished PDF to the browser as a download. */
+  function download(filename, binary) {
+    const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0) & 0xff);
+    const link = document.createElement("a");
+    link.download = filename;
+    try {
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      /* Some file:// contexts refuse blob URLs — a data URI still downloads. */
+      link.href = "data:application/pdf;base64," + btoa(binary);
+      link.click();
+    }
+  }
+
+  return { receipt, download, WATERMARK_TEXT, WATERMARK_OPACITY };
+})();
+
+/* --------------------------------------------------------------- 6. views */
+
+/* Ephemeral UI state — everything persistent lives in `db`. */
+const S = {
+  view: "entries",
+  auth: { mode: "login", error: "" },
+  query: "", status: "all", type: "all",
+  editingId: null,
+  draft: null,
+  modal: null,
+  flash: null,
+  receipt: { id: null, price: "", currency: null, search: "" },
+  conv: { amount: "1", from: null, to: "USD" },
+  currencySearch: "",
+};
+
+const NAV = [
+  ["entries", "Entries", "entries"],
+  ["stats", "Stats", "stats"],
+  ["receipt", "Receipt", "receipt"],
+  ["export", "Export", "export"],
+  ["security", "Security", "security"],
+  ["settings", "Settings", "settings"],
+];
+
+const TITLES = {
+  entries: "Entries", stats: "Statistics", receipt: "Receipt",
+  export: "Export", security: "Security · Access", settings: "Settings",
+};
+
+function sortedEntries() {
+  return db.entries.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+function entryTypes() {
+  return Array.from(new Set(db.entries.map((e) => e.type))).sort();
+}
+
+function getEntry(id) {
+  return db.entries.find((e) => e.id === id) || null;
+}
+
+function flashHtml() {
+  if (!S.flash) return "";
+  return '<p class="notice ' + esc(S.flash.kind) + '">' + esc(S.flash.text) + "</p>";
+}
+
+/* ---- auth screens ---- */
+
+function authView() {
+  const isLogin = S.auth.mode === "login";
+  return '' +
+    '<div class="auth">' +
+      '<div class="auth-brand">' +
+        '<div class="wordmark">TRACKER</div>' +
+        '<div class="label">CoreOs Track</div>' +
+      '</div>' +
+      '<form class="card grid" id="auth-form" style="gap:18px">' +
+        '<div class="row-between" style="gap:8px;justify-content:flex-start">' +
+          '<span style="color:var(--accent);display:flex">' + icon("lock") + '</span>' +
+          '<h2 style="margin:0;font-size:18px">' + (isLogin ? "Sign in" : "Request access") + '</h2>' +
+        '</div>' +
+        '<p class="muted" style="margin:0;font-size:12px;line-height:1.6">' +
+          (isLogin
+            ? "Approved members only. New accounts wait for an admin."
+            : "Your account stays locked until an approved admin accepts it.") +
+        '</p>' +
+        '<label class="grid" style="gap:8px"><span class="label">Email</span>' +
+          '<input class="field" id="auth-email" type="email" autocomplete="email" required placeholder="you@company.com"></label>' +
+        '<label class="grid" style="gap:8px"><span class="label">Password</span>' +
+          '<input class="field" id="auth-password" type="password" required minlength="8" ' +
+          'autocomplete="' + (isLogin ? "current-password" : "new-password") + '" placeholder="At least 8 characters"></label>' +
+        (S.auth.error ? '<p class="notice error">' + esc(S.auth.error) + "</p>" : "") +
+        '<button class="btn primary" type="submit">' + (isLogin ? "Sign in" : "Create account") + '</button>' +
+        '<p class="muted" style="margin:0;text-align:center;font-size:12px">' +
+          (isLogin ? "Need an account? " : "Already have an account? ") +
+          '<button type="button" class="btn sm ghost" data-act="auth-mode">' +
+            (isLogin ? "Request access" : "Sign in") +
+          '</button>' +
+        '</p>' +
+      '</form>' +
+      '<p class="muted" style="text-align:center;font-size:11px;line-height:1.7;margin:0">' +
+        "Portable build — accounts and entries are stored in this browser only." +
+      '</p>' +
+    '</div>';
+}
+
+function pendingView() {
+  const user = currentUser();
+  const denied = user.status === "denied";
+  return '' +
+    '<div class="auth">' +
+      '<div class="card grid" style="gap:18px;text-align:center;justify-items:center">' +
+        '<span style="color:var(--' + (denied ? "danger" : "warning") + ');display:flex">' +
+          icon(denied ? "ban" : "clock") + '</span>' +
+        '<h2 style="margin:0">' + (denied ? "Access declined" : "Waiting for approval") + '</h2>' +
+        '<p class="muted" style="margin:0;line-height:1.7;font-size:13px">' +
+          (denied
+            ? "An admin declined access for <strong>" + esc(user.email) + "</strong>."
+            : "<strong>" + esc(user.email) + "</strong> is registered but locked out " +
+              "until an approved admin accepts it on the Security page.") +
+        '</p>' +
+        '<button class="btn ghost" data-act="sign-out">' + icon("out") + " Sign out</button>" +
+      '</div>' +
+    '</div>';
+}
+
+/* ---- shell ---- */
+
+function shell(body) {
+  const user = currentUser();
+  const isAdmin = user.role === "admin";
+  const nav = NAV.filter((item) => item[0] !== "security" || isAdmin)
+    .map(([key, label, ico]) =>
+      '<button data-act="go" data-view="' + key + '"' +
+      (S.view === key ? ' aria-current="page"' : "") + ">" + icon(ico) + esc(label) + "</button>")
+    .join("");
+
+  return '' +
+    '<div class="shell">' +
+      '<aside class="sidebar">' +
+        '<div class="wordmark">TRACKER</div>' +
+        '<nav class="nav">' + nav + '</nav>' +
+        '<div class="sidebar-foot">' +
+          '<span class="muted who" style="font-size:11px;overflow:hidden;text-overflow:ellipsis">' + esc(user.email) + '</span>' +
+          '<button class="btn primary" data-act="new-entry">' + icon("plus") + " Manual entry</button>" +
+        '</div>' +
+      '</aside>' +
+      '<div class="main">' +
+        '<header class="topbar">' +
+          '<h1>' + esc(TITLES[S.view]) + '</h1>' +
+          '<div class="topbar-tools">' +
+            '<label class="label" for="base-currency" style="position:absolute;left:-9999px">Base currency</label>' +
+            '<select class="field" id="base-currency" data-act="base-currency" style="width:auto;padding:9px 12px">' +
+              CURRENCY_CODES.map((code) =>
+                '<option value="' + code + '"' + (code === baseCurrency() ? " selected" : "") + ">" + code + "</option>").join("") +
+            '</select>' +
+            '<button class="btn ghost" data-act="theme" aria-label="Switch theme">' +
+              icon(db.prefs.theme === "dark" ? "sun" : "moon") + '</button>' +
+            '<button class="btn ghost" data-act="sign-out">' + icon("out") + " Sign out</button>" +
+          '</div>' +
+        '</header>' +
+        '<div class="content">' + flashHtml() + body + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+/* ---- shared form ---- */
+
+function entryFormHtml(prefix, values, showCode) {
+  const v = values;
+  const opt = (list, selected) => list.map((item) =>
+    '<option value="' + esc(item) + '"' + (item === selected ? " selected" : "") + ">" + esc(item) + "</option>").join("");
+
+  return '<div class="form-grid">' +
+    '<label class="grid span" style="gap:8px"><span class="label">Name</span>' +
+      '<input class="field" id="' + prefix + '-name" value="' + esc(v.name) + '" placeholder="Client or project name" required></label>' +
+    (showCode
+      ? '<label class="grid" style="gap:8px"><span class="label">Code</span>' +
+        '<input class="field" id="' + prefix + '-code" value="' + esc(v.code) + '" maxlength="6" placeholder="XN1775" style="text-transform:uppercase"></label>'
+      : "") +
+    '<label class="grid" style="gap:8px"><span class="label">Type</span>' +
+      '<input class="field" id="' + prefix + '-type" list="type-options" value="' + esc(v.type) + '" placeholder="Website, tracking system…" required></label>' +
+    '<label class="grid" style="gap:8px"><span class="label">Amount</span>' +
+      '<input class="field" id="' + prefix + '-amount" type="number" min="0" step="0.01" value="' + esc(v.amount) + '"></label>' +
+    '<label class="grid" style="gap:8px"><span class="label">Currency</span>' +
+      '<select class="field" id="' + prefix + '-currency">' + opt(CURRENCY_CODES, v.currency) + "</select></label>" +
+    '<label class="grid" style="gap:8px"><span class="label">Status</span>' +
+      '<select class="field" id="' + prefix + '-status">' + opt(STATUSES, v.status) + "</select></label>" +
+    '<label class="grid" style="gap:8px"><span class="label">Date</span>' +
+      '<input class="field" id="' + prefix + '-date" type="date" value="' + esc(v.date) + '" required></label>' +
+    '<label class="grid" style="gap:8px"><span class="label">Due date (optional)</span>' +
+      '<input class="field" id="' + prefix + '-dueDate" type="date" value="' + esc(v.dueDate || "") + '"></label>' +
+    '<label class="grid span" style="gap:8px"><span class="label">Link URL (optional)</span>' +
+      '<input class="field" id="' + prefix + '-linkUrl" type="url" value="' + esc(v.linkUrl || "") + '" placeholder="https://example.com"></label>' +
+    '<label class="grid span" style="gap:8px"><span class="label">Notes (optional)</span>' +
+      '<textarea class="field" id="' + prefix + '-notes" placeholder="Anything worth remembering">' + esc(v.notes || "") + "</textarea></label>" +
+    '<datalist id="type-options">' + entryTypes().map((t) => '<option value="' + esc(t) + '"></option>').join("") + "</datalist>" +
+  "</div>";
+}
+
+function readEntryForm(prefix) {
+  const get = (name) => {
+    const el = document.getElementById(prefix + "-" + name);
+    return el ? el.value.trim() : "";
+  };
+  return {
+    code: get("code").toUpperCase(),
+    name: get("name"),
+    type: get("type"),
+    amount: get("amount"),
+    currency: get("currency") || "USD",
+    status: get("status") || "active",
+    date: get("date"),
+    dueDate: get("dueDate"),
+    notes: get("notes"),
+    linkUrl: get("linkUrl"),
+  };
+}
+
+function validateEntry(values, options) {
+  if (!values.name) throw new Error("Name is required.");
+  if (!values.type) throw new Error("Type is required.");
+  if (!values.date) throw new Error("Date is required.");
+  if (values.amount === "" || Number(values.amount) < 0 || !Number.isFinite(Number(values.amount))) {
+    throw new Error("Amount must be zero or more.");
+  }
+  if (values.linkUrl && !/^https?:\/\/\S+$/i.test(values.linkUrl)) {
+    throw new Error("Link must start with http:// or https://");
+  }
+  if (options && options.requireCode) {
+    if (!/^[A-Z]{2}\d{4}$/.test(values.code)) {
+      throw new Error("Code must be 2 letters followed by 4 digits, e.g. XN1775.");
+    }
+    if (db.entries.some((e) => e.code === values.code && e.id !== options.id)) {
+      throw new Error("Code " + values.code + " is already in use.");
+    }
+  }
+  return values;
+}
+
+/* ---- entries ---- */
+
+function amountCell(entry) {
+  const base = baseCurrency();
+  const approx = entry.currency === base
+    ? ""
+    : '<span class="muted num" style="display:block;font-size:11px;margin-top:2px">≈ ' +
+      esc(money(convert(entry.amount, entry.currency, base), base)) + "</span>";
+  return '<span class="success num">' + esc(money(entry.amount, entry.currency)) + "</span>" + approx;
+}
+
+function entriesView() {
+  const needle = S.query.trim().toLowerCase();
+  const rows = sortedEntries().filter((entry) => {
+    if (S.status !== "all" && entry.status !== S.status) return false;
+    if (S.type !== "all" && entry.type !== S.type) return false;
+    if (!needle) return true;
+    return [entry.code, entry.name, entry.type, entry.notes || ""].join(" ").toLowerCase().includes(needle);
+  });
+
+  const body = rows.length === 0
+    ? '<tr><td colspan="8" class="empty">' +
+      (db.entries.length === 0
+        ? "No entries yet — add your first one with Manual entry."
+        : "No entries match these filters.") + "</td></tr>"
+    : rows.map((entry) => (entry.id === S.editingId ? editorRow(entry) : dataRow(entry))).join("");
+
+  return '' +
+    '<div class="filters">' +
+      '<div style="position:relative">' +
+        '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);display:flex">' + icon("search") + '</span>' +
+        '<input class="field" id="entry-search" style="padding-left:40px" placeholder="Search name, code, type, notes…" ' +
+          'value="' + esc(S.query) + '" data-act="filter" data-key="query" aria-label="Search entries">' +
+      '</div>' +
+      '<select class="field" data-act="filter" data-key="status" aria-label="Filter by status">' +
+        '<option value="all">All statuses</option>' +
+        STATUSES.map((s) => '<option value="' + s + '"' + (S.status === s ? " selected" : "") + ">" + s + "</option>").join("") +
+      '</select>' +
+      '<select class="field" data-act="filter" data-key="type" aria-label="Filter by type">' +
+        '<option value="all">All types</option>' +
+        entryTypes().map((t) => '<option value="' + esc(t) + '"' + (S.type === t ? " selected" : "") + ">" + esc(t) + "</option>").join("") +
+      '</select>' +
+      '<button class="btn primary" data-act="new-entry">' + icon("plus") + " Manual entry</button>" +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Date</th><th>Amount</th>' +
+      '<th>Status</th><th>Due</th><th></th></tr></thead>' +
+      "<tbody>" + body + "</tbody>" +
+    "</table></div>" +
+    '<p class="muted" style="margin:0;font-size:12px">Showing ' + rows.length + " of " + db.entries.length + " entries.</p>";
+}
+
+function dataRow(entry) {
+  return "<tr>" +
+    '<td class="code-cell">' + esc(entry.code) + "</td>" +
+    "<td><div>" + esc(entry.name) + "</div>" +
+      (entry.notes ? '<div class="muted" style="font-size:12px;margin-top:4px;max-width:34ch">' + esc(entry.notes) + "</div>" : "") +
+      (entry.linkUrl
+        ? '<a href="' + esc(entry.linkUrl) + '" target="_blank" rel="noreferrer noopener" ' +
+          'style="display:inline-flex;gap:5px;align-items:center;font-size:12px;margin-top:4px">' + icon("link") + "link</a>"
+        : "") +
+    "</td>" +
+    '<td><span class="chip">' + esc(entry.type) + "</span></td>" +
+    '<td class="muted num">' + esc(entry.date) + "</td>" +
+    "<td>" + amountCell(entry) + "</td>" +
+    '<td><span class="badge ' + esc(entry.status) + '">' + esc(entry.status) + "</span></td>" +
+    '<td class="muted num">' + esc(entry.dueDate || "—") + "</td>" +
+    '<td><div class="row-actions">' +
+      '<button class="btn ghost sm" data-act="edit" data-id="' + entry.id + '">' + icon("edit") + " edit</button>" +
+      '<button class="btn ghost sm" data-act="pdf" data-id="' + entry.id + '" title="Download watermarked PDF">' + icon("pdf") + " pdf</button>" +
+      '<button class="btn danger sm" data-act="ask-delete" data-id="' + entry.id + '" aria-label="Delete ' + esc(entry.code) + '">' + icon("trash") + "</button>" +
+    "</div></td>" +
+  "</tr>";
+}
+
+function editorRow(entry) {
+  const values = S.draft || {
+    code: entry.code, name: entry.name, type: entry.type, amount: entry.amount,
+    currency: entry.currency, status: entry.status, date: entry.date,
+    dueDate: entry.dueDate, notes: entry.notes, linkUrl: entry.linkUrl,
+  };
+  return '<tr><td colspan="8">' +
+    '<form id="inline-form" class="grid" style="gap:18px;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);' +
+      'border-radius:14px;background:var(--surface-2);padding:20px">' +
+      '<p class="label" style="margin:0">Editing inline · ' + esc(entry.code) + "</p>" +
+      entryFormHtml("edit", values, true) +
+      '<div class="actions-right">' +
+        '<button type="button" class="btn ghost" data-act="cancel-edit">' + icon("x") + " Cancel</button>" +
+        '<button type="submit" class="btn primary">' + icon("check") + " Confirm</button>" +
+      "</div>" +
+    "</form></td></tr>";
+}
+
+/* ---- stats ---- */
+
+function statsView() {
+  const base = baseCurrency();
+  let total = 0, settled = 0, open = 0, paused = 0;
+  const byType = new Map();
+
+  db.entries.forEach((entry) => {
+    const value = convert(entry.amount, entry.currency, base);
+    total += value;
+    if (SETTLED.includes(entry.status)) settled += value;
+    else if (entry.status !== "cancelled") open += value;
+    if (entry.status === "paused") paused += 1;
+    byType.set(entry.type, (byType.get(entry.type) || 0) + value);
+  });
+
+  const tile = (label, value, tone) =>
+    '<div class="card"><p class="label">' + esc(label) + '</p>' +
+    '<p class="stat-value num' + (tone ? " " + tone : "") + '">' + esc(value) + "</p></div>";
+
+  const bars = Array.from(byType.entries()).sort((a, b) => b[1] - a[1]).map(([type, value]) => {
+    const share = total > 0 ? (value / total) * 100 : 0;
+    return '<div class="grid" style="gap:8px">' +
+      '<div class="row-between"><span class="chip">' + esc(type) + "</span>" +
+      '<span class="muted num">' + esc(money(value, base)) + " (" + share.toFixed(1) + "%)</span></div>" +
+      '<div class="bar" role="img" aria-label="' + esc(type) + ": " + share.toFixed(1) + ' percent of total value">' +
+      '<span style="width:' + Math.max(share, 0.6).toFixed(2) + '%"></span></div></div>';
+  }).join("");
+
+  const clients = db.entries.length === 0
+    ? '<tr><td colspan="6" class="empty">No clients yet.</td></tr>'
+    : sortedEntries().map((entry) => "<tr>" +
+        '<td class="code-cell">' + esc(entry.code) + "</td>" +
+        "<td>" + esc(entry.name) + "</td>" +
+        '<td><span class="chip">' + esc(entry.type) + "</span></td>" +
+        "<td>" + amountCell(entry) + "</td>" +
+        '<td><span class="badge ' + esc(entry.status) + '">' + esc(entry.status) + "</span></td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn ghost sm" data-act="details" data-id="' + entry.id + '">details</button>' +
+          '<button class="btn ghost sm" data-act="ask-pause" data-id="' + entry.id + '">' +
+            icon(entry.status === "paused" ? "play" : "pause") + (entry.status === "paused" ? " resume" : " pause") + "</button>" +
+          '<button class="btn danger sm" data-act="ask-delete" data-id="' + entry.id + '" aria-label="Delete ' + esc(entry.code) + '">' + icon("trash") + "</button>" +
+        "</div></td></tr>").join("");
+
+  return '' +
+    '<div class="stat-grid">' +
+      tile("Total entries", String(db.entries.length)) +
+      tile("Total value", money(total, base)) +
+      tile("Paid / completed", money(settled, base), "success") +
+      tile("Open / pending", money(open, base), "warning") +
+      tile("Paused", String(paused)) +
+    "</div>" +
+    '<section class="card grid" style="gap:18px">' +
+      '<h2 class="label" style="margin:0">Revenue by type</h2>' +
+      (bars || '<p class="muted" style="margin:0">No entries to summarise yet.</p>') +
+    "</section>" +
+    '<section class="card grid" style="gap:16px">' +
+      '<h2 class="label" style="margin:0">Manage clients</h2>' +
+      '<div style="overflow-x:auto"><table>' +
+        "<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Amount</th><th>Status</th><th></th></tr></thead>" +
+        "<tbody>" + clients + "</tbody>" +
+      "</table></div>" +
+    "</section>";
+}
+
+/* ---- receipt ---- */
+
+function receiptState() {
+  const entries = sortedEntries();
+  if (!S.receipt.id || !getEntry(S.receipt.id)) {
+    S.receipt.id = entries.length ? entries[0].id : null;
+    S.receipt.currency = null;
+  }
+  const entry = getEntry(S.receipt.id);
+  const currency = S.receipt.currency || (entry ? entry.currency : "USD");
+  const typed = S.receipt.price.trim();
+  const amount = typed !== "" && Number.isFinite(Number(typed))
+    ? Number(typed)
+    : (entry ? Number(entry.amount) : 0);
+  return { entries, entry, currency, amount };
+}
+
+function receiptView() {
+  const { entries, entry, currency, amount } = receiptState();
+  const needle = S.receipt.search.trim().toLowerCase();
+  const list = entries.filter((item) =>
+    !needle || (item.code + " " + item.name + " " + item.type).toLowerCase().includes(needle));
+
+  const picker = list.length === 0
+    ? '<p class="muted" style="padding:20px;text-align:center;margin:0">No matching clients.</p>'
+    : list.map((item) =>
+        '<button data-act="pick-client" data-id="' + item.id + '" aria-pressed="' + (item.id === S.receipt.id) + '">' +
+          "<span><span class=\"code-cell\">" + esc(item.code) + '</span><span class="muted"> — ' + esc(item.name) + "</span></span>" +
+          '<span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">' + esc(item.type) + "</span>" +
+        "</button>").join("");
+
+  const preview = entry ? paperHtml(entry, money(amount, currency), currency)
+    : '<p class="muted" style="padding:60px 0;text-align:center;margin:0">Add an entry first — receipts are generated from entries.</p>';
+
+  return '<div class="two-col">' +
+    '<section class="card grid" style="gap:16px">' +
+      '<h2 class="label" style="margin:0">Choose client</h2>' +
+      '<div style="position:relative">' +
+        '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);display:flex">' + icon("search") + "</span>" +
+        '<input class="field" id="client-search" style="padding-left:40px" placeholder="Search…" ' +
+          'value="' + esc(S.receipt.search) + '" data-act="receipt-field" data-key="search" aria-label="Search clients">' +
+      "</div>" +
+      '<div class="list">' + picker + "</div>" +
+    "</section>" +
+    '<section class="card grid" style="gap:20px">' +
+      '<div class="form-grid" style="grid-template-columns:1fr 1fr auto">' +
+        '<label class="grid" style="gap:8px"><span class="label">Custom price (optional)</span>' +
+          '<input class="field" id="receipt-price" type="number" min="0" step="0.01" data-act="receipt-field" data-key="price" ' +
+            'value="' + esc(S.receipt.price) + '" placeholder="' + esc(entry ? entry.amount : 0) + '"></label>' +
+        '<label class="grid" style="gap:8px"><span class="label">Currency</span>' +
+          '<select class="field" data-act="receipt-field" data-key="currency">' +
+            CURRENCY_CODES.map((code) => '<option value="' + code + '"' + (code === currency ? " selected" : "") + ">" + code + "</option>").join("") +
+          "</select></label>" +
+        '<div style="display:flex;align-items:flex-end">' +
+          '<button class="btn primary" data-act="pdf" data-id="' + (entry ? entry.id : "") + '"' + (entry ? "" : " disabled") + ">" +
+            icon("pdf") + " Download PDF</button>" +
+        "</div>" +
+      "</div>" +
+      '<div style="border:1px solid var(--line);border-radius:16px;background:var(--surface-2);padding:16px">' + preview + "</div>" +
+    "</section></div>";
+}
+
+/** On-screen mirror of the generated PDF — same layout, same watermark. */
+function paperHtml(entry, amountLabel, currency) {
+  const marks = [0, 1, 2, 3, 4].map(() => "<span>" + PDF.WATERMARK_TEXT + "</span>").join("");
+  const meta = (k, v) => '<div><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + "</div></div>";
+
+  return '<div class="paper">' +
+    '<div class="marks" aria-hidden="true">' + marks + "</div>" +
+    '<div class="paper-head">' +
+      '<div><div class="brand">CoreOS</div><div class="sub">OFFICIAL RECEIPT</div></div>' +
+      '<div style="text-align:right"><div class="sub" style="margin:0">CLIENT CODE</div>' +
+        '<div class="brand" style="font-size:22px;margin-top:4px">' + esc(entry.code) + "</div></div>" +
+    "</div>" +
+    '<div class="paper-body">' +
+      '<div class="paper-meta">' +
+        meta("RECEIPT NO.", "R-" + entry.code) +
+        meta("DATE ISSUED", today()) +
+        meta("BILLED TO", entry.name) +
+        meta("TYPE", entry.type) +
+        meta("ENTRY DATE", entry.date) +
+        meta("STATUS", entry.status.toUpperCase()) +
+      "</div>" +
+      "<table><thead><tr><th>DESCRIPTION</th>" +
+        '<th style="text-align:right">CURRENCY</th><th style="text-align:right">AMOUNT</th></tr></thead>' +
+        "<tbody><tr><td>" + esc(entry.type) + " service — " + esc(entry.name) + "</td>" +
+        '<td style="text-align:right">' + esc(currency) + "</td>" +
+        '<td style="text-align:right" class="num">' + esc(amountLabel) + "</td></tr></tbody></table>" +
+      '<div class="total"><span style="font-size:10px;letter-spacing:.25em;color:#6b7280">TOTAL DUE</span>' +
+        "<b>" + esc(amountLabel) + "</b></div>" +
+      (entry.notes ? '<div class="note"><div class="k">NOTES</div><div>' + esc(entry.notes) + "</div></div>" : "") +
+    "</div></div>";
+}
+
+/* ---- export ---- */
+
+const CSV_COLUMNS = ["code", "name", "type", "amount", "currency", "status", "date", "due_date", "notes", "link_url"];
+
+function toCsv(entries) {
+  const cell = (value) => {
+    const text = value == null ? "" : String(value);
+    return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  };
+  const rows = entries.map((e) => [e.code, e.name, e.type, e.amount, e.currency,
+    e.status, e.date, e.dueDate || "", e.notes || "", e.linkUrl || ""].map(cell).join(","));
+  return [CSV_COLUMNS.join(",")].concat(rows).join("\n");
+}
+
+function exportView() {
+  const base = baseCurrency();
+  const entries = sortedEntries();
+  const total = entries.reduce((sum, e) => sum + convert(e.amount, e.currency, base), 0);
+  const sample = entries.length === 0 ? "No entries to export yet." : toCsv(entries.slice(0, 12));
+
+  return '<div class="half">' +
+    '<section class="card grid" style="gap:20px">' +
+      "<div><h2 style=\"margin:0;font-size:18px\">Export data</h2>" +
+      '<p class="muted" style="margin:8px 0 0;line-height:1.6">Download every entry exactly as stored — ' +
+        "amounts keep their own currency, so nothing is rounded on the way out.</p></div>" +
+      '<div class="form-grid">' +
+        '<div><p class="label">Entries</p><p class="num" style="font-size:20px;margin:6px 0 0">' + entries.length + "</p></div>" +
+        '<div><p class="label">Total (' + esc(base) + ')</p><p class="num" style="font-size:20px;margin:6px 0 0">' + esc(money(total, base)) + "</p></div>" +
+      "</div>" +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+        '<button class="btn primary" data-act="export" data-format="csv">' + icon("export") + " Export CSV</button>" +
+        '<button class="btn ghost" data-act="export" data-format="json">' + icon("export") + " Export JSON</button>" +
+      "</div>" +
+    "</section>" +
+    '<section class="card grid" style="gap:16px">' +
+      '<h2 class="label" style="margin:0">Preview</h2>' +
+      '<pre class="preview">' + esc(sample) + "</pre>" +
+      (entries.length > 12
+        ? '<p class="muted" style="margin:0;font-size:12px">Showing the first 12 rows — the file contains all ' + entries.length + ".</p>"
+        : "") +
+    "</section></div>";
+}
+
+/* ---- security ---- */
+
+function securityView() {
+  const me = currentUser();
+  if (me.role !== "admin") {
+    return '<div class="card" style="display:flex;gap:14px;align-items:center">' +
+      '<span class="warning" style="display:flex">' + icon("security") + "</span>" +
+      '<p class="muted" style="margin:0">Only admins can review access requests and manage members.</p></div>';
+  }
+
+  const byStatus = (status) => db.users.filter((u) => u.status === status);
+  const when = (user) => new Date(user.createdAt).toLocaleDateString();
+  const isProtected = (user) => user.id === me.id || user.email === ADMIN_EMAIL;
+
+  const pending = byStatus("pending");
+  const approved = byStatus("approved");
+  const denied = byStatus("denied");
+
+  const pendingHtml = pending.length === 0
+    ? '<p class="muted" style="margin:0">No pending requests.</p>'
+    : '<ul class="people">' + pending.map((user) => "<li><div><p style=\"margin:0\">" + esc(user.email) + "</p>" +
+        '<p class="muted" style="margin:4px 0 0;font-size:12px">requested ' + esc(when(user)) + "</p></div>" +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn primary sm" data-act="ask-user" data-kind="approve" data-id="' + user.id + '">' + icon("check") + " Approve</button>" +
+          '<button class="btn danger sm" data-act="ask-user" data-kind="deny" data-id="' + user.id + '">' + icon("ban") + " Deny</button>" +
+        "</div></li>").join("") + "</ul>";
+
+  const approvedHtml = '<ul class="people">' + approved.map((user) =>
+    "<li><div><p style=\"margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap\">" + esc(user.email) +
+      (user.role === "admin" ? '<span class="chip">admin</span>' : "") +
+      (user.id === me.id ? '<span class="muted" style="font-size:12px">(you)</span>' : "") + "</p>" +
+      '<p class="muted" style="margin:4px 0 0;font-size:12px">since ' + esc(when(user)) + "</p></div>" +
+      (isProtected(user)
+        ? '<span class="muted" style="font-size:12px">protected account</span>'
+        : '<button class="btn danger sm" data-act="ask-user" data-kind="revoke" data-id="' + user.id + '">' + icon("ban") + " Revoke</button>") +
+    "</li>").join("") + "</ul>";
+
+  const deniedHtml = denied.length === 0 ? "" :
+    '<section class="card grid" style="gap:16px"><h2 class="label" style="margin:0">Declined</h2>' +
+    '<ul class="people">' + denied.map((user) =>
+      '<li><p class="muted" style="margin:0">' + esc(user.email) + "</p>" +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn ghost sm" data-act="ask-user" data-kind="approve" data-id="' + user.id + '">' + icon("check") + " Approve</button>" +
+        '<button class="btn danger sm" data-act="ask-user" data-kind="remove" data-id="' + user.id + '">' + icon("trash") + " Remove</button>" +
+      "</div></li>").join("") + "</ul></section>";
+
+  return '<section class="card grid" style="gap:16px">' +
+      '<div><h2 class="label" style="margin:0">Pending access requests</h2>' +
+      '<p class="muted" style="margin:10px 0 0;line-height:1.6">Anyone who signs up stays locked out ' +
+        "until an approved admin accepts them here.</p></div>" + pendingHtml +
+    "</section>" +
+    '<section class="card grid" style="gap:16px">' +
+      '<h2 class="label" style="margin:0">Approved members</h2>' + approvedHtml +
+    "</section>" + deniedHtml;
+}
+
+/* ---- settings ---- */
+
+function settingsView() {
+  const me = currentUser();
+  const base = baseCurrency();
+  if (!S.conv.from) S.conv.from = base;
+
+  const needle = S.currencySearch.trim().toLowerCase();
+  const matches = CURRENCY_CODES.filter((code) =>
+    !needle || (code + " " + CURRENCIES[code].name).toLowerCase().includes(needle));
+
+  const options = (selected) => CURRENCY_CODES.map((code) =>
+    '<option value="' + code + '"' + (code === selected ? " selected" : "") + ">" + code + " — " + esc(CURRENCIES[code].name) + "</option>").join("");
+
+  const amount = Number(S.conv.amount) || 0;
+  const result = money(convert(amount, S.conv.from, S.conv.to), S.conv.to);
+
+  return '<div class="half">' +
+    '<section class="card grid" style="gap:16px">' +
+      "<div><h2 style=\"margin:0;font-size:18px\">Currency</h2>" +
+      '<p class="muted" style="margin:8px 0 0;line-height:1.6">Pick your base currency. ' +
+        "Stats and totals are shown in this currency.</p></div>" +
+      '<div style="position:relative">' +
+        '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);display:flex">' + icon("search") + "</span>" +
+        '<input class="field" id="currency-search" style="padding-left:40px" placeholder="Search currency…" ' +
+          'value="' + esc(S.currencySearch) + '" data-act="currency-search" aria-label="Search currency">' +
+      "</div>" +
+      '<div class="list">' + matches.map((code) =>
+        '<button data-act="set-currency" data-code="' + code + '" aria-pressed="' + (code === base) + '">' +
+          '<span><span class="code-cell">' + code + '</span><span class="muted"> — ' + esc(CURRENCIES[code].name) + "</span></span>" +
+          '<span class="muted">' + esc(CURRENCIES[code].symbol) + (code === base ? " ✓" : "") + "</span>" +
+        "</button>").join("") + "</div>" +
+    "</section>" +
+    '<div class="grid" style="gap:20px">' +
+      '<section class="card grid" style="gap:16px">' +
+        "<div><h2 style=\"margin:0;font-size:18px\">Currency converter</h2>" +
+        '<p class="muted" style="margin:8px 0 0;line-height:1.6">Quick conversion using the built-in mid-market rates.</p></div>' +
+        '<label class="grid" style="gap:8px"><span class="label">Amount</span>' +
+          '<input class="field" id="conv-amount" type="number" min="0" step="0.01" data-act="conv" data-key="amount" value="' + esc(S.conv.amount) + '"></label>' +
+        '<div class="form-grid">' +
+          '<label class="grid" style="gap:8px"><span class="label">From</span>' +
+            '<select class="field" data-act="conv" data-key="from">' + options(S.conv.from) + "</select></label>" +
+          '<label class="grid" style="gap:8px"><span class="label">To</span>' +
+            '<select class="field" data-act="conv" data-key="to">' + options(S.conv.to) + "</select></label>" +
+        "</div>" +
+        '<div style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:22px;text-align:center">' +
+          '<p class="label" style="margin:0">Result</p>' +
+          '<p class="num" style="font-family:var(--display);font-size:30px;font-weight:600;color:var(--accent-ink);margin:10px 0 0">' +
+            esc(result) + "</p>" +
+        "</div>" +
+      "</section>" +
+      '<section class="card grid" style="gap:10px">' +
+        '<h2 class="label" style="margin:0">Account</h2>' +
+        "<p style=\"margin:0\">" + esc(me.email) + ' <span class="chip">' + esc(me.role) + "</span></p>" +
+        '<p class="muted" style="margin:0;font-size:12px;line-height:1.7">' +
+          "This portable build keeps accounts and entries in this browser's storage. " +
+          "Clearing site data erases them, and the approval gate here guides a workflow " +
+          "rather than enforcing access — use the server build for real multi-user control." +
+        "</p>" +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">' +
+          '<button class="btn ghost" data-act="export" data-format="json">' + icon("export") + " Back up as JSON</button>" +
+          '<button class="btn danger" data-act="ask-reset">' + icon("trash") + " Reset this browser's data</button>" +
+        "</div>" +
+      "</section>" +
+    "</div></div>";
+}
+
+/* ---- modals ---- */
+
+function blankEntry() {
+  return { code: "", name: "", type: "", amount: "0", currency: baseCurrency(),
+    status: "active", date: today(), dueDate: "", notes: "", linkUrl: "" };
+}
+
+function diffHtml(before, after) {
+  const rows = [
+    ["Code", before.code, after.code],
+    ["Name", before.name, after.name],
+    ["Type", before.type, after.type],
+    ["Amount", before.amount + " " + before.currency, after.amount + " " + after.currency],
+    ["Status", before.status, after.status],
+    ["Date", before.date, after.date],
+    ["Due", before.dueDate || "—", after.dueDate || "—"],
+    ["Notes", before.notes || "—", after.notes || "—"],
+    ["Link", before.linkUrl || "—", after.linkUrl || "—"],
+  ].filter((row) => String(row[1]) !== String(row[2]));
+
+  if (rows.length === 0) return "<p>No fields changed — confirming leaves the entry as it is.</p>";
+  return "<p>These changes will be saved:</p><ul class=\"diff\">" + rows.map((row) =>
+    '<li><span class="label">' + esc(row[0]) + "</span> <del>" + esc(row[1]) +
+    '</del> <span class="muted">→</span> <ins>' + esc(row[2]) + "</ins></li>").join("") + "</ul>";
+}
+
+function modalHtml() {
+  const modal = S.modal;
+  if (!modal) return "";
+
+  const frame = (title, body, opts) => {
+    const o = opts || {};
+    return '<div class="overlay" data-act="overlay"><div class="card modal' + (o.wide ? " wide" : "") + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+      '<div class="modal-head"><h2>' + esc(title) + "</h2>" +
+      '<button class="btn ghost sm" data-act="close-modal" aria-label="Close">' + icon("x") + "</button></div>" +
+      body + "</div></div>";
+  };
+
+  const buttons = (confirmLabel, tone) =>
+    '<div class="actions-right" style="margin-top:22px">' +
+      '<button type="button" class="btn ghost" data-act="close-modal">Cancel</button>' +
+      '<button type="submit" class="btn ' + (tone === "danger" ? "danger" : "primary") + '" data-act="confirm">' +
+        esc(confirmLabel) + "</button></div>";
+
+  if (modal.kind === "create") {
+    return frame("New entry",
+      '<form id="create-form">' +
+        '<p class="muted" style="margin:0 0 18px;font-size:12px">A unique code (2 letters + 4 digits) is generated automatically.</p>' +
+        entryFormHtml("create", modal.values, false) +
+        (modal.error ? '<p class="notice error" style="margin-top:18px">' + esc(modal.error) + "</p>" : "") +
+        buttons("Confirm & save") +
+      "</form>", { wide: true });
+  }
+
+  if (modal.kind === "confirm-update") {
+    const entry = getEntry(modal.id);
+    if (!entry) return "";
+    return frame("Save changes?",
+      '<form id="confirm-form"><div class="muted" style="line-height:1.7">' + diffHtml(entry, S.draft) + "</div>" +
+      (modal.error ? '<p class="notice error" style="margin-top:14px">' + esc(modal.error) + "</p>" : "") +
+      buttons("Confirm") + "</form>");
+  }
+
+  if (modal.kind === "confirm-delete") {
+    const entry = getEntry(modal.id);
+    if (!entry) return "";
+    return frame("Delete entry?",
+      '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7"><strong style="color:var(--ink)">' +
+        esc(entry.code) + "</strong> — " + esc(entry.name) +
+        " will be removed permanently. This cannot be undone.</p>" +
+        buttons("Delete", "danger") + "</form>");
+  }
+
+  if (modal.kind === "confirm-pause") {
+    const entry = getEntry(modal.id);
+    if (!entry) return "";
+    const next = entry.status === "paused" ? "active" : "paused";
+    return frame(next === "paused" ? "Pause entry?" : "Resume entry?",
+      '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7"><strong style="color:var(--ink)">' +
+        esc(entry.code) + '</strong> will move to <strong style="color:var(--ink)">' + next + "</strong>.</p>" +
+        buttons("Confirm") + "</form>");
+  }
+
+  if (modal.kind === "confirm-user") {
+    const user = db.users.find((u) => u.id === modal.id);
+    if (!user) return "";
+    const copy = {
+      approve: ["Approve access?", "will get full access to entries, stats and receipts.", "Approve", ""],
+      deny: ["Decline access?", "will be declined and kept locked out.", "Decline", "danger"],
+      revoke: ["Revoke access?", "will lose access immediately and return to the pending list.", "Revoke", "danger"],
+      remove: ["Remove account?", "will be deleted permanently.", "Remove", "danger"],
+    }[modal.action];
+    return frame(copy[0],
+      '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7"><strong style="color:var(--ink)">' +
+        esc(user.email) + "</strong> " + copy[1] + "</p>" +
+        (modal.error ? '<p class="notice error" style="margin-top:14px">' + esc(modal.error) + "</p>" : "") +
+        buttons(copy[2], copy[3]) + "</form>");
+  }
+
+  if (modal.kind === "confirm-reset") {
+    return frame("Reset this browser's data?",
+      '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7">' +
+        "Every account and entry stored by this file in this browser will be erased, " +
+        "and the demo rows come back. Export a backup first if you need one.</p>" +
+        buttons("Erase everything", "danger") + "</form>");
+  }
+
+  return "";
+}
+
+/* -------------------------------------------------------------- 7. actions */
+
+function applyTheme() {
+  document.documentElement.dataset.theme = db.prefs.theme === "light" ? "light" : "dark";
+}
+
+function flash(kind, text) {
+  S.flash = { kind, text };
+}
+
+function downloadText(filename, text, mime) {
+  const link = document.createElement("a");
+  link.download = filename;
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: mime }));
+    link.href = url;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (err) {
+    link.href = "data:" + mime + ";charset=utf-8," + encodeURIComponent(text);
+    link.click();
+  }
+}
+
+function downloadReceipt(entry, amount, currency) {
+  const binary = PDF.receipt({
+    receiptNo: "R-" + entry.code + "-" + entry.id.slice(0, 4).toUpperCase(),
+    code: entry.code,
+    name: entry.name,
+    type: entry.type,
+    status: entry.status,
+    entryDate: entry.date,
+    issuedDate: today(),
+    dueDate: entry.dueDate,
+    amountLabel: money(amount, currency),
+    currency,
+    notes: entry.notes,
+    linkUrl: entry.linkUrl,
+    issuedBy: currentUser().email,
+  });
+  PDF.download("receipt-" + entry.code + ".pdf", binary);
+}
+
+/** Apply whatever the open dialog was asking to confirm. */
+function commitModal() {
+  const modal = S.modal;
+  if (!modal) return;
+
+  if (modal.kind === "create") {
+    const values = readEntryForm("create");
+    try {
+      validateEntry(values);
+    } catch (err) {
+      S.modal = Object.assign({}, modal, { values, error: err.message });
+      return render();
+    }
+    const now = new Date().toISOString();
+    db.entries.push({
+      id: uid(), code: generateCode(), name: values.name, type: values.type,
+      amount: Number(values.amount), currency: values.currency, status: values.status,
+      date: values.date, dueDate: values.dueDate, notes: values.notes,
+      linkUrl: values.linkUrl, createdAt: now, updatedAt: now,
+    });
+    save();
+    S.modal = null;
+    flash("ok", "Entry saved.");
+    return render();
+  }
+
+  if (modal.kind === "confirm-update") {
+    const entry = getEntry(modal.id);
+    if (!entry || !S.draft) { S.modal = null; return render(); }
+    try {
+      validateEntry(S.draft, { requireCode: true, id: entry.id });
+    } catch (err) {
+      S.modal = Object.assign({}, modal, { error: err.message });
+      return render();
+    }
+    Object.assign(entry, {
+      code: S.draft.code, name: S.draft.name, type: S.draft.type,
+      amount: Number(S.draft.amount), currency: S.draft.currency, status: S.draft.status,
+      date: S.draft.date, dueDate: S.draft.dueDate, notes: S.draft.notes,
+      linkUrl: S.draft.linkUrl, updatedAt: new Date().toISOString(),
+    });
+    save();
+    S.modal = null; S.editingId = null; S.draft = null;
+    flash("ok", "Changes saved to " + entry.code + ".");
+    return render();
+  }
+
+  if (modal.kind === "confirm-delete") {
+    const entry = getEntry(modal.id);
+    db.entries = db.entries.filter((e) => e.id !== modal.id);
+    save();
+    S.modal = null;
+    if (S.editingId === modal.id) { S.editingId = null; S.draft = null; }
+    flash("info", entry ? entry.code + " deleted." : "Entry deleted.");
+    return render();
+  }
+
+  if (modal.kind === "confirm-pause") {
+    const entry = getEntry(modal.id);
+    if (entry) {
+      entry.status = entry.status === "paused" ? "active" : "paused";
+      entry.updatedAt = new Date().toISOString();
+      save();
+      flash("ok", entry.code + " is now " + entry.status + ".");
+    }
+    S.modal = null;
+    return render();
+  }
+
+  if (modal.kind === "confirm-user") {
+    const me = currentUser();
+    const user = db.users.find((u) => u.id === modal.id);
+    if (!user) { S.modal = null; return render(); }
+
+    /* Guard rails: the bootstrap admin stays an approved admin, and an admin
+       cannot lock themselves out of this dashboard. */
+    if (user.email === ADMIN_EMAIL) {
+      S.modal = Object.assign({}, modal, { error: "The bootstrap admin account cannot be changed." });
+      return render();
+    }
+    if (user.id === me.id) {
+      S.modal = Object.assign({}, modal, { error: "You cannot change your own access." });
+      return render();
+    }
+
+    if (modal.action === "remove") db.users = db.users.filter((u) => u.id !== user.id);
+    else user.status = modal.action === "approve" ? "approved" : modal.action === "deny" ? "denied" : "pending";
+
+    save();
+    S.modal = null;
+    flash("ok", user.email + " " + (modal.action === "approve" ? "approved." :
+      modal.action === "deny" ? "declined." : modal.action === "revoke" ? "moved back to pending." : "removed."));
+    return render();
+  }
+
+  if (modal.kind === "confirm-reset") {
+    db = blankDb();
+    db.entries = demoEntries();
+    save();
+    S.modal = null;
+    Object.assign(S, { view: "entries", editingId: null, draft: null, query: "", status: "all", type: "all" });
+    applyTheme();
+    return render();
+  }
+}
+
+function handleAction(act, el, event) {
+  switch (act) {
+    case "go":
+      S.view = el.dataset.view; S.flash = null; break;
+
+    case "theme":
+      db.prefs.theme = db.prefs.theme === "dark" ? "light" : "dark";
+      save(); applyTheme(); break;
+
+    case "sign-out":
+      signOut();
+      Object.assign(S, { view: "entries", editingId: null, draft: null, modal: null, flash: null });
+      S.auth = { mode: "login", error: "" };
+      break;
+
+    case "auth-mode":
+      S.auth = { mode: S.auth.mode === "login" ? "register" : "login", error: "" }; break;
+
+    case "new-entry":
+      S.view = "entries"; S.flash = null;
+      S.modal = { kind: "create", values: blankEntry(), error: "" }; break;
+
+    case "edit":
+      S.editingId = el.dataset.id; S.draft = null; S.flash = null; break;
+
+    case "cancel-edit":
+      S.editingId = null; S.draft = null; break;
+
+    case "ask-delete":
+      S.modal = { kind: "confirm-delete", id: el.dataset.id }; break;
+
+    case "ask-pause":
+      S.modal = { kind: "confirm-pause", id: el.dataset.id }; break;
+
+    case "ask-user":
+      S.modal = { kind: "confirm-user", id: el.dataset.id, action: el.dataset.kind }; break;
+
+    case "ask-reset":
+      S.modal = { kind: "confirm-reset" }; break;
+
+    case "close-modal":
+    case "overlay":
+      if (act === "overlay" && event.target !== el) return;
+      S.modal = null; break;
+
+    case "details":
+      S.view = "receipt";
+      S.receipt = { id: el.dataset.id, price: "", currency: null, search: "" };
+      break;
+
+    case "pick-client": {
+      const entry = getEntry(el.dataset.id);
+      S.receipt.id = el.dataset.id;
+      S.receipt.currency = entry ? entry.currency : null;
+      S.receipt.price = "";
+      break;
+    }
+
+    case "set-currency":
+      db.prefs.currency = el.dataset.code; save(); break;
+
+    case "pdf": {
+      const entry = getEntry(el.dataset.id);
+      if (!entry) return;
+      if (S.view === "receipt" && entry.id === S.receipt.id) {
+        const state = receiptState();
+        downloadReceipt(entry, state.amount, state.currency);
+      } else {
+        downloadReceipt(entry, Number(entry.amount), entry.currency);
+      }
+      flash("ok", "Receipt " + entry.code + " downloaded.");
+      break;
+    }
+
+    case "export": {
+      const entries = sortedEntries();
+      const stamp = today();
+      if (el.dataset.format === "csv") {
+        downloadText("coreos-track-" + stamp + ".csv", toCsv(entries), "text/csv");
+        flash("ok", "CSV downloaded.");
+      } else {
+        downloadText("coreos-track-" + stamp + ".json",
+          JSON.stringify({ exportedAt: new Date().toISOString(), entries }, null, 2), "application/json");
+        flash("ok", "JSON downloaded.");
+      }
+      break;
+    }
+
+    default:
+      return;
+  }
+  render();
+}
+
+/* ----------------------------------------------------------------- 8. boot */
+
+function render() {
+  const root = $("#root");
+  const active = document.activeElement;
+  let memo = null;
+  if (active && active.id) {
+    memo = { id: active.id, start: null, end: null };
+    try { memo.start = active.selectionStart; memo.end = active.selectionEnd; } catch (err) { /* number/date inputs */ }
+  }
+
+  const user = currentUser();
+  if (!user) {
+    root.className = "auth-wrap";
+    root.innerHTML = authView();
+  } else if (user.status !== "approved") {
+    root.className = "auth-wrap";
+    root.innerHTML = pendingView();
+  } else {
+    if (S.view === "security" && user.role !== "admin" && !NAV.some((n) => n[0] === S.view)) S.view = "entries";
+    const views = {
+      entries: entriesView, stats: statsView, receipt: receiptView,
+      export: exportView, security: securityView, settings: settingsView,
+    };
+    root.className = "";
+    root.innerHTML = shell((views[S.view] || entriesView)()) + modalHtml();
+  }
+
+  if (memo) {
+    const el = document.getElementById(memo.id);
+    if (el) {
+      el.focus({ preventScroll: true });
+      if (memo.start != null) {
+        try { el.setSelectionRange(memo.start, memo.end); } catch (err) { /* not a text field */ }
+      }
+    }
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const el = event.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === "filter" || act === "receipt-field" || act === "conv" ||
+      act === "base-currency" || act === "currency-search") return;
+  if (el.tagName === "A") return;
+  /* A dialog's confirm button is a real submit button: let the browser raise the
+     submit event (so Enter works too) instead of cancelling it here. */
+  if (act === "confirm" || (el.tagName === "BUTTON" && el.type === "submit" && el.form)) return;
+  event.preventDefault();
+  handleAction(act, el, event);
+});
+
+/* One listener for every live control: `input` fires for text, number, date and
+   select alike. A second `change` listener would re-render again while the
+   browser is dispatching the blur, which Chrome rejects mid-teardown. */
+document.addEventListener("input", (event) => {
+  const el = event.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+
+  if (act === "filter") { S[el.dataset.key] = el.value; render(); }
+  else if (act === "receipt-field") { S.receipt[el.dataset.key] = el.value; render(); }
+  else if (act === "conv") { S.conv[el.dataset.key] = el.value; render(); }
+  else if (act === "currency-search") { S.currencySearch = el.value; render(); }
+  else if (act === "base-currency") { db.prefs.currency = el.value; save(); render(); }
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  event.preventDefault();
+
+  if (form.id === "auth-form") {
+    const email = $("#auth-email").value;
+    const password = $("#auth-password").value;
+    try {
+      if (S.auth.mode === "login") signIn(email, password);
+      else registerAccount(email, password);
+      S.auth = { mode: S.auth.mode, error: "" };
+      S.view = "entries";
+    } catch (err) {
+      S.auth = { mode: S.auth.mode, error: err.message };
+    }
+    return render();
+  }
+
+  if (form.id === "inline-form") {
+    const values = readEntryForm("edit");
+    S.draft = values;
+    try {
+      validateEntry(values, { requireCode: true, id: S.editingId });
+    } catch (err) {
+      flash("error", err.message);
+      return render();
+    }
+    S.flash = null;
+    S.modal = { kind: "confirm-update", id: S.editingId };
+    return render();
+  }
+
+  if (form.id === "create-form" || form.id === "confirm-form") {
+    return commitModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && S.modal) { S.modal = null; render(); }
+});
+
+(function boot() {
+  db = load();
+  if (db.users.length === 0 && db.entries.length === 0) {
+    db.entries = demoEntries();
+    save();
+  }
+  repairBootstrapAdmin();
+  applyTheme();
+  render();
+})();
+</script>
+</body>
+</html>
