@@ -12,7 +12,7 @@
  */
 
 import { useRef, useState } from "react";
-import { Download, Upload } from "lucide-react";
+import { Download, ScanLine, Upload } from "lucide-react";
 import {
   exportData,
   importData,
@@ -21,6 +21,7 @@ import {
   usePos,
 } from "./store";
 import { Button, Field, Modal } from "./ui";
+import { useWedgeScanner, type ScanInfo } from "./wedge";
 
 export function SettingsView() {
   const data = usePos();
@@ -29,6 +30,14 @@ export function SettingsView() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [lastScan, setLastScan] = useState<{ code: string; info: ScanInfo } | null>(
+    null,
+  );
+
+  useWedgeScanner({
+    enabled: !resetting,
+    onScan: (code, info) => setLastScan({ code, info }),
+  });
 
   function download() {
     const url = URL.createObjectURL(
@@ -125,6 +134,43 @@ export function SettingsView() {
               })
             }
           />
+        </Section>
+
+        <Section
+          title="Hand scanner"
+          hint="Nothing to set up — a counter scanner types like a keyboard and the till listens for it on every screen. Scan anything here to check yours is working."
+        >
+          {lastScan ? (
+            <div className="rounded-xl border border-[#1f4034] bg-[#0d2119] px-4 py-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#78c9a3]">
+                Scanner working
+              </p>
+              <p className="mt-1 break-all font-mono text-[17px] tracking-[0.06em] text-white">
+                {lastScan.code}
+              </p>
+              <p className="mt-2 text-[13px] text-[#8fb9a8]">
+                {lastScan.info.keys} characters in {lastScan.info.ms}ms
+                {lastScan.info.suffix === "none"
+                  ? " · sends nothing at the end, which is fine — the till waits a moment and takes the code anyway"
+                  : ` · ends with ${lastScan.info.suffix === "tab" ? "Tab" : "Enter"}`}
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#232b40] px-4 py-5 text-[#7e87a5]">
+              <ScanLine size={18} className="shrink-0" />
+              <p className="text-[13.5px]">
+                Waiting for a scan. Point the scanner at any barcode — a packet
+                on the shelf will do.
+              </p>
+            </div>
+          )}
+          <p className="text-[13px] leading-relaxed text-[#7e87a5]">
+            If nothing appears, the scanner is not reaching this machine at all:
+            check the cable or the receiver, and try it in any text box to see
+            whether it types. A scanner that types but is not recognised here is
+            set to something unusually slow — put it back to its factory
+            setting with the sheet in its box.
+          </p>
         </Section>
 
         <Section

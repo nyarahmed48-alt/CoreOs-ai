@@ -82,9 +82,28 @@ Settings exports a JSON backup and restores one.
 - **Money is whole dinars.** No decimals anywhere in the system, and totals
   round to the nearest 250 — the smallest note in ordinary circulation. The
   rounding shows as its own line on the receipt, and can be switched off.
-- **Barcode scanners are keyboards.** Stray typing anywhere on the till screen
-  is pushed into the scan box, so a scan rings up whatever the cashier last
-  touched. An exact barcode wins; a search narrowed to one product also rings.
+- **Hand scanners are keyboards**, and that is the whole difficulty: the
+  counter scanner types its digits into whatever field happens to have focus,
+  so a cashier who has just corrected a quantity and then scans gets thirteen
+  digits in the quantity box. `src/pos/wedge.ts` watches the keyboard itself
+  and tells a scanner from a person by the one thing a person cannot fake —
+  speed. Nothing types thirteen characters 30ms apart. Once a burst reads as a
+  scan the keystrokes are taken off the page, and the two characters that
+  reached a field before we could be sure are taken back out of it, through
+  React's own value setter so its state does not keep them.
+
+  It asks nothing of the device: Enter, Tab or no suffix at all all work, the
+  last by waiting out the silence. It runs on every screen — selling on the
+  till, searching on Products, filling the barcode in a product, checking
+  itself in Settings — and is swallowed on the payment screen, where digits in
+  the cash field would mean change handed back on a barcode.
+
+- **A scan with no product behind it** is not an error to shrug at: it is
+  usually a new line that arrived that morning, with a customer holding it. The
+  till offers to take its name and price there and then, and puts it in the
+  basket. Settings carries a scanner check — scan anything and it reports the
+  code, the speed and the suffix — so a shop can tell a dead cable from a
+  misconfigured device without calling anyone.
 - **The camera scans too**, for the shops that have a phone before they have a
   scanner — with two readers behind it. The browser's own `BarcodeDetector`
   where it exists, and a decoder shipped inside the till where it does not.

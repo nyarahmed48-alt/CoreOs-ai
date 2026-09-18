@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2 } from "lucide-react";
 import { Button, Modal } from "./ui";
+import { beep } from "./beep";
 
 /** The symbologies actually printed on shop goods. Narrowing the list makes
     detection faster and cuts false reads off packaging noise. */
@@ -134,31 +135,6 @@ async function openReader(): Promise<Reader> {
       canvas = null;
     },
   };
-}
-
-/** A short click on every read. A cashier scanning a basket is looking at the
-    goods, not the screen, so the confirmation has to be audible. Synthesised
-    rather than a sound file, because the portable build is one file. */
-function beep() {
-  try {
-    const Ctor =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctor) return;
-    const context = new Ctor();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.frequency.value = 1180;
-    gain.gain.setValueAtTime(0.08, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.12);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.13);
-    oscillator.onended = () => void context.close();
-  } catch {
-    // A till with no sound card still has to scan.
-  }
 }
 
 export function CameraScanner({

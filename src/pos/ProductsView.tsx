@@ -14,19 +14,18 @@
  */
 
 import { useMemo, useState } from "react";
-import { Package, Plus, ScanLine, Search, Tag } from "lucide-react";
+import { Package, Plus, Search, Tag } from "lucide-react";
 import {
   deleteCategory,
   newId,
   receiveStock,
   saveCategory,
-  saveProduct,
-  setArchived,
   usePos,
 } from "./store";
-import { amount, money, parseAmount } from "./money";
-import { Button, Empty, Field, Modal, Select } from "./ui";
-import { CameraScanner } from "./CameraScanner";
+import { money } from "./money";
+import { Button, Empty, Modal } from "./ui";
+import { ProductEditor } from "./ProductEditor";
+import { useWedgeScanner } from "./wedge";
 import type { Product } from "./types";
 
 type Filter = "all" | "low" | "archived";
@@ -37,6 +36,18 @@ export function ProductsView() {
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Product | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
+
+  /* A scan here is a question — "what is this, and how many are left?" — so it
+     searches rather than sells. The editor runs its own scanner, so this one
+     stands down while it is open. */
+  useWedgeScanner({
+    enabled: !editing && !managingCategories,
+    onScan: (code) => {
+      setQuery(code);
+      setFilter("all");
+    },
+    onType: (text) => setQuery((current) => current + text),
+  });
 
   const lowStockAt = (product: Product) =>
     product.lowStockAt >= 0 ? product.lowStockAt : data.settings.lowStockAt;
@@ -223,133 +234,6 @@ function FilterChip({
     >
       {children}
     </button>
-  );
-}
-
-function ProductEditor({
-  product,
-  categories,
-  onClose,
-}: {
-  product: Product;
-  categories: { id: string; name: string }[];
-  onClose: () => void;
-}) {
-  const [draft, setDraft] = useState<Product>(product);
-  const [error, setError] = useState("");
-  const [scanning, setScanning] = useState(false);
-
-  function save() {
-    if (!draft.name.trim()) {
-      setError("A product needs a name.");
-      return;
-    }
-    saveProduct({ ...draft, name: draft.name.trim(), barcode: draft.barcode.trim() });
-    onClose();
-  }
-
-  return (
-    <Modal title={product.name ? "Edit product" : "New product"} onClose={onClose}>
-      <div className="space-y-3.5">
-        <Field
-          label="Name"
-          value={draft.name}
-          autoFocus
-          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-        />
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Field
-              label="Barcode"
-              value={draft.barcode}
-              hint="Scan it with a USB scanner, the camera, or type it. Leave empty for loose goods."
-              onChange={(event) => setDraft({ ...draft, barcode: event.target.value })}
-            />
-          </div>
-          <Button
-            className="mb-6 shrink-0 px-3.5"
-            onClick={() => setScanning(true)}
-            aria-label="Capture the barcode with the camera"
-          >
-            <ScanLine size={17} />
-          </Button>
-        </div>
-        <Select
-          label="Category"
-          value={draft.categoryId}
-          onChange={(value) => setDraft({ ...draft, categoryId: value })}
-        >
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-        <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Price (IQD)"
-            inputMode="numeric"
-            value={draft.price ? amount(draft.price) : ""}
-            onChange={(event) =>
-              setDraft({ ...draft, price: parseAmount(event.target.value) })
-            }
-          />
-          <Field
-            label="In stock"
-            inputMode="numeric"
-            value={String(draft.stock)}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                stock: parseInt(event.target.value.replace(/[^0-9-]/g, ""), 10) || 0,
-              })
-            }
-          />
-        </div>
-        <Field
-          label="Warn at"
-          inputMode="numeric"
-          value={draft.lowStockAt >= 0 ? String(draft.lowStockAt) : ""}
-          placeholder="Use the shop default"
-          hint="Colour this product amber once stock drops to this number."
-          onChange={(event) => {
-            const raw = event.target.value.replace(/[^0-9]/g, "");
-            setDraft({ ...draft, lowStockAt: raw === "" ? -1 : parseInt(raw, 10) });
-          }}
-        />
-
-        {error ? <p className="text-[13px] text-[#f0879d]">{error}</p> : null}
-
-        {scanning ? (
-          <CameraScanner
-            title="Capture this barcode"
-            mode="once"
-            onClose={() => setScanning(false)}
-            onCode={(code) => {
-              setDraft((current) => ({ ...current, barcode: code }));
-              return code;
-            }}
-          />
-        ) : null}
-
-        <div className="flex gap-2 pt-1">
-          <Button variant="primary" className="flex-1" onClick={save}>
-            Save
-          </Button>
-          {product.name ? (
-            <Button
-              variant={draft.archived ? "ghost" : "danger"}
-              onClick={() => {
-                setArchived(product.id, !draft.archived);
-                onClose();
-              }}
-            >
-              {draft.archived ? "Restore" : "Archive"}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </Modal>
   );
 }
 

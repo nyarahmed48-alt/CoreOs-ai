@@ -17,6 +17,7 @@ import { Banknote, CreditCard } from "lucide-react";
 import { completeSale, usePos, type CartTotals } from "./store";
 import { IQD_NOTES, amount, money, parseAmount } from "./money";
 import { Button, Modal } from "./ui";
+import { useWedgeScanner } from "./wedge";
 import { Receipt, ReceiptActions } from "./Receipt";
 import type { PaymentMethod, Sale } from "./types";
 
@@ -37,6 +38,17 @@ export function CheckoutModal({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [tendered, setTendered] = useState(0);
   const [sale, setSale] = useState<Sale | null>(null);
+
+  const [misScan, setMisScan] = useState("");
+
+  /* The keys belong to the cash field now. A scanner fired at this screen —
+     the next customer's goods, pushed forward early — would otherwise type
+     thirteen digits into the amount taken, and the cashier would hand back
+     change on it. So the scan is swallowed and named instead. */
+  useWedgeScanner({
+    enabled: !sale,
+    onScan: () => setMisScan("Finish or cancel this sale before scanning the next item."),
+  });
 
   const short = method === "cash" && tendered < totals.total;
   const change = Math.max(0, tendered - totals.total);
@@ -184,6 +196,12 @@ export function CheckoutModal({
           className="mt-2 h-[42px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 text-[15px] text-white outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
         />
       </details>
+
+      {misScan ? (
+        <p className="mt-4 rounded-xl border border-[#3a2c12] bg-[#1d1608] px-4 py-3 text-[13.5px] text-[#f0c078]">
+          {misScan}
+        </p>
+      ) : null}
 
       <Button
         variant="primary"

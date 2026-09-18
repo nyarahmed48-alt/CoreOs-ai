@@ -16,15 +16,19 @@ import { Minus, Plus, ScanLine, Search, Trash2, X } from "lucide-react";
 import {
   addToCart,
   clearCart,
+  newId,
   priceCart,
   setQty,
   useCart,
   usePos,
 } from "./store";
 import { money } from "./money";
-import { Button, Empty } from "./ui";
+import { Button, Empty, Modal } from "./ui";
 import { CheckoutModal } from "./CheckoutModal";
 import { CameraScanner } from "./CameraScanner";
+import { ProductEditor } from "./ProductEditor";
+import { useWedgeScanner } from "./wedge";
+import { beep } from "./beep";
 import type { Product } from "./types";
 
 export function RegisterView() {
@@ -36,6 +40,10 @@ export function RegisterView() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [basketOpen, setBasketOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  /** A barcode the shelf has never heard of, waiting on the cashier to say
+      what it is. */
+  const [unknownCode, setUnknownCode] = useState("");
+  const [naming, setNaming] = useState<Product | null>(null);
   const [flash, setFlash] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -58,28 +66,46 @@ export function RegisterView() {
 
   const totals = priceCart(data, cart, discount);
 
-  /* A USB barcode scanner is a keyboard: it types the code and presses Enter.
-     So any stray typing that lands on the page is pushed into the scan box,
-     and a scan works no matter what the cashier last touched. */
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.key.length !== 1) return;
-      const active = document.activeElement;
-      const typing =
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement ||
-        active instanceof HTMLSelectElement;
-      if (typing) return;
+  /* The hand scanner on the counter. It types the barcode into whatever has
+     focus, so the till watches the keyboard itself rather than hoping a box is
+     focused — see wedge.ts. It is switched off while a dialogue is up: during
+     payment the keys belong to the cash field, and while the camera is open
+     the camera is the scanner. */
+  useWedgeScanner({
+    enabled: !checkingOut && !scanning && !naming && !unknownCode,
+    onScan: (code) => ringUp(code),
+    onType: (text) => {
+      // Someone started typing with nothing focused: they want the search box.
+      setQuery((current) => current + text);
       scanRef.current?.focus();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    },
+  });
 
   function announce(text: string) {
     setFlash(text);
     window.setTimeout(() => setFlash((current) => (current === text ? "" : current)), 1800);
+  }
+
+  /**
+   * A barcode arrived — from the hand scanner, or the camera.
+   *
+   * An unknown code is not a failure to shrug at: it is almost always a new
+   * line that arrived from the supplier this morning, and the cashier is
+   * standing in front of a customer holding it. So the till offers to take its
+   * name and price there and then, and puts it in the basket.
+   */
+  function ringUp(code: string): string {
+    const found = shelf.find((product) => product.barcode === code);
+    if (found) {
+      addToCart(found.id);
+      beep("read");
+      const line = `${found.name} · ${money(found.price)}`;
+      announce(line);
+      return line;
+    }
+    beep("unknown");
+    setUnknownCode(code);
+    return `Unknown barcode ${code}`;
   }
 
   /** Enter in the scan box. An exact barcode wins; failing that, a search that
@@ -91,10 +117,12 @@ export function RegisterView() {
       shelf.find((p) => p.barcode && p.barcode === code) ??
       (results.length === 1 ? results[0] : undefined);
     if (!scanned) {
-      announce(`No product for "${code}"`);
+      ringUp(code);
+      setQuery("");
       return;
     }
     addToCart(scanned.id);
+    beep("read");
     announce(`${scanned.name} added`);
     setQuery("");
   }
@@ -328,6 +356,62 @@ export function RegisterView() {
             if (!found) return `Unknown barcode ${code}`;
             addToCart(found.id);
             return `${found.name} · ${money(found.price)}`;
+          }}
+          /* The camera keeps its own log and its own beep, so it does not go
+             through ringUp: interrupting a run of scanning with a product form
+             would be worse than noting the code and moving on. */
+        />
+      ) : null}
+
+      {unknownCode ? (
+        <Modal title="Not on the shelf" onClose={() => setUnknownCode("")}>
+          <p className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3 text-center font-mono text-[17px] tracking-[0.06em] text-white">
+            {unknownCode}
+          </p>
+          <p className="mt-3 text-[14px] leading-relaxed text-[#98a0bb]">
+            Nothing on the shelf carries this barcode. If it is a new line, give
+            it a name and a price now — it goes into this basket and onto the
+            shelf for good.
+          </p>
+          <Button
+            variant="primary"
+            className="mt-4 h-[48px] w-full"
+            onClick={() => {
+              setNaming({
+                id: newId("p"),
+                name: "",
+                barcode: unknownCode,
+                categoryId: data.categories[0]?.id ?? "",
+                price: 0,
+                stock: 0,
+                lowStockAt: -1,
+                archived: false,
+              });
+              setUnknownCode("");
+            }}
+          >
+            Add this product
+          </Button>
+          <Button
+            variant="quiet"
+            className="mt-2 w-full"
+            onClick={() => setUnknownCode("")}
+          >
+            Not now
+          </Button>
+        </Modal>
+      ) : null}
+
+      {naming ? (
+        <ProductEditor
+          product={naming}
+          categories={data.categories}
+          onClose={() => setNaming(null)}
+          onSaved={(product) => {
+            addToCart(product.id);
+            beep("read");
+            announce(`${product.name} added`);
+            scanRef.current?.focus();
           }}
         />
       ) : null}
