@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/*
+ * CoreOs Track design tokens.
+ * Dark is the default surface; the light values kick in when the top-bar
+ * toggle sets `data-theme="light"` on <html>.
+ */
+@theme {
+  --color-canvas: #08080f;
+  --color-surface: #101019;
+  --color-surface-2: #16161f;
+  --color-surface-3: #1d1d29;
+  --color-line: #262633;
+  --color-ink: #e9e9f2;
+  --color-muted: #8b8ba6;
+  --color-accent: #7c6cf5;
+  --color-accent-soft: #221f4a;
+  --color-accent-ink: #b9b0ff;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Menlo",
+    "Consolas", monospace;
+  --font-display: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+:root[data-theme="light"] {
+  --color-canvas: #f5f5fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f2f2f7;
+  --color-surface-3: #e9e9f1;
+  --color-line: #dedee8;
+  --color-ink: #16161f;
+  --color-muted: #64647c;
+  --color-accent: #5b4bd6;
+  --color-accent-soft: #eceaff;
+  --color-accent-ink: #4b3ec7;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-danger: #dc2626;
+}
+
+html,
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Shared primitives — keeps the page files focused on structure.
+   `@utility` (not `@layer components`) so these can compose with `@apply`. */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface p-6;
+}
+
+@utility label {
+  @apply text-[11px] uppercase tracking-[0.18em] text-muted;
+}
+
+@utility field {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm
+    text-ink outline-none transition placeholder:text-muted
+    focus:border-accent focus:ring-2 focus:ring-accent/30;
+}
+
+@utility chip {
+  @apply inline-flex items-center rounded-lg border border-accent/40
+    bg-accent-soft px-2.5 py-1 text-[11px] uppercase tracking-wider
+    text-accent-ink;
+}
+
+@utility page-title {
+  font-family: var(--font-display);
+  @apply text-2xl font-semibold tracking-tight;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+    text-sm font-medium transition disabled:cursor-not-allowed
+    disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-white hover:brightness-110;
+}
+
+@utility btn-ghost {
+  @apply btn border border-line bg-surface-2 text-ink hover:bg-surface-3;
+}
+
+@utility btn-danger {
+  @apply btn border border-danger/40 bg-transparent text-danger
+    hover:bg-danger/10;
+}

@@ -1,0 +1,64 @@
+// CoreOs Track — database schema
+// Provider: PostgreSQL (local, Render, Neon, Supabase … any Postgres URL works)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  member
+}
+
+enum UserStatus {
+  pending
+  approved
+  denied
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         UserRole   @default(member)
+  status       UserStatus @default(pending)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  entries Entry[] @relation("EntryCreatedBy")
+
+  @@index([status])
+  @@map("users")
+}
+
+model Entry {
+  id        String    @id @default(uuid()) @db.Uuid
+  /// Auto-generated public code: 2 uppercase letters + 4 digits (e.g. "XN1775").
+  code      String    @unique
+  name      String
+  type      String
+  amount    Decimal   @default(0) @db.Decimal(14, 2)
+  /// ISO 4217 code the `amount` is denominated in (e.g. "USD", "IQD").
+  currency  String    @default("USD")
+  status    String    @default("active")
+  date      DateTime  @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+  notes     String?
+  linkUrl   String?   @map("link_url")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  createdById String? @map("created_by") @db.Uuid
+  createdBy   User?   @relation("EntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([code])
+  @@index([status])
+  @@index([type])
+  @@index([date])
+  @@map("entries")
+}
