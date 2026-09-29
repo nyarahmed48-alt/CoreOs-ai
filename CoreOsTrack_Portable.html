@@ -369,6 +369,9 @@ function icon(name) {
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     lock: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',
     eye: '<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
+    authority: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/>' +
+      '<path d="M6 16c.8-1.2 1.8-1.8 3-1.8s2.2.6 3 1.8"/><path d="M15 10h4M15 13.5h4"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/>',
   };
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
     'stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">' +
@@ -384,9 +387,11 @@ let db = null;
 
 function blankDb() {
   return {
-    version: 1,
+    version: 2,
     users: [],
     entries: [],
+    /* Authority codes are a second, separate series — see AUTHORITY_ROLES. */
+    authorityCodes: [],
     prefs: { currency: "USD", theme: "dark" },
     sessionUserId: null,
   };
@@ -397,9 +402,14 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return Object.assign(blankDb(), parsed, {
+      const merged = Object.assign(blankDb(), parsed, {
         prefs: Object.assign(blankDb().prefs, parsed.prefs || {}),
       });
+      /* A store written before authority codes existed has no ledger yet. */
+      if (!Array.isArray(merged.authorityCodes)) merged.authorityCodes = [];
+      if (!Array.isArray(merged.entries)) merged.entries = [];
+      if (!Array.isArray(merged.users)) merged.users = [];
+      return merged;
     }
   } catch (err) {
     console.warn("CoreOs Track: could not read saved data, starting fresh.", err);
@@ -648,6 +658,48 @@ function money(amount, code) {
     maximumFractionDigits: whole ? 0 : 2,
   }).format(Number(amount) || 0);
   return meta.symbol + " " + body;
+}
+
+/* ---------------------------------------------------------------------------
+ * Two code series live in this app, and they never mix:
+ *
+ *   1. Entry codes      — [2 letters][4 digits], e.g. XN1775. Minted
+ *                          automatically when an entry is created.
+ *   2. Authority codes  — a fixed role prefix plus a random tail, issued by
+ *                          hand on the Authority page and tied to a named
+ *                          person, their position, and the account password of
+ *                          whoever issued it.
+ *
+ * Tail characters come from an unambiguous alphabet (no I, O, 0 or 1) so a code
+ * read aloud or copied off a screen cannot be mistyped into a different one.
+ * ------------------------------------------------------------------------- */
+const AUTHORITY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const AUTHORITY_ROLES = {
+  CF: { label: "CEO / Founder", prefix: "CF", tail: 3, tone: "cf" },
+  IT: { label: "IT", prefix: "IT", tail: 2, tone: "it" },
+  MR: { label: "Manager", prefix: "MR", tail: 5, tone: "mr" },
+};
+const AUTHORITY_KEYS = Object.keys(AUTHORITY_ROLES);
+
+function authorityPattern(key) {
+  const role = AUTHORITY_ROLES[key];
+  return role.prefix + "\u2217".repeat(role.tail);
+}
+
+/** e.g. CF7KQ, ITM4, MRP2XT9 — unique across every authority code issued. */
+function generateAuthorityCode(key) {
+  const role = AUTHORITY_ROLES[key];
+  if (!role) throw new Error("Pick a position first.");
+  for (let attempt = 0; attempt < 200; attempt++) {
+    let tail = "";
+    for (let i = 0; i < role.tail; i++) {
+      tail += AUTHORITY_ALPHABET[randomInt(AUTHORITY_ALPHABET.length)];
+    }
+    const code = role.prefix + tail;
+    if (!db.authorityCodes.some((c) => c.code === code)) return code;
+  }
+  throw new Error("Every " + role.prefix + " code is taken — revoke one first.");
 }
 
 /** `[2 uppercase letters][4 digits]`, e.g. XN1775 — unique across entries. */
@@ -934,6 +986,9 @@ const S = {
   modal: null,
   flash: null,
   receipt: { id: null, price: "", currency: null, search: "" },
+  /* Authority issuing form. The typed password lives here only until the code
+     is issued, and is never written to storage. */
+  issue: { name: "", position: "CF", password: "", error: "", lastCode: "" },
   conv: { amount: "1", from: null, to: "USD" },
   currencySearch: "",
 };
@@ -942,6 +997,7 @@ const NAV = [
   ["entries", "Entries", "entries"],
   ["stats", "Stats", "stats"],
   ["receipt", "Receipt", "receipt"],
+  ["authority", "Authority", "authority"],
   ["export", "Export", "export"],
   ["security", "Security", "security"],
   ["settings", "Settings", "settings"],
@@ -949,7 +1005,8 @@ const NAV = [
 
 const TITLES = {
   entries: "Entries", stats: "Statistics", receipt: "Receipt",
-  export: "Export", security: "Security · Access", settings: "Settings",
+  authority: "Authority · Code issuing", export: "Export",
+  security: "Security · Access", settings: "Settings",
 };
 
 function sortedEntries() {
@@ -1395,6 +1452,107 @@ function paperHtml(entry, amountLabel, currency) {
     "</div></div>";
 }
 
+/* ---- authority codes ---- */
+
+function issuedCodes() {
+  return db.authorityCodes.slice().sort((a, b) => (a.issuedAt < b.issuedAt ? 1 : -1));
+}
+
+/** Only the issuer or an admin can pull a code back. */
+function canRevoke(record, me) {
+  return me.role === "admin" || record.issuedById === me.id;
+}
+
+function authorityView() {
+  const me = currentUser();
+  const form = S.issue;
+  const role = AUTHORITY_ROLES[form.position] || AUTHORITY_ROLES.CF;
+  const codes = issuedCodes();
+
+  const legend = AUTHORITY_KEYS.map((key) => {
+    const item = AUTHORITY_ROLES[key];
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center">' +
+      '<span class="chip">' + esc(item.label) + "</span>" +
+      '<span class="muted num" style="letter-spacing:.14em;text-align:right;white-space:nowrap">' +
+      esc(authorityPattern(key)) +
+      '<span style="opacity:.65"> \u00b7 ' + item.tail + " chars</span></span></div>";
+  }).join("");
+
+  const issued = codes.length === 0
+    ? '<p class="muted" style="margin:0">No authority codes issued yet.</p>'
+    : '<div class="table-wrap"><table style="min-width:600px"><thead><tr>' +
+      "<th>Code</th><th>Holder</th><th>Position</th><th>Issued by</th><th>Status</th><th></th>" +
+      "</tr></thead><tbody>" +
+      codes.map((record) => {
+        const item = AUTHORITY_ROLES[record.position] || {};
+        return "<tr>" +
+          '<td class="code-cell num" style="letter-spacing:.12em">' + esc(record.code) + "</td>" +
+          "<td>" + esc(record.holderName) + "</td>" +
+          '<td><span class="chip">' + esc(item.label || record.position) + "</span></td>" +
+          '<td class="muted" style="font-size:12px">' + esc(record.issuedByEmail) +
+            '<span style="display:block">' + esc(new Date(record.issuedAt).toLocaleDateString()) + "</span></td>" +
+          '<td><span class="badge ' + (record.status === "active" ? "active" : "cancelled") + '">' +
+            esc(record.status) + "</span></td>" +
+          '<td><div class="row-actions">' +
+            '<button class="btn ghost sm" data-act="copy-code" data-code="' + esc(record.code) + '" ' +
+              'title="Copy ' + esc(record.code) + '" aria-label="Copy ' + esc(record.code) + '">' +
+              icon("copy") + "</button>" +
+            (record.status === "active" && canRevoke(record, me)
+              ? '<button class="btn danger sm" data-act="ask-revoke" data-id="' + record.id + '" ' +
+                'title="Revoke ' + esc(record.code) + '" aria-label="Revoke ' + esc(record.code) + '">' +
+                icon("ban") + "</button>"
+              : "") +
+          "</div></td></tr>";
+      }).join("") + "</tbody></table></div>";
+
+  return '<div class="two-col">' +
+    '<section class="card grid" style="gap:18px">' +
+      "<div><h2 style=\"margin:0;font-size:18px\">Issue an authority code</h2>" +
+      '<p class="muted" style="margin:8px 0 0;line-height:1.6">Entry codes are minted automatically ' +
+        "when an entry is created. These are the second series: a code reference tied to a named " +
+        "person and their position.</p></div>" +
+      '<div class="grid" style="gap:10px;border:1px solid var(--line);border-radius:12px;padding:14px">' +
+        '<p class="label" style="margin:0">Formats</p>' + legend +
+      "</div>" +
+      '<form id="issue-form" class="grid" style="gap:16px">' +
+        '<label class="grid" style="gap:8px"><span class="label">Holder name</span>' +
+          '<input class="field" id="issue-name" data-act="issue-field" data-key="name" ' +
+            'value="' + esc(form.name) + '" placeholder="Full name of the holder" required></label>' +
+        '<label class="grid" style="gap:8px"><span class="label">Position</span>' +
+          '<select class="field" id="issue-position" data-act="issue-field" data-key="position">' +
+            AUTHORITY_KEYS.map((key) => '<option value="' + key + '"' +
+              (key === form.position ? " selected" : "") + ">" + esc(AUTHORITY_ROLES[key].label) +
+              " \u00b7 " + esc(authorityPattern(key)) + "</option>").join("") +
+          "</select></label>" +
+        '<label class="grid" style="gap:8px"><span class="label">Your account password</span>' +
+          '<input class="field" id="issue-password" type="password" autocomplete="current-password" ' +
+            'data-act="issue-field" data-key="password" ' +
+            'placeholder="Authorises this code as ' + esc(me.email) + '" required></label>' +
+        (form.error ? '<p class="notice error">' + esc(form.error) + "</p>" : "") +
+        '<button class="btn primary" type="submit">' + icon("authority") +
+          " Generate " + esc(role.prefix) + " code</button>" +
+      "</form>" +
+      (form.lastCode
+        ? '<div class="notice ok grid" style="gap:10px">' +
+            '<span class="label" style="color:inherit">New code issued</span>' +
+            '<div class="row-between" style="gap:12px">' +
+              '<strong class="num" style="font-size:22px;letter-spacing:.16em">' + esc(form.lastCode) + "</strong>" +
+              '<button type="button" class="btn ghost sm" data-act="copy-code" data-code="' + esc(form.lastCode) + '">' +
+                icon("copy") + " copy</button>" +
+            "</div></div>"
+        : "") +
+    "</section>" +
+    '<section class="card grid" style="gap:16px">' +
+      '<div class="row-between"><h2 class="label" style="margin:0">Issued codes</h2>' +
+      '<span class="muted" style="font-size:12px">' + codes.length + " total \u00b7 " +
+        codes.filter((c) => c.status === "active").length + " active</span></div>" +
+      issued +
+      '<p class="muted" style="margin:0;font-size:12px;line-height:1.7">Every code records who ' +
+        "issued it and when. Revoking keeps the record and marks it revoked, so a code reference " +
+        "on a signed document can still be traced.</p>" +
+    "</section></div>";
+}
+
 /* ---- export ---- */
 
 const CSV_COLUMNS = ["code", "name", "type", "amount", "currency", "status", "date", "due_date", "notes", "link_url"];
@@ -1660,6 +1818,19 @@ function modalHtml() {
         buttons(copy[2], copy[3]) + "</form>");
   }
 
+  if (modal.kind === "confirm-revoke-code") {
+    const record = db.authorityCodes.find((c) => c.id === modal.id);
+    if (!record) return "";
+    const role = AUTHORITY_ROLES[record.position] || {};
+    return frame("Revoke this code?",
+      '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7">' +
+        '<strong style="color:var(--ink)">' + esc(record.code) + "</strong> \u2014 " +
+        esc(role.label || record.position) + " code held by " + esc(record.holderName) +
+        " stops being valid. The record stays in the list, marked revoked.</p>" +
+        (modal.error ? '<p class="notice error" style="margin-top:14px">' + esc(modal.error) + "</p>" : "") +
+        buttons("Revoke", "danger") + "</form>");
+  }
+
   if (modal.kind === "confirm-reset") {
     return frame("Reset this browser's data?",
       '<form id="confirm-form"><p class="muted" style="margin:0;line-height:1.7">' +
@@ -1712,6 +1883,65 @@ function downloadReceipt(entry, amount, currency) {
     issuedBy: currentUser().email,
   });
   PDF.download("receipt-" + entry.code + ".pdf", binary);
+}
+
+/**
+ * Issue an authority code.
+ *
+ * The authorisation is the three things the holder's record needs anyway: a
+ * name, a position, and the issuer re-entering their own account password —
+ * so a code can never be minted from a session someone walked away from.
+ */
+function issueAuthorityCode() {
+  const me = currentUser();
+  const form = S.issue;
+  const name = form.name.trim();
+
+  if (!name) throw new Error("Holder name is required.");
+  if (!AUTHORITY_ROLES[form.position]) throw new Error("Pick a position.");
+  if (!form.password) throw new Error("Enter your account password to authorise this code.");
+  if (derivePassword(form.password, me.salt) !== me.hash) {
+    throw new Error("Your account password is incorrect.");
+  }
+
+  const record = {
+    id: uid(),
+    code: generateAuthorityCode(form.position),
+    holderName: name,
+    position: form.position,
+    issuedById: me.id,
+    issuedByEmail: me.email,
+    issuedAt: new Date().toISOString(),
+    status: "active",
+    revokedAt: null,
+  };
+  db.authorityCodes.push(record);
+  save();
+  return record;
+}
+
+/** Clipboard access is blocked in some file:// contexts — fall back to a copy. */
+function copyText(value) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch (err) { /* fall through */ }
+  try {
+    const helper = document.createElement("textarea");
+    helper.value = value;
+    helper.setAttribute("readonly", "");
+    helper.style.position = "fixed";
+    helper.style.opacity = "0";
+    document.body.appendChild(helper);
+    helper.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(helper);
+    return ok;
+  } catch (err) {
+    return false;
+  }
 }
 
 /** Apply whatever the open dialog was asking to confirm. */
@@ -1809,6 +2039,22 @@ function commitModal() {
     return render();
   }
 
+  if (modal.kind === "confirm-revoke-code") {
+    const me = currentUser();
+    const record = db.authorityCodes.find((c) => c.id === modal.id);
+    if (!record) { S.modal = null; return render(); }
+    if (!canRevoke(record, me)) {
+      S.modal = Object.assign({}, modal, { error: "Only an admin or the issuer can revoke this code." });
+      return render();
+    }
+    record.status = "revoked";
+    record.revokedAt = new Date().toISOString();
+    save();
+    S.modal = null;
+    flash("info", record.code + " revoked.");
+    return render();
+  }
+
   if (modal.kind === "confirm-reset") {
     db = blankDb();
     db.entries = demoEntries();
@@ -1861,6 +2107,18 @@ function handleAction(act, el, event) {
     case "ask-reset":
       S.modal = { kind: "confirm-reset" }; break;
 
+    case "ask-revoke":
+      S.modal = { kind: "confirm-revoke-code", id: el.dataset.id }; break;
+
+    case "copy-code": {
+      const code = el.dataset.code;
+      const copied = copyText(code);
+      flash(copied ? "ok" : "info",
+        copied ? code + " copied to the clipboard."
+               : code + " \u2014 this browser blocked the clipboard, select it to copy.");
+      break;
+    }
+
     case "close-modal":
     case "overlay":
       if (act === "overlay" && event.target !== el) return;
@@ -1903,7 +2161,8 @@ function handleAction(act, el, event) {
         flash("ok", "CSV downloaded.");
       } else {
         downloadText("coreos-track-" + stamp + ".json",
-          JSON.stringify({ exportedAt: new Date().toISOString(), entries }, null, 2), "application/json");
+          JSON.stringify({ exportedAt: new Date().toISOString(), entries,
+            authorityCodes: db.authorityCodes }, null, 2), "application/json");
         flash("ok", "JSON downloaded.");
       }
       break;
@@ -1937,11 +2196,17 @@ function render() {
     if (S.view === "security" && user.role !== "admin" && !NAV.some((n) => n[0] === S.view)) S.view = "entries";
     const views = {
       entries: entriesView, stats: statsView, receipt: receiptView,
-      export: exportView, security: securityView, settings: settingsView,
+      authority: authorityView, export: exportView,
+      security: securityView, settings: settingsView,
     };
     root.className = "";
     root.innerHTML = shell((views[S.view] || entriesView)()) + modalHtml();
   }
+
+  /* The issuing password survives a re-render as a DOM property, so it is never
+     written into the page markup. */
+  const passwordField = document.getElementById("issue-password");
+  if (passwordField) passwordField.value = S.issue.password;
 
   if (memo) {
     const el = document.getElementById(memo.id);
@@ -1980,6 +2245,11 @@ document.addEventListener("input", (event) => {
   else if (act === "receipt-field") { S.receipt[el.dataset.key] = el.value; render(); }
   else if (act === "conv") { S.conv[el.dataset.key] = el.value; render(); }
   else if (act === "currency-search") { S.currencySearch = el.value; render(); }
+  else if (act === "issue-field") {
+    S.issue[el.dataset.key] = el.value;
+    S.issue.error = "";
+    render();
+  }
   else if (act === "base-currency") { db.prefs.currency = el.value; save(); render(); }
 });
 
@@ -2012,6 +2282,18 @@ document.addEventListener("submit", (event) => {
     }
     S.flash = null;
     S.modal = { kind: "confirm-update", id: S.editingId };
+    return render();
+  }
+
+  if (form.id === "issue-form") {
+    try {
+      const record = issueAuthorityCode();
+      S.issue = { name: "", position: record.position, password: "", error: "", lastCode: record.code };
+      flash("ok", record.code + " issued to " + record.holderName + ".");
+    } catch (err) {
+      S.issue = Object.assign({}, S.issue, { error: err.message, lastCode: "" });
+      S.flash = null;
+    }
     return render();
   }
 
