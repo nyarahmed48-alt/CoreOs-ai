@@ -15,6 +15,7 @@ import { ContactPage } from "./site/ContactPage";
 import { BarberDemo } from "./site/demos/BarberDemo";
 import { NailsDemo } from "./site/demos/NailsDemo";
 import { RestaurantDemo } from "./site/demos/RestaurantDemo";
+import { BeaderyDemo } from "./site/demos/BeaderyDemo";
 
 /* The demos are whole sites of their own, so they render outside <Layout> —
    CoreOs nav and footer around a barbershop would undercut the point. Each
@@ -23,6 +24,8 @@ const DEMOS: Record<string, () => ReactElement> = {
   "/demos/barber": BarberDemo,
   "/demos/nails": NailsDemo,
   "/demos/restaurant": RestaurantDemo,
+  // A pitch for a real prospect, shared by link rather than listed on the site.
+  "/demos/beadery": BeaderyDemo,
 };
 
 // The SaaS manager is a large bundle and is only reached from /manager, so it

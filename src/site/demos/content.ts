@@ -267,3 +267,162 @@ export const REST = {
   eventsPhoto: undefined as Photo | undefined,
   gallery: [] as Photo[],
 };
+
+/* ======================================================= bead jewellery === */
+
+/**
+ * Lana's Beadery — the one demo here built for a real business, a handmade
+ * bead shop that sells through Instagram. The copy follows her profile: made
+ * by hand in Iraq, ordered by DM, delivered anywhere in the country. Product
+ * names and prices are placeholders until she sends her own.
+ */
+
+export interface BeadProduct {
+  name: Copy;
+  detail: Copy;
+  price: Copy;
+  /** Bead colours around the strand, repeated in order. */
+  beads: string[];
+  /** The focal bead at the bottom of the strand. */
+  charm: "strawberry" | "lemon" | "heart" | "name" | "flower" | "none";
+}
+
+export const BEADERY = {
+  name: { ar: "Lana's Beadery", ckb: "Lana's Beadery", en: "Lana's Beadery" },
+  kicker: { ar: "إكسسوارات مصنوعة يدويًا", ckb: "خشڵی دەستکرد", en: "Handmade accessories" },
+  tagline: {
+    ar: "أساور وقلائد من الخرز، تُصنع باليد حبّةً حبّة.",
+    ckb: "بازن و ملوانکەی مووروو، بە دەست دروست دەکرێن، یەک یەک.",
+    en: "Bead bracelets and necklaces, strung by hand one bead at a time.",
+  },
+  intro: {
+    ar: "كل قطعة تُصنع بعد طلبك، بالألوان التي تختارها. صُنع في العراق، والتوصيل لكل المحافظات.",
+    ckb: "هەر پارچەیەک دوای داواکارییەکەت دروست دەکرێت، بەو ڕەنگانەی خۆت هەڵیاندەبژێریت. دروستکراوی عێراق، گەیاندن بۆ هەموو پارێزگاکان.",
+    en: "Every piece is made after you order, in the colours you choose. Made in Iraq, delivered to every province.",
+  },
+  orderCta: { ar: "اطلب عبر إنستغرام", ckb: "لە ئینستاگرام داوا بکە", en: "Order on Instagram" },
+  browseCta: { ar: "شاهد القطع", ckb: "پارچەکان ببینە", en: "See the pieces" },
+  badges: [
+    { ar: "صنع يدوي", ckb: "کاری دەستی", en: "Handmade" },
+    { ar: "صُنع في العراق", ckb: "دروستکراوی عێراق", en: "Made in Iraq" },
+    { ar: "توصيل لكل العراق", ckb: "گەیاندن بۆ هەموو عێراق", en: "Delivery to all Iraq" },
+  ] as Copy[],
+
+  shopTitle: { ar: "القطع المفضّلة", ckb: "پارچە دڵخوازەکان", en: "Favourite pieces" },
+  shopNote: {
+    ar: "كل قطعة يمكن تغيير ألوانها ومقاسها عند الطلب.",
+    ckb: "ڕەنگ و قەبارەی هەر پارچەیەک دەتوانرێت لە کاتی داواکردندا بگۆڕدرێت.",
+    en: "Colours and size can be changed on any piece when you order.",
+  },
+  products: [
+    {
+      name: { ar: "سوار اللؤلؤ والفراولة", ckb: "بازنی مرواری و فەراولە", en: "Pearl & strawberry" },
+      detail: { ar: "لؤلؤ أبيض مع حبة فراولة", ckb: "مرواریی سپی لەگەڵ فەراولەیەک", en: "White pearls, one strawberry bead" },
+      price: { ar: "6,000 د.ع", ckb: "6,000 دینار", en: "6,000 IQD" },
+      beads: ["#fbf8f1", "#f3ede0"],
+      charm: "strawberry",
+    },
+    {
+      name: { ar: "سوار الحمضيات", ckb: "بازنی لیمۆ", en: "Citrus bracelet" },
+      detail: { ar: "خرز أصفر وبرتقالي مع شريحة ليمون", ckb: "موورووی زەرد و پرتەقاڵی لەگەڵ پارچە لیمۆیەک", en: "Yellow and orange seed beads, lemon slice" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f7d21e", "#f7d21e", "#f58a1f", "#f58a1f", "#ffffff"],
+      charm: "lemon",
+    },
+    {
+      name: { ar: "سوار القلب الوردي", ckb: "بازنی دڵی پەمەیی", en: "Pink heart" },
+      detail: { ar: "خرز وردي وأبيض مع قلب", ckb: "موورووی پەمەیی و سپی لەگەڵ دڵێک", en: "Pink and white beads, heart charm" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f5b3c0", "#ffffff", "#f5b3c0", "#fbd9e0"],
+      charm: "heart",
+    },
+    {
+      name: { ar: "سوار الاسم", ckb: "بازنی ناو", en: "Name bracelet" },
+      detail: { ar: "بالاسم أو الحروف التي تريدها", ckb: "بە ناو یان ئەو پیتانەی دەتەوێت", en: "Any name or initials you like" },
+      price: { ar: "7,000 د.ع", ckb: "7,000 دینار", en: "7,000 IQD" },
+      beads: ["#b9d38f", "#ffffff", "#f5b3c0", "#ffffff"],
+      charm: "name",
+    },
+    {
+      name: { ar: "سوار الزهرة", ckb: "بازنی گوڵ", en: "Daisy bracelet" },
+      detail: { ar: "خرز أخضر فاتح مع زهرة", ckb: "موورووی سەوزی کاڵ لەگەڵ گوڵێک", en: "Sage beads, daisy charm" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#a9c77a", "#cfe1b0", "#a9c77a", "#ffffff"],
+      charm: "flower",
+    },
+    {
+      name: { ar: "سوار قوس قزح", ckb: "بازنی پەلکەزێڕینە", en: "Rainbow bracelet" },
+      detail: { ar: "كل الألوان في سوار واحد", ckb: "هەموو ڕەنگەکان لە یەک بازندا", en: "Every colour on one strand" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f28b8b", "#f7b267", "#f7d21e", "#a9c77a", "#7fb8e0", "#b79ce0"],
+      charm: "none",
+    },
+  ] as BeadProduct[],
+
+  customTitle: { ar: "صمّم قطعتك", ckb: "پارچەکەی خۆت دیزاین بکە", en: "Design your own" },
+  customBody: {
+    ar: "اختر الألوان، أضف اسمك أو حرفًا، واطلب سوارًا مطابقًا لصديقتك. أرسل لنا الفكرة ونحن نصنعها.",
+    ckb: "ڕەنگەکان هەڵبژێرە، ناوەکەت یان پیتێک زیاد بکە، و بازنێکی هاوشێوە بۆ هاوڕێکەت داوا بکە. بیرۆکەکەمان بۆ بنێرە و ئێمە دروستی دەکەین.",
+    en: "Pick the colours, add your name or an initial, order a matching one for a friend. Send us the idea and we'll make it.",
+  },
+  customIdeas: [
+    { ar: "أساور متطابقة للصديقات", ckb: "بازنی هاوشێوە بۆ هاوڕێیان", en: "Matching friendship sets" },
+    { ar: "هدايا أعياد الميلاد", ckb: "دیاریی ڕۆژی لەدایکبوون", en: "Birthday gifts" },
+    { ar: "ألوان فريقك أو مدرستك", ckb: "ڕەنگی تیپ یان قوتابخانەکەت", en: "Your team or school colours" },
+  ] as Copy[],
+
+  howTitle: { ar: "كيف تطلب", ckb: "چۆن داوا بکەیت", en: "How to order" },
+  steps: [
+    {
+      title: { ar: "راسلنا", ckb: "نامەمان بۆ بنێرە", en: "Send a DM" },
+      body: { ar: "أرسل صورة القطعة أو فكرتك على إنستغرام.", ckb: "وێنەی پارچەکە یان بیرۆکەکەت لە ئینستاگرام بنێرە.", en: "Send a photo of the piece, or your idea, on Instagram." },
+    },
+    {
+      title: { ar: "نؤكد التفاصيل", ckb: "وردەکارییەکان دڵنیا دەکەینەوە", en: "We confirm it" },
+      body: { ar: "نتفق على الألوان والمقاس والسعر.", ckb: "لەسەر ڕەنگ و قەبارە و نرخ ڕێک دەکەوین.", en: "We agree the colours, the size and the price." },
+    },
+    {
+      title: { ar: "يصلك إلى الباب", ckb: "دەگاتە بەردەم دەرگاکەت", en: "It comes to your door" },
+      body: { ar: "التوصيل لكل محافظات العراق، والدفع عند الاستلام.", ckb: "گەیاندن بۆ هەموو پارێزگاکانی عێراق، پارەدان لە کاتی وەرگرتن.", en: "Delivered to every province in Iraq, pay on delivery." },
+    },
+  ],
+
+  footerLine: {
+    ar: "إكسسوارات مصنوعة يدويًا · صُنع في العراق",
+    ckb: "خشڵی دەستکرد · دروستکراوی عێراق",
+    en: "Handmade accessories · Made in Iraq",
+  },
+  instagram: "https://www.instagram.com/lanas_beadery/",
+  handle: "@lanas_beadery",
+
+  /* The assistant is a mock-up: a scripted opening and a fixed reply, so a
+     prospect can see where it would sit without anything being wired up. */
+  chat: {
+    title: { ar: "مساعد لانا", ckb: "یاریدەدەری لانا", en: "Lana's assistant" },
+    status: { ar: "نسخة تجريبية", ckb: "وەشانی نموونە", en: "Demo preview" },
+    open: { ar: "افتح المساعد", ckb: "یاریدەدەر بکەرەوە", en: "Open the assistant" },
+    close: { ar: "أغلق", ckb: "دایبخە", en: "Close" },
+    greeting: {
+      ar: "أهلًا! أنا مساعد Lana's Beadery. أقدر أساعدك في الأسعار والألوان والتوصيل.",
+      ckb: "سڵاو! من یاریدەدەری Lana's Beadery ـم. دەتوانم لە نرخ و ڕەنگ و گەیاندندا یارمەتیت بدەم.",
+      en: "Hi! I'm the Lana's Beadery assistant. I can help with prices, colours and delivery.",
+    },
+    sampleQ: { ar: "هل توصلون إلى البصرة؟", ckb: "بۆ بەسرە دەگەیەنن؟", en: "Do you deliver to Basra?" },
+    sampleA: {
+      ar: "نعم، نوصل لكل محافظات العراق خلال ٢–٤ أيام، والدفع عند الاستلام.",
+      ckb: "بەڵێ، بۆ هەموو پارێزگاکانی عێراق لە ماوەی ٢–٤ ڕۆژدا دەگەیەنین، پارەدان لە کاتی وەرگرتن.",
+      en: "Yes — we deliver to every province in Iraq in 2–4 days, and you pay on delivery.",
+    },
+    suggestions: [
+      { ar: "كم سعر سوار الاسم؟", ckb: "بازنی ناو بە چەندە؟", en: "How much is a name bracelet?" },
+      { ar: "هل يمكن تغيير الألوان؟", ckb: "دەتوانرێت ڕەنگەکان بگۆڕدرێن؟", en: "Can I change the colours?" },
+    ] as Copy[],
+    placeholder: { ar: "اكتب رسالتك…", ckb: "نامەکەت بنووسە…", en: "Type a message…" },
+    send: { ar: "إرسال", ckb: "ناردن", en: "Send" },
+    demoReply: {
+      ar: "هذه نسخة تجريبية، والمساعد غير مفعّل بعد. للطلب الآن راسلنا على إنستغرام.",
+      ckb: "ئەمە وەشانێکی نموونەیە و یاریدەدەرەکە هێشتا چالاک نەکراوە. بۆ داواکردن ئێستا لە ئینستاگرام نامەمان بۆ بنێرە.",
+      en: "This is a demo preview — the assistant isn't switched on yet. To order now, DM us on Instagram.",
+    },
+  },
+};
