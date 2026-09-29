@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lana's Beadery</title>
+<meta name="description" content="Handmade bead bracelets and necklaces, made in Iraq and delivered to every province.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  Lana's Beadery — demo site by CoreOs.
+  One self-contained file: open it in any browser, no build step.
+  The AI assistant in the corner is a mock-up only; nothing is sent anywhere.
+  Product names and prices are placeholders until the shop sends real ones.
+-->
+<style>
+  :root {
+    --paper: #fdfcf8; --ink: #3f4a33; --sage: #a9c77a; --sage-deep: #6f8f45;
+    --pink: #f2a7b3; --rose: #b0566b; --muted: #7d8671; --line: #e7ecdc;
+    --mint: #eef4e4; --blush: #fbeef0;
+    --script: 'Dancing Script', cursive;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: Inter, 'Noto Sans Arabic', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  [dir=rtl] body { font-family: 'Noto Sans Arabic', Inter, system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+  button, input { font: inherit; }
+  svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .wrap { max-width: 64rem; margin: 0 auto; padding: 0 20px; }
+  section { border-bottom: 1px solid var(--line); }
+  section > .wrap { padding-top: 72px; padding-bottom: 72px; }
+  h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+  .note { margin-top: 8px; font-size: 14.5px; color: var(--muted); }
+
+  /* nav */
+  nav { border-bottom: 1px solid var(--line); background: var(--paper); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 10px; padding-bottom: 10px; }
+  nav .brand { display: block; width: 112px; }
+  nav .brand svg { display: block; width: 100%; }
+  nav .links { display: flex; align-items: center; gap: 20px; font-size: 14px; font-weight: 500; color: var(--muted); }
+  nav .links a.txt:hover { color: var(--ink); }
+  .langs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
+  .langs button { border: 0; background: none; cursor: pointer; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .langs button[aria-pressed=true] { background: var(--sage-deep); color: #fff; }
+  .ig-dot { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 50%; background: var(--pink); color: #fff; font-size: 16px; }
+  @media (max-width: 719px) { nav .links { gap: 10px; } nav .links a.txt { display: none; } }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 14px 24px; font-size: 15px; font-weight: 700; transition: opacity .2s, background .2s; }
+  .btn.solid { background: var(--sage-deep); color: #fff; }
+  .btn.solid:hover { opacity: .9; }
+  .btn.ghost { border: 1.5px solid var(--sage); color: var(--sage-deep); }
+  .btn.ghost:hover { background: var(--mint); }
+
+  /* hero */
+  header.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .dots span { position: absolute; border-radius: 50%; opacity: .6; pointer-events: none; }
+  .hero .wrap { position: relative; display: grid; gap: 48px; padding-top: 64px; padding-bottom: 64px; }
+  @media (min-width: 768px) { .hero .wrap { grid-template-columns: 1.1fr .9fr; align-items: center; padding-top: 96px; padding-bottom: 96px; } }
+  .kicker { display: flex; align-items: center; gap: 8px; color: var(--sage-deep); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  [dir=rtl] .kicker { letter-spacing: 0; font-size: 13.5px; }
+  .hero h1 { margin-top: 12px; font-family: var(--script); font-size: clamp(3rem, 9vw, 5rem); line-height: 1.05; font-weight: 700; color: var(--sage-deep); }
+  [dir=rtl] .hero h1 { text-align: right; }
+  .tagline { margin-top: 20px; font-size: 19px; font-weight: 600; line-height: 1.6; }
+  .intro { margin-top: 12px; font-size: 15.5px; line-height: 1.7; color: var(--muted); }
+  .ctas { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 12px; }
+  .badges { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .badges li { border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; background: var(--blush); color: var(--rose); }
+  .medal { position: relative; margin: 0 auto; width: 100%; max-width: 22rem; aspect-ratio: 1; }
+  .medal::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 200deg, #f2a7b355, #a9c77a55, #f2a7b355); }
+  .medal div { position: absolute; inset: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; box-shadow: 0 20px 60px -20px rgba(63,74,51,.35); }
+  .medal svg { width: 78%; }
+
+  /* shop */
+  .grid { margin-top: 32px; display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1024px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .card { overflow: hidden; border-radius: 24px; background: #fff; border: 1px solid var(--line); transition: box-shadow .3s; }
+  .card:hover { box-shadow: 0 16px 40px -18px rgba(63,74,51,.35); }
+  .card .pic { position: relative; aspect-ratio: 1; padding: 24px; }
+  .card .pic svg.b { display: block; width: 100%; height: 100%; transition: transform .5s; }
+  .card:hover .pic svg.b { transform: rotate(6deg); }
+  .card .fav { position: absolute; top: 16px; right: 16px; font-size: 20px; color: var(--pink); }
+  .card .meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px; }
+  .card h3 { font-size: 16px; font-weight: 700; }
+  .card .meta p { margin-top: 4px; font-size: 13.5px; color: var(--muted); }
+  .price { flex-shrink: 0; font-weight: 700; color: var(--sage-deep); font-variant-numeric: tabular-nums; }
+
+  /* custom */
+  .custom { display: grid; gap: 32px; border-radius: 32px; padding: 40px 24px; background: var(--mint); }
+  @media (min-width: 768px) { .custom { grid-template-columns: 1fr 1fr; align-items: center; padding: 40px; } }
+  .custom .big { font-size: 28px; color: var(--sage-deep); display: flex; }
+  .custom h2 { margin-top: 16px; }
+  .custom .body { margin-top: 12px; font-size: 15.5px; line-height: 1.7; color: var(--muted); }
+  .ideas { display: grid; gap: 12px; }
+  .ideas li { display: flex; align-items: center; gap: 12px; border-radius: 16px; background: #fff; padding: 14px 16px; font-size: 15px; font-weight: 500; }
+  .ideas .ic { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; font-size: 16px; }
+
+  /* steps */
+  .steps { margin-top: 32px; display: grid; gap: 16px; }
+  @media (min-width: 768px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+  .steps li { border-radius: 24px; background: #fff; border: 1px solid var(--line); padding: 24px; }
+  .steps .top { display: flex; align-items: center; gap: 12px; color: var(--sage-deep); font-size: 20px; }
+  .steps .n { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 50%; font-size: 15px; font-weight: 800; color: #fff; }
+  .steps h3 { margin-top: 16px; font-size: 17px; font-weight: 700; }
+  .steps p { margin-top: 8px; font-size: 14.5px; line-height: 1.7; color: var(--muted); }
+  .center { margin-top: 40px; display: flex; justify-content: center; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding: 40px 20px 112px; text-align: center; }
+  footer .logo { width: 144px; margin: 0 auto; display: block; }
+  footer .line { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+  footer .handle { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--sage-deep); }
+  footer .copy { margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .credit { margin: 20px auto 0; max-width: 20rem; border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .credit b { color: var(--sage-deep); }
+
+  /* assistant (mock-up) */
+  .chat { position: fixed; bottom: 16px; right: 16px; z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  @media (min-width: 640px) { .chat { bottom: 24px; right: 24px; } }
+  .fab { position: relative; display: flex; width: 64px; height: 64px; align-items: center; justify-content: center; border: 0; border-radius: 50%; cursor: pointer; color: #fff; font-size: 28px; background: linear-gradient(135deg, var(--sage), var(--sage-deep)); box-shadow: 0 10px 30px -6px rgba(111,143,69,.6); transition: transform .2s; }
+  .fab:hover { transform: scale(1.05); }
+  .fab .ai { position: absolute; top: -2px; right: -2px; display: flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; background: var(--pink); color: #fff; font-size: 10px; font-weight: 800; box-shadow: 0 0 0 2px #fff; }
+  .panel { display: flex; flex-direction: column; overflow: hidden; width: min(22rem, calc(100vw - 2rem)); height: min(34rem, calc(100dvh - 7.5rem)); border-radius: 24px; background: #fff; border: 1px solid var(--line); box-shadow: 0 18px 50px -12px rgba(63,74,51,.35); }
+  .panel[hidden] { display: none; }
+  .panel .head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--sage); color: #fff; }
+  .panel .av { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 50%; background: #fff; color: var(--sage-deep); font-size: 20px; flex-shrink: 0; }
+  .panel .who { flex: 1; min-width: 0; }
+  .panel .who b { display: block; font-size: 14.5px; }
+  .panel .who span { font-size: 11.5px; opacity: .9; }
+  .panel .x { border: 0; background: none; color: #fff; cursor: pointer; padding: 6px; border-radius: 50%; font-size: 16px; display: flex; }
+  .panel .x:hover { background: rgba(255,255,255,.2); }
+  .log { flex: 1; overflow-y: auto; padding: 16px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; border-radius: 16px; padding: 8px 14px; font-size: 14px; line-height: 1.6; }
+  .msg.bot { align-self: flex-start; background: #fff; border: 1px solid var(--line); }
+  .msg.user { align-self: flex-end; background: var(--pink); color: #4a2a31; }
+  .sugs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 0; }
+  .sugs button { cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: #fff; padding: 4px 12px; font-size: 12.5px; font-weight: 500; color: var(--sage-deep); }
+  .sugs button:hover { background: var(--mint); }
+  .panel form { display: flex; align-items: center; gap: 8px; padding: 12px 12px 6px; }
+  .panel input { flex: 1; min-width: 0; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 10px 16px; font-size: 14px; outline: none; }
+  .panel input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px #a9c77a44; }
+  .panel form button { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; flex-shrink: 0; border: 0; border-radius: 50%; background: var(--sage-deep); color: #fff; cursor: pointer; font-size: 16px; }
+  [dir=rtl] .panel form button svg { transform: scaleX(-1); }
+  .made { padding: 0 12px 10px; text-align: center; font-size: 11.5px; color: var(--muted); }
+  .made b { color: var(--sage-deep); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="chat" id="chat"></div>
+
+<script>
+/* ------------------------------------------------------------------ copy --
+   Arabic, Sorani Kurdish and English. Prices and product names are
+   placeholders until the shop sends its own. */
+const DATA = {
+  name: { ar: "Lana's Beadery", ckb: "Lana's Beadery", en: "Lana's Beadery" },
+  kicker: { ar: "إكسسوارات مصنوعة يدويًا", ckb: "خشڵی دەستکرد", en: "Handmade accessories" },
+  tagline: {
+    ar: "أساور وقلائد من الخرز، تُصنع باليد حبّةً حبّة.",
+    ckb: "بازن و ملوانکەی مووروو، بە دەست دروست دەکرێن، یەک یەک.",
+    en: "Bead bracelets and necklaces, strung by hand one bead at a time.",
+  },
+  intro: {
+    ar: "كل قطعة تُصنع بعد طلبك، بالألوان التي تختارها. صُنع في العراق، والتوصيل لكل المحافظات.",
+    ckb: "هەر پارچەیەک دوای داواکارییەکەت دروست دەکرێت، بەو ڕەنگانەی خۆت هەڵیاندەبژێریت. دروستکراوی عێراق، گەیاندن بۆ هەموو پارێزگاکان.",
+    en: "Every piece is made after you order, in the colours you choose. Made in Iraq, delivered to every province.",
+  },
+  orderCta: { ar: "اطلب عبر إنستغرام", ckb: "لە ئینستاگرام داوا بکە", en: "Order on Instagram" },
+  browseCta: { ar: "شاهد القطع", ckb: "پارچەکان ببینە", en: "See the pieces" },
+  badges: [
+    { ar: "صنع يدوي", ckb: "کاری دەستی", en: "Handmade" },
+    { ar: "صُنع في العراق", ckb: "دروستکراوی عێراق", en: "Made in Iraq" },
+    { ar: "توصيل لكل العراق", ckb: "گەیاندن بۆ هەموو عێراق", en: "Delivery to all Iraq" },
+  ],
+
+  shopTitle: { ar: "القطع المفضّلة", ckb: "پارچە دڵخوازەکان", en: "Favourite pieces" },
+  shopNote: {
+    ar: "كل قطعة يمكن تغيير ألوانها ومقاسها عند الطلب.",
+    ckb: "ڕەنگ و قەبارەی هەر پارچەیەک دەتوانرێت لە کاتی داواکردندا بگۆڕدرێت.",
+    en: "Colours and size can be changed on any piece when you order.",
+  },
+  products: [
+    {
+      name: { ar: "سوار اللؤلؤ والفراولة", ckb: "بازنی مرواری و فەراولە", en: "Pearl & strawberry" },
+      detail: { ar: "لؤلؤ أبيض مع حبة فراولة", ckb: "مرواریی سپی لەگەڵ فەراولەیەک", en: "White pearls, one strawberry bead" },
+      price: { ar: "6,000 د.ع", ckb: "6,000 دینار", en: "6,000 IQD" },
+      beads: ["#fbf8f1", "#f3ede0"],
+      charm: "strawberry",
+    },
+    {
+      name: { ar: "سوار الحمضيات", ckb: "بازنی لیمۆ", en: "Citrus bracelet" },
+      detail: { ar: "خرز أصفر وبرتقالي مع شريحة ليمون", ckb: "موورووی زەرد و پرتەقاڵی لەگەڵ پارچە لیمۆیەک", en: "Yellow and orange seed beads, lemon slice" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f7d21e", "#f7d21e", "#f58a1f", "#f58a1f", "#ffffff"],
+      charm: "lemon",
+    },
+    {
+      name: { ar: "سوار القلب الوردي", ckb: "بازنی دڵی پەمەیی", en: "Pink heart" },
+      detail: { ar: "خرز وردي وأبيض مع قلب", ckb: "موورووی پەمەیی و سپی لەگەڵ دڵێک", en: "Pink and white beads, heart charm" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f5b3c0", "#ffffff", "#f5b3c0", "#fbd9e0"],
+      charm: "heart",
+    },
+    {
+      name: { ar: "سوار الاسم", ckb: "بازنی ناو", en: "Name bracelet" },
+      detail: { ar: "بالاسم أو الحروف التي تريدها", ckb: "بە ناو یان ئەو پیتانەی دەتەوێت", en: "Any name or initials you like" },
+      price: { ar: "7,000 د.ع", ckb: "7,000 دینار", en: "7,000 IQD" },
+      beads: ["#b9d38f", "#ffffff", "#f5b3c0", "#ffffff"],
+      charm: "name",
+    },
+    {
+      name: { ar: "سوار الزهرة", ckb: "بازنی گوڵ", en: "Daisy bracelet" },
+      detail: { ar: "خرز أخضر فاتح مع زهرة", ckb: "موورووی سەوزی کاڵ لەگەڵ گوڵێک", en: "Sage beads, daisy charm" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#a9c77a", "#cfe1b0", "#a9c77a", "#ffffff"],
+      charm: "flower",
+    },
+    {
+      name: { ar: "سوار قوس قزح", ckb: "بازنی پەلکەزێڕینە", en: "Rainbow bracelet" },
+      detail: { ar: "كل الألوان في سوار واحد", ckb: "هەموو ڕەنگەکان لە یەک بازندا", en: "Every colour on one strand" },
+      price: { ar: "5,000 د.ع", ckb: "5,000 دینار", en: "5,000 IQD" },
+      beads: ["#f28b8b", "#f7b267", "#f7d21e", "#a9c77a", "#7fb8e0", "#b79ce0"],
+      charm: "none",
+    },
+  ],
+
+  customTitle: { ar: "صمّم قطعتك", ckb: "پارچەکەی خۆت دیزاین بکە", en: "Design your own" },
+  customBody: {
+    ar: "اختر الألوان، أضف اسمك أو حرفًا، واطلب سوارًا مطابقًا لصديقتك. أرسل لنا الفكرة ونحن نصنعها.",
+    ckb: "ڕەنگەکان هەڵبژێرە، ناوەکەت یان پیتێک زیاد بکە، و بازنێکی هاوشێوە بۆ هاوڕێکەت داوا بکە. بیرۆکەکەمان بۆ بنێرە و ئێمە دروستی دەکەین.",
+    en: "Pick the colours, add your name or an initial, order a matching one for a friend. Send us the idea and we'll make it.",
+  },
+  customIdeas: [
+    { ar: "أساور متطابقة للصديقات", ckb: "بازنی هاوشێوە بۆ هاوڕێیان", en: "Matching friendship sets" },
+    { ar: "هدايا أعياد الميلاد", ckb: "دیاریی ڕۆژی لەدایکبوون", en: "Birthday gifts" },
+    { ar: "ألوان فريقك أو مدرستك", ckb: "ڕەنگی تیپ یان قوتابخانەکەت", en: "Your team or school colours" },
+  ],
+
+  howTitle: { ar: "كيف تطلب", ckb: "چۆن داوا بکەیت", en: "How to order" },
+  steps: [
+    {
+      title: { ar: "راسلنا", ckb: "نامەمان بۆ بنێرە", en: "Send a DM" },
+      body: { ar: "أرسل صورة القطعة أو فكرتك على إنستغرام.", ckb: "وێنەی پارچەکە یان بیرۆکەکەت لە ئینستاگرام بنێرە.", en: "Send a photo of the piece, or your idea, on Instagram." },
+    },
+    {
+      title: { ar: "نؤكد التفاصيل", ckb: "وردەکارییەکان دڵنیا دەکەینەوە", en: "We confirm it" },
+      body: { ar: "نتفق على الألوان والمقاس والسعر.", ckb: "لەسەر ڕەنگ و قەبارە و نرخ ڕێک دەکەوین.", en: "We agree the colours, the size and the price." },
+    },
+    {
+      title: { ar: "يصلك إلى الباب", ckb: "دەگاتە بەردەم دەرگاکەت", en: "It comes to your door" },
+      body: { ar: "التوصيل لكل محافظات العراق، والدفع عند الاستلام.", ckb: "گەیاندن بۆ هەموو پارێزگاکانی عێراق، پارەدان لە کاتی وەرگرتن.", en: "Delivered to every province in Iraq, pay on delivery." },
+    },
+  ],
+
+  footerLine: {
+    ar: "إكسسوارات مصنوعة يدويًا · صُنع في العراق",
+    ckb: "خشڵی دەستکرد · دروستکراوی عێراق",
+    en: "Handmade accessories · Made in Iraq",
+  },
+  instagram: "https://www.instagram.com/lanas_beadery/",
+  handle: "@lanas_beadery",
+
+  chat: {
+    title: { ar: "مساعد لانا", ckb: "یاریدەدەری لانا", en: "Lana's assistant" },
+    status: { ar: "نسخة تجريبية", ckb: "وەشانی نموونە", en: "Demo preview" },
+    open: { ar: "افتح المساعد", ckb: "یاریدەدەر بکەرەوە", en: "Open the assistant" },
+    close: { ar: "أغلق", ckb: "دایبخە", en: "Close" },
+    greeting: {
+      ar: "أهلًا! أنا مساعد Lana's Beadery. أقدر أساعدك في الأسعار والألوان والتوصيل.",
+      ckb: "سڵاو! من یاریدەدەری Lana's Beadery ـم. دەتوانم لە نرخ و ڕەنگ و گەیاندندا یارمەتیت بدەم.",
+      en: "Hi! I'm the Lana's Beadery assistant. I can help with prices, colours and delivery.",
+    },
+    sampleQ: { ar: "هل توصلون إلى البصرة؟", ckb: "بۆ بەسرە دەگەیەنن؟", en: "Do you deliver to Basra?" },
+    sampleA: {
+      ar: "نعم، نوصل لكل محافظات العراق خلال ٢–٤ أيام، والدفع عند الاستلام.",
+      ckb: "بەڵێ، بۆ هەموو پارێزگاکانی عێراق لە ماوەی ٢–٤ ڕۆژدا دەگەیەنین، پارەدان لە کاتی وەرگرتن.",
+      en: "Yes — we deliver to every province in Iraq in 2–4 days, and you pay on delivery.",
+    },
+    suggestions: [
+      { ar: "كم سعر سوار الاسم؟", ckb: "بازنی ناو بە چەندە؟", en: "How much is a name bracelet?" },
+      { ar: "هل يمكن تغيير الألوان؟", ckb: "دەتوانرێت ڕەنگەکان بگۆڕدرێن؟", en: "Can I change the colours?" },
+    ],
+    placeholder: { ar: "اكتب رسالتك…", ckb: "نامەکەت بنووسە…", en: "Type a message…" },
+    send: { ar: "إرسال", ckb: "ناردن", en: "Send" },
+    demoReply: {
+      ar: "هذه نسخة تجريبية، والمساعد غير مفعّل بعد. للطلب الآن راسلنا على إنستغرام.",
+      ckb: "ئەمە وەشانێکی نموونەیە و یاریدەدەرەکە هێشتا چالاک نەکراوە. بۆ داواکردن ئێستا لە ئینستاگرام نامەمان بۆ بنێرە.",
+      en: "This is a demo preview — the assistant isn't switched on yet. To order now, DM us on Instagram.",
+    },
+  },
+};
+
+/* Lucide icons (ISC licence), inlined so the file needs nothing else. */
+const ICON = {
+  bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  heart: '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>',
+  instagram: '<rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>',
+  "message-circle": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
+  palette: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
+  send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  sparkles: '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+
+const SAGE = "#a9c77a", SAGE_DEEP = "#6f8f45", PINK = "#f2a7b3", INK = "#3f4a33";
+const CARD_BG = ["#fbeef0", "#fdf5dc", "#fdecef", "#eef4e4", "#f0f5e8", "#f3eefa"];
+const LANG_LABEL = { en: "EN", ar: "ع", ckb: "ک" };
+
+let lang = "en";
+try { const saved = localStorage.getItem("lanas.lang"); if (saved in LANG_LABEL) lang = saved; } catch (e) {}
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+const c = (copy) => esc(copy[lang] ?? copy.en);
+const icon = (name) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[name] + "</svg>";
+
+/* The shop's mark: a cord dipping to a striped bead, over the wordmark. */
+let logoCount = 0;
+function logo(cls) {
+  const id = "lb-bead-" + (++logoCount);
+  const waves = [-14, -2, 10, 22].map((dy) =>
+    '<path d="M94 ' + (62 + dy) + ' q 7 -8 14 0 t 14 0 t 14 0 t 14 0" fill="none" stroke="' + SAGE + '" stroke-width="5"/>').join("");
+  return '<svg viewBox="0 0 240 150" class="' + cls + '" role="img" aria-label="Lana\'s Beadery">' +
+    '<defs><clipPath id="' + id + '"><circle cx="120" cy="62" r="22"/></clipPath></defs>' +
+    '<path d="M52 10 C 60 45, 80 58, 97 62" fill="none" stroke="' + SAGE + '" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M188 10 C 180 45, 160 58, 143 62" fill="none" stroke="' + SAGE + '" stroke-width="3" stroke-linecap="round"/>' +
+    '<g clip-path="url(#' + id + ')"><rect x="96" y="38" width="48" height="48" fill="' + PINK + '"/>' + waves + "</g>" +
+    '<text x="120" y="126" text-anchor="middle" font-size="34" font-weight="700" fill="' + SAGE_DEEP + '" style="font-family:\'Dancing Script\',cursive">Lana\'s Beadery</text></svg>';
+}
+
+/* The focal bead at the bottom of a strand, centred on (0, 0). */
+function charm(kind) {
+  if (kind === "strawberry") {
+    const seeds = [[-4, 0], [4, 0], [0, 4], [-5, 5], [5, 5], [0, -2], [0, 9]]
+      .map(([x, y]) => '<ellipse cx="' + x + '" cy="' + y + '" rx="0.9" ry="1.4" fill="#ffe7a8"/>').join("");
+    return '<path d="M0 13 C -13 5, -13 -8, 0 -7 C 13 -8, 13 5, 0 13 Z" fill="#e8364a"/>' +
+      '<path d="M-7 -8 L -2 -5 L 0 -11 L 2 -5 L 7 -8 L 3 -3 L -3 -3 Z" fill="#4f9a3a"/>' + seeds;
+  }
+  if (kind === "lemon") {
+    const segs = [0, 45, 90, 135].map((a) => {
+      const r = (a * Math.PI) / 180, x = 8.5 * Math.cos(r), y = 8.5 * Math.sin(r);
+      return '<line x1="' + -x + '" y1="' + -y + '" x2="' + x + '" y2="' + y + '" stroke="#fff4d6" stroke-width="1.2"/>';
+    }).join("");
+    return '<circle r="12" fill="#f58a1f"/><circle r="10" fill="#fff4d6"/><circle r="8.5" fill="#fcb53b"/>' + segs;
+  }
+  if (kind === "heart") return '<path d="M0 11 C -16 0, -9 -13, 0 -5 C 9 -13, 16 0, 0 11 Z" fill="#ea6f8a" stroke="#fff" stroke-width="1.5"/>';
+  if (kind === "flower") {
+    return [0, 72, 144, 216, 288].map((a) =>
+      '<ellipse cx="0" cy="-6.5" rx="4.6" ry="6.5" fill="#fff" stroke="#e4e8dc" stroke-width="0.8" transform="rotate(' + a + ')"/>').join("") +
+      '<circle r="4" fill="#f7c948"/>';
+  }
+  return "";
+}
+
+/* A bracelet: a ring of beads with its charm at the bottom. The name
+   bracelet swaps the bottom few beads for lettered cubes instead. */
+function bracelet(p) {
+  const COUNT = 30, R = 62, bottom = Math.PI / 2;
+  const gap = p.charm === "none" ? 0 : p.charm === "name" ? 0.62 : 0.26;
+  let out = '<svg class="b" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="' + R + '" fill="none" stroke="#d8d2c4"/>';
+  for (let i = 0; i < COUNT; i++) {
+    const a = bottom + (i / COUNT) * Math.PI * 2;
+    const off = Math.atan2(Math.sin(a - bottom), Math.cos(a - bottom));
+    if (Math.abs(off) < gap) continue;
+    out += '<g transform="translate(' + (100 + R * Math.cos(a)) + " " + (100 + R * Math.sin(a)) + ')">' +
+      '<circle r="7" fill="' + p.beads[i % p.beads.length] + '" stroke="rgba(0,0,0,0.08)" stroke-width="0.8"/>' +
+      '<circle cx="-2.2" cy="-2.4" r="2" fill="#fff" opacity="0.7"/></g>';
+  }
+  if (p.charm === "name") {
+    const letters = "LANA";
+    for (let k = 0; k < letters.length; k++) {
+      // SVG angles run clockwise, which is right-to-left along the bottom,
+      // so step backwards to keep the name reading left to right.
+      const a = bottom - (k - (letters.length - 1) / 2) * 0.3;
+      out += '<g transform="translate(' + (100 + R * Math.cos(a)) + " " + (100 + R * Math.sin(a)) + ") rotate(" + ((a - bottom) * 180) / Math.PI + ')">' +
+        '<rect x="-8" y="-8" width="16" height="16" rx="3" fill="#fff" stroke="#d9d4c7"/>' +
+        '<text y="4.5" text-anchor="middle" font-size="11" font-weight="700" fill="' + INK + '" font-family="Inter, sans-serif">' + letters[k] + "</text></g>";
+    }
+  } else {
+    out += '<g transform="translate(100 ' + (100 + R + 2) + ')">' + charm(p.charm) + "</g>";
+  }
+  return out + "</svg>";
+}
+
+const igBtn = (label) =>
+  '<a class="btn solid" href="' + DATA.instagram + '" target="_blank" rel="noopener noreferrer">' + icon("instagram") + c(label) + "</a>";
+
+function renderPage() {
+  const B = DATA;
+  logoCount = 0;
+  const dots = [["8%", "18%", 14, PINK], ["92%", "12%", 10, SAGE], ["85%", "80%", 16, PINK], ["4%", "78%", 9, SAGE], ["50%", "6%", 7, "#f7d21e"]]
+    .map(([l, t, s, col]) => '<span style="left:' + l + ";top:" + t + ";width:" + s + "px;height:" + s + "px;background:" + col + '"></span>').join("");
+  const langs = Object.keys(LANG_LABEL).map((k) =>
+    '<button type="button" data-lang="' + k + '" aria-pressed="' + (k === lang) + '">' + LANG_LABEL[k] + "</button>").join("");
+
+  document.getElementById("app").innerHTML =
+    '<nav><div class="wrap">' +
+      '<a href="#top" class="brand" aria-label="Lana\'s Beadery">' + logo("") + "</a>" +
+      '<div class="links">' +
+        '<a class="txt" href="#shop">' + c(B.shopTitle) + "</a>" +
+        '<a class="txt" href="#custom">' + c(B.customTitle) + "</a>" +
+        '<a class="txt" href="#order">' + c(B.howTitle) + "</a>" +
+        '<div class="langs" role="group" aria-label="Language">' + langs + "</div>" +
+        '<a class="ig-dot" href="' + B.instagram + '" target="_blank" rel="noopener noreferrer" aria-label="' + B.handle + '">' + icon("instagram") + "</a>" +
+      "</div></div></nav>" +
+
+    '<header class="hero" id="top"><div class="dots" aria-hidden="true">' + dots + '</div><div class="wrap"><div>' +
+      '<div class="kicker">' + icon("sparkles") + "<span>" + c(B.kicker) + "</span></div>" +
+      '<h1 dir="ltr">' + c(B.name) + "</h1>" +
+      '<p class="tagline">' + c(B.tagline) + "</p>" +
+      '<p class="intro">' + c(B.intro) + "</p>" +
+      '<div class="ctas">' + igBtn(B.orderCta) + '<a class="btn ghost" href="#shop">' + c(B.browseCta) + "</a></div>" +
+      '<ul class="badges">' + B.badges.map((b) => "<li>" + c(b) + "</li>").join("") + "</ul>" +
+    '</div><div class="medal"><div>' + logo("") + "</div></div></div></header>" +
+
+    '<section id="shop"><div class="wrap"><h2>' + c(B.shopTitle) + '</h2><p class="note">' + c(B.shopNote) + '</p><div class="grid">' +
+      B.products.map((p, i) =>
+        '<article class="card"><div class="pic" style="background:' + CARD_BG[i % CARD_BG.length] + '">' + bracelet(p) +
+        '<span class="fav">' + icon("heart") + "</span></div>" +
+        '<div class="meta"><div><h3>' + c(p.name) + "</h3><p>" + c(p.detail) + '</p></div><span class="price" dir="ltr">' + c(p.price) + "</span></div></article>").join("") +
+    "</div></div></section>" +
+
+    '<section id="custom"><div class="wrap"><div class="custom"><div>' +
+      '<span class="big">' + icon("palette") + "</span><h2>" + c(B.customTitle) + '</h2><p class="body">' + c(B.customBody) + "</p>" +
+      '<div style="margin-top:24px">' + igBtn(B.orderCta) + "</div></div>" +
+      '<ul class="ideas">' + B.customIdeas.map((idea, i) =>
+        '<li><span class="ic" style="background:' + (i % 2 ? "#eef4e4" : "#fbeef0") + ";color:" + (i % 2 ? SAGE_DEEP : "#b0566b") + '">' + icon("gift") + "</span>" + c(idea) + "</li>").join("") +
+    "</ul></div></div></section>" +
+
+    '<section id="order" style="border-bottom:0"><div class="wrap"><h2>' + c(B.howTitle) + '</h2><ol class="steps">' +
+      B.steps.map((s, i) =>
+        '<li><div class="top"><span class="n" style="background:' + (i === 1 ? PINK : SAGE) + '">' + (i + 1) + "</span>" +
+        icon(["message-circle", "sparkles", "truck"][i]) + "</div><h3>" + c(s.title) + "</h3><p>" + c(s.body) + "</p></li>").join("") +
+    '</ol><div class="center">' + igBtn(B.orderCta) + "</div></div></section>" +
+
+    "<footer>" + logo("logo") +
+      '<p class="line">' + c(B.footerLine) + "</p>" +
+      '<a class="handle" dir="ltr" href="' + B.instagram + '" target="_blank" rel="noopener noreferrer">' + icon("instagram") + B.handle + "</a>" +
+      '<p class="copy">© ' + new Date().getFullYear() + " Lana's Beadery</p>" +
+      '<p class="credit" dir="ltr">Created by <b>CoreOs</b> and <b>CoreOs.ai</b>.</p>' +
+    "</footer>";
+
+  document.querySelectorAll("[data-lang]").forEach((btn) =>
+    btn.addEventListener("click", () => setLang(btn.dataset.lang)));
+}
+
+/* ---- The AI assistant: a mock-up only. It shows a sample exchange and
+   answers anything typed with a note that it is not switched on yet.
+   Nothing is sent anywhere. ---- */
+const chat = { open: false, lines: [
+  { from: "bot", text: DATA.chat.greeting },
+  { from: "user", text: DATA.chat.sampleQ },
+  { from: "bot", text: DATA.chat.sampleA },
+] };
+let pending;
+
+function renderChat() {
+  const C = DATA.chat;
+  const root = document.getElementById("chat");
+  const old = root.querySelector("input");
+  const draft = old ? old.value : "";
+  root.innerHTML =
+    '<div class="panel" role="dialog" aria-label="' + c(C.title) + '"' + (chat.open ? "" : " hidden") + ">" +
+      '<div class="head"><span class="av">' + icon("bot") + '</span><div class="who"><b>' + c(C.title) + "</b><span>" + c(C.status) + "</span></div>" +
+      '<button type="button" class="x" data-close aria-label="' + c(C.close) + '">' + icon("x") + "</button></div>" +
+      '<div class="log">' + chat.lines.map((l) =>
+        '<p class="msg ' + l.from + '">' + (typeof l.text === "string" ? esc(l.text) : c(l.text)) + "</p>").join("") + "</div>" +
+      '<div class="sugs">' + C.suggestions.map((s, i) => '<button type="button" data-sug="' + i + '">' + c(s) + "</button>").join("") + "</div>" +
+      '<form><input placeholder="' + c(C.placeholder) + '" aria-label="' + c(C.placeholder) + '">' +
+      '<button type="submit" aria-label="' + c(C.send) + '">' + icon("send") + "</button></form>" +
+      '<p class="made" dir="ltr">Made by <b>CoreOs.ai</b></p>' +
+    "</div>" +
+    '<button type="button" class="fab" data-toggle aria-expanded="' + chat.open + '" aria-label="' + (chat.open ? c(C.close) : c(C.open)) + '">' +
+      icon(chat.open ? "x" : "bot") + (chat.open ? "" : '<span class="ai">AI</span>') + "</button>";
+
+  const input = root.querySelector("input");
+  input.value = draft;
+  const log = root.querySelector(".log");
+  log.scrollTop = log.scrollHeight;
+
+  root.querySelector("[data-toggle]").onclick = () => {
+    chat.open = !chat.open;
+    renderChat();
+    if (chat.open) root.querySelector("input").focus();
+  };
+  root.querySelector("[data-close]").onclick = () => { chat.open = false; renderChat(); };
+  root.querySelectorAll("[data-sug]").forEach((b) => (b.onclick = () => say(C.suggestions[+b.dataset.sug][lang])));
+  root.querySelector("form").onsubmit = (e) => { e.preventDefault(); say(input.value); };
+}
+
+function say(text) {
+  const clean = text.trim();
+  if (!clean) return;
+  chat.lines.push({ from: "user", text: clean });
+  document.querySelector("#chat input").value = "";
+  renderChat();
+  document.querySelector("#chat input").focus();
+  clearTimeout(pending);
+  pending = setTimeout(() => { chat.lines.push({ from: "bot", text: DATA.chat.demoReply }); renderChat(); }, 700);
+}
+
+function setLang(next) {
+  lang = next;
+  try { localStorage.setItem("lanas.lang", next); } catch (e) {}
+  document.documentElement.lang = next;
+  document.documentElement.dir = next === "en" ? "ltr" : "rtl";
+  renderPage();
+  renderChat();
+}
+
+setLang(lang);
+</script>
+</body>
+</html>
