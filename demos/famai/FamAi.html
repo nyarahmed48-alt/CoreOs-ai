@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Family Bookstore · FamAi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: shop header, hero split (pitch + live FamAi chat), shelves of books, delivery strip, footer. Brand navy from the store logo, brass accent for FamAi. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #15232e;
+  --muted: #5a6a76;
+  --line: #dbe2e8;
+  --navy: #1e3a4c;
+  --navy-soft: #e3ebf1;
+  --brass: #b7832f;
+  --brass-soft: #f6ead6;
+  --bubble-user: #1e3a4c;
+  --bubble-user-ink: #ffffff;
+  --display: "Young Serif", Georgia, "Times New Roman", serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d151c; --surface: #15212b; --ink: #e8eef3; --muted: #93a4b1; --line: #253543;
+    --navy: #8fb8d4; --navy-soft: #1b2c39; --brass: #e0ac57; --brass-soft: #2e2516;
+    --bubble-user: #2b4c63; --bubble-user-ink: #f2f6f9; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d151c; --surface: #15212b; --ink: #e8eef3; --muted: #93a4b1; --line: #253543;
+  --navy: #8fb8d4; --navy-soft: #1b2c39; --brass: #e0ac57; --brass-soft: #2e2516;
+  --bubble-user: #2b4c63; --bubble-user-ink: #f2f6f9; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+a { color: inherit; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
+
+.demo-flag { background: var(--brass-soft); color: var(--ink); font-size: 13px; text-align: center; padding: 6px 16px; }
+.demo-flag b { color: var(--brass); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand svg { width: 38px; height: 38px; flex: none; }
+.brand-name { font-family: var(--display); font-size: 20px; line-height: 1; }
+.brand-sub { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+nav.links { display: flex; gap: 20px; margin-left: auto; font-size: 15px; }
+nav.links a { text-decoration: none; color: var(--muted); }
+nav.links a:hover { color: var(--ink); }
+.cart { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 14px; }
+.cart .n { background: var(--navy); color: var(--bg); border-radius: 999px; min-width: 22px; height: 22px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) { nav.links { display: none; } .cart { margin-left: auto; } }
+
+.hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; padding-block: 48px 56px; align-items: start; }
+.hero > * { min-width: 0; }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); font-weight: 700; }
+.hero h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.08; margin-top: 12px; }
+.hero p.lede { color: var(--muted); font-size: 18px; max-width: 46ch; margin: 18px 0 0; }
+.quote { margin-top: 28px; padding-left: 16px; border-left: 2px solid var(--brass); font-family: var(--display); font-size: 19px; line-height: 1.4; }
+.quote small { display: block; font-family: var(--body); font-size: 13px; color: var(--muted); margin-top: 6px; }
+.stats { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 30px; }
+.stats div { display: flex; flex-direction: column; }
+.stats b { font-family: var(--display); font-weight: 400; font-size: 28px; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 13px; color: var(--muted); }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding-block: 32px 40px; } }
+
+/* FamAi chat */
+.chat { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 18px 40px -24px rgba(10, 30, 45, .35); display: flex; flex-direction: column; height: 560px; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.avatar { width: 38px; height: 38px; border-radius: 12px; background: var(--navy); color: var(--bg); display: grid; place-items: center; font-family: var(--display); font-size: 17px; flex: none; }
+.chat-head .who { line-height: 1.2; }
+.chat-head .who b { font-size: 16px; }
+.chat-head .who span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #3aa76d; }
+.chat-head .tag { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--brass); background: var(--brass-soft); border-radius: 6px; padding: 3px 8px; }
+.msgs { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+.msg { max-width: 86%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.msg.ai { background: var(--navy-soft); border-bottom-left-radius: 4px; align-self: flex-start; }
+.msg.me { background: var(--bubble-user); color: var(--bubble-user-ink); border-bottom-right-radius: 4px; align-self: flex-end; }
+.msg p { margin: 0; }
+.msg p + p { margin-top: 6px; }
+.recs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.rec { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+.rec .mini { width: 26px; height: 38px; border-radius: 3px; flex: none; }
+.rec .t { font-weight: 600; font-size: 14px; line-height: 1.25; }
+.rec .a { font-size: 12px; color: var(--muted); }
+.rec .p { margin-left: auto; font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bob 1s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes bob { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 18px 0; scrollbar-width: none; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.chip:hover { border-color: var(--brass); }
+form.ask { display: flex; gap: 8px; padding: 12px 18px 16px; }
+form.ask input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 12px; padding: 11px 14px; font: inherit; font-size: 15px; }
+form.ask button { border: 0; background: var(--navy); color: var(--bg); border-radius: 12px; padding: 0 18px; font-weight: 600; }
+
+/* Shelves */
+section.block { padding-block: 40px; border-top: 1px solid var(--line); }
+.block-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.block-head h2 { font-size: clamp(26px, 3.4vw, 34px); }
+.block-head p { margin: 4px 0 0; color: var(--muted); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+.filters button[aria-pressed="true"] { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.books { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 24px 20px; }
+.book { display: flex; flex-direction: column; gap: 8px; }
+.cover { aspect-ratio: 2 / 3; max-width: 100%; border-radius: 4px 8px 8px 4px; padding: 14px 12px; display: flex; flex-direction: column; justify-content: space-between; color: #fff; position: relative; overflow: hidden; box-shadow: inset 6px 0 0 rgba(0,0,0,.18), 0 10px 22px -14px rgba(0,0,0,.6); transition: transform .2s; }
+.book:hover .cover { transform: translateY(-3px) rotate(-.6deg); }
+.cover .ct { font-family: var(--display); font-size: 19px; line-height: 1.15; }
+.cover .ca { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
+.cover .new { position: absolute; top: 10px; right: -28px; transform: rotate(40deg); background: #fff; color: #15232e; font-size: 10px; font-weight: 700; letter-spacing: .12em; padding: 3px 32px; }
+.book .meta { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.book .title { font-weight: 600; font-size: 15px; line-height: 1.3; }
+.book .price { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.book .cat { font-size: 12px; color: var(--muted); }
+.book .add { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 7px; font-size: 14px; font-weight: 600; }
+.book .add:hover { border-color: var(--navy); }
+.book .add.done { background: var(--navy-soft); }
+
+/* Delivery */
+.deliver { display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: start; }
+.deliver > * { min-width: 0; }
+.cities { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.step { display: flex; gap: 14px; }
+.step .k { font-family: var(--mono); color: var(--brass); font-size: 13px; padding-top: 2px; }
+.step b { display: block; }
+.step span { color: var(--muted); font-size: 15px; }
+@media (max-width: 800px) { .deliver { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 14px; transition: .25s; pointer-events: none; z-index: 10; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<div class="demo-flag"><b>Demo</b> · FamAi gives scripted answers and prices are sample figures. No real orders are placed.</div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Family Bookstore home">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="19" fill="var(--surface)" stroke="var(--navy)" stroke-width="2"/>
+        <path d="M9 13c4-1.5 8-1 11 1.5v13c-3-2.3-7-3-11-1.5z" fill="none" stroke="var(--navy)" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M31 13c-4-1.5-8-1-11 1.5v13c3-2.3 7-3 11-1.5z" fill="none" stroke="var(--navy)" stroke-width="1.6" stroke-linejoin="round"/>
+        <rect x="9" y="28" width="22" height="4" rx="1" fill="var(--navy)"/>
+      </svg>
+      <span><span class="brand-name">Family</span><br><span class="brand-sub">Bookstore</span></span>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#famai">FamAi</a>
+      <a href="#shelves">Shelves</a>
+      <a href="#delivery">Delivery</a>
+    </nav>
+    <button class="cart" id="cartBtn" type="button" aria-label="Basket">Basket <span class="n" id="cartN">0</span></button>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero" id="famai">
+    <div>
+      <div class="eyebrow">Meet FamAi</div>
+      <h1>Your book friend at Family Bookstore</h1>
+      <p class="lede">Tell FamAi what you loved last, what mood you're in, or who you're buying for. It picks from our shelves and we deliver anywhere in Iraq.</p>
+      <div class="quote">A book can change a day. A library can change a life.<small>Family Bookstore</small></div>
+      <div class="stats">
+        <div><b>22.3K</b><span>readers following</span></div>
+        <div><b>412</b><span>shelf posts</span></div>
+        <div><b>18</b><span>governorates served</span></div>
+      </div>
+    </div>
+
+    <div class="chat" role="region" aria-label="FamAi chat">
+      <div class="chat-head">
+        <div class="avatar" aria-hidden="true">F</div>
+        <div class="who"><b>FamAi</b><span><i class="dot"></i>Online · knows our shelves</span></div>
+        <span class="tag">DEMO</span>
+      </div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form class="ask" id="askForm">
+        <input id="askInput" type="text" placeholder="Ask FamAi for a book…" autocomplete="off" aria-label="Message FamAi">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <section class="block" id="shelves">
+    <div class="wrap">
+      <div class="block-head">
+        <div>
+          <h2>On the shelves this week</h2>
+          <p>Straight from our Instagram highlights.</p>
+        </div>
+        <div class="filters" id="filters" role="group" aria-label="Filter by shelf"></div>
+      </div>
+      <div class="books" id="books"></div>
+    </div>
+  </section>
+
+  <section class="block" id="delivery">
+    <div class="wrap deliver">
+      <div>
+        <div class="block-head"><div><h2>Books delivered across Iraq</h2><p>Sample delivery times and fees for the demo.</p></div></div>
+        <div class="cities">
+          <table>
+            <thead><tr><th>City</th><th>Arrives in</th><th>Delivery fee</th></tr></thead>
+            <tbody>
+              <tr><td>Baghdad</td><td>1–2 days</td><td class="num">5,000 IQD</td></tr>
+              <tr><td>Erbil</td><td>1–2 days</td><td class="num">5,000 IQD</td></tr>
+              <tr><td>Sulaymaniyah</td><td>2 days</td><td class="num">5,000 IQD</td></tr>
+              <tr><td>Basra</td><td>2–3 days</td><td class="num">6,000 IQD</td></tr>
+              <tr><td>Mosul</td><td>2–3 days</td><td class="num">6,000 IQD</td></tr>
+              <tr><td>Other governorates</td><td>3–4 days</td><td class="num">6,000 IQD</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="block-head"><div><h2>How ordering works</h2></div></div>
+        <div class="steps">
+          <div class="step"><span class="k">1</span><div><b>Pick your books</b><span>Browse the shelves or ask FamAi.</span></div></div>
+          <div class="step"><span class="k">2</span><div><b>Send us a message</b><span>Name, phone, and city on Instagram @fami.lybookstore.</span></div></div>
+          <div class="step"><span class="k">3</span><div><b>Pay on delivery</b><span>Cash when the books reach your door.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Family Bookstore · Instagram @fami.lybookstore</span>
+    <span>FamAi demo. Built for preview only.</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const BOOKS = [
+  { id: "lotm", title: "Lord of the Mysteries", author: "Cuttlefish That Loves Diving", cat: "Fantasy", price: 18000, color: ["#7a1f2b", "#2a0d12"], isNew: true, tags: ["fantasy", "mystery", "web novel", "dark"] },
+  { id: "sapiens", title: "Sapiens", author: "Yuval Noah Harari", cat: "Non-fiction", price: 15000, color: ["#e9e6df", "#9b968c"], ink: "#1d1d1d", isNew: true, tags: ["history", "nonfiction", "science", "humankind"] },
+  { id: "catcher", title: "The Catcher in the Rye", author: "J.D. Salinger", cat: "Literature", price: 10000, color: ["#c8322b", "#7d1712"], tags: ["classic", "literature", "coming of age"] },
+  { id: "caspian", title: "Prince Caspian", author: "C.S. Lewis", cat: "Fantasy", price: 9000, color: ["#4b3a7a", "#1f1838"], tags: ["fantasy", "narnia", "kids", "adventure"] },
+  { id: "apollo", title: "The Trials of Apollo", author: "Rick Riordan", cat: "Fantasy", price: 45000, color: ["#2c4f86", "#14223e"], tags: ["fantasy", "mythology", "teens", "series", "box set"] },
+  { id: "treasure", title: "Treasure Island", author: "R.L. Stevenson", cat: "Penguin Classics", price: 8000, color: ["#d98a2b", "#8a4f10"], tags: ["classic", "adventure", "kids"] },
+  { id: "1984", title: "Nineteen Eighty-Four", author: "George Orwell", cat: "Penguin Classics", price: 8000, color: ["#e2701c", "#1b1b1b"], tags: ["classic", "dystopia", "literature"] },
+  { id: "laws", title: "The 48 Laws of Power", author: "Robert Greene", cat: "Non-fiction", price: 14000, color: ["#1b1b1b", "#5c4a1e"], tags: ["power", "self", "nonfiction", "lessons"] },
+  { id: "darkforest", title: "The Dark Forest", author: "Liu Cixin", cat: "Literature", price: 13000, color: ["#11303a", "#05141a"], tags: ["scifi", "science fiction", "space"] },
+  { id: "pride", title: "Pride and Prejudice", author: "Jane Austen", cat: "Penguin Classics", price: 8000, color: ["#6e8b6a", "#2f4230"], tags: ["classic", "romance", "literature"] }
+];
+const SHELVES = ["All", "Fantasy", "Literature", "Penguin Classics", "Non-fiction"];
+const fmt = n => n.toLocaleString("en-US") + " IQD";
+const byId = id => BOOKS.find(b => b.id === id);
+let cart = [];
+
+const $ = s => document.querySelector(s);
+const toastEl = $("#toast");
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+}
+function addToCart(id) {
+  const b = byId(id);
+  cart.push(id);
+  $("#cartN").textContent = cart.length;
+  toast(`Added ${b.title} to your basket`);
+  document.querySelectorAll(`.add[data-id="${id}"]`).forEach(btn => { btn.textContent = "In basket ✓"; btn.classList.add("done"); });
+}
+
+/* Shelves */
+let shelf = "All";
+function renderFilters() {
+  $("#filters").innerHTML = SHELVES.map(s => `<button type="button" aria-pressed="${s === shelf}" data-s="${s}">${s}</button>`).join("");
+}
+function coverHTML(b) {
+  return `<div class="cover" style="background:linear-gradient(160deg,${b.color[0]},${b.color[1]});${b.ink ? `color:${b.ink}` : ""}">
+    ${b.isNew ? '<span class="new">NEW</span>' : ""}
+    <span class="ct">${b.title}</span><span class="ca">${b.author}</span></div>`;
+}
+function renderBooks() {
+  const list = BOOKS.filter(b => shelf === "All" || b.cat === shelf);
+  $("#books").innerHTML = list.map(b => `
+    <article class="book">
+      ${coverHTML(b)}
+      <div class="meta"><span class="title">${b.title}</span><span class="price">${fmt(b.price)}</span></div>
+      <span class="cat">${b.author} · ${b.cat}</span>
+      <button type="button" class="add ${cart.includes(b.id) ? "done" : ""}" data-id="${b.id}">${cart.includes(b.id) ? "In basket ✓" : "Add to basket"}</button>
+    </article>`).join("");
+}
+$("#filters").addEventListener("click", e => {
+  const s = e.target.closest("button")?.dataset.s;
+  if (!s) return;
+  shelf = s; renderFilters(); renderBooks();
+});
+document.addEventListener("click", e => {
+  const btn = e.target.closest(".add");
+  if (btn && !btn.classList.contains("done")) addToCart(btn.dataset.id);
+});
+$("#cartBtn").addEventListener("click", () => {
+  if (!cart.length) return toast("Your basket is empty");
+  const total = cart.reduce((s, id) => s + byId(id).price, 0);
+  toast(`${cart.length} book${cart.length > 1 ? "s" : ""} · ${fmt(total)} (demo)`);
+});
+
+/* FamAi: scripted demo brain */
+const RULES = [
+  { k: ["hello", "hi", "hey", "salam", "slaw", "marhaba"], r: () => ({ text: ["Hi! I'm FamAi, Family Bookstore's reading helper. Tell me a book you loved, a mood, or who the gift is for."] }) },
+  { k: ["fantasy", "magic", "dragon", "narnia", "myth"], r: () => ({ text: ["Our fantasy shelf is busy this week. If you like big worlds, start with Lord of the Mysteries. For mythology and humour, the Apollo box set is a favourite."], books: ["lotm", "apollo", "caspian"] }) },
+  { k: ["history", "nonfiction", "non-fiction", "science", "sapiens", "learn", "smart"], r: () => ({ text: ["For something that makes you think, Sapiens just came back in stock. The 48 Laws of Power sells fast too."], books: ["sapiens", "laws"] }) },
+  { k: ["classic", "penguin", "old", "literature", "orwell", "austen"], r: () => ({ text: ["Our Penguin Classics are small, cheap, and beautiful on a shelf. Here are three to start with:"], books: ["1984", "pride", "catcher"] }) },
+  { k: ["kid", "child", "son", "daughter", "young", "teen", "school"], r: () => ({ text: ["For younger readers I'd pick adventure. Prince Caspian works from about age 9, and Apollo is perfect for teens."], books: ["caspian", "treasure", "apollo"] }) },
+  { k: ["sci-fi", "scifi", "space", "science fiction", "future"], r: () => ({ text: ["The Dark Forest is a great pick, the second book of The Three-Body Problem trilogy. Nineteen Eighty-Four if you want a darker future."], books: ["darkforest", "1984"] }) },
+  { k: ["gift", "present", "birthday", "friend"], r: () => ({ text: ["Gifts are my favourite. A safe pick that almost everyone enjoys is Sapiens. For a reader who loves stories, try the Apollo box set. We can add a note in the package."], books: ["sapiens", "apollo"] }) },
+  { k: ["sad", "cry", "feel", "lonely", "mood", "romance", "love"], r: () => ({ text: ["Something warm then. Pride and Prejudice is clever and comforting. The Catcher in the Rye is good when you feel nobody gets you."], books: ["pride", "catcher"] }) },
+  { k: ["deliver", "shipping", "erbil", "baghdad", "basra", "mosul", "sulay", "duhok", "how long", "city"], r: () => ({ text: ["We deliver to every governorate in Iraq. Baghdad and Erbil usually take 1–2 days, other cities 2–4 days.", "You pay cash on delivery. The table below has the demo fees."] }) },
+  { k: ["price", "cost", "how much", "cheap", "budget", "iqd", "dinar"], r: () => ({ text: ["Penguin Classics start at 8,000 IQD. Most paperbacks are 9,000–18,000 IQD, and box sets cost more. These are demo prices."], books: ["treasure", "pride"] }) },
+  { k: ["order", "buy", "basket", "cart", "pay"], r: () => ({ text: ["Tap “Add to basket” on any book, then send us a message on Instagram with your name, phone, and city. You pay when it arrives."] }) },
+  { k: ["arabic", "kurdish", "عربي", "كوردی", "translation"], r: () => ({ text: ["We stock English titles plus many Arabic and Kurdish translations. In the full version I'd check stock for you. In this demo I only know the shelf below."] }) },
+  { k: ["thank", "thanks", "spas", "shukran", "شكرا"], r: () => ({ text: ["Happy reading! Come back and tell me how you liked it."] }) }
+];
+const FALLBACK = () => ({ text: ["I'm a demo, so I only know a few topics. Try asking about fantasy, classics, gifts, kids' books, prices, or delivery."], books: ["lotm", "sapiens"] });
+const CHIPS = ["Recommend me fantasy", "A gift for a friend", "Books for my 10-year-old", "Delivery to Erbil?", "Cheapest classics", "Something like Sapiens"];
+
+function answer(q) {
+  const s = q.toLowerCase();
+  if (s.includes("like sapiens")) return RULES[2].r();
+  const rule = RULES.find(r => r.k.some(k => s.includes(k)));
+  return (rule ? rule.r : FALLBACK)();
+}
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const msgs = $("#msgs");
+function push(html, who) {
+  const el = document.createElement("div");
+  el.className = `msg ${who}`;
+  el.innerHTML = html;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return el;
+}
+function aiHTML(res) {
+  let h = res.text.map(t => `<p>${t}</p>`).join("");
+  if (res.books?.length) {
+    h += `<div class="recs">` + res.books.map(id => {
+      const b = byId(id);
+      return `<div class="rec"><span class="mini" style="background:linear-gradient(160deg,${b.color[0]},${b.color[1]})"></span>
+        <span><span class="t">${b.title}</span><br><span class="a">${b.author}</span></span>
+        <span class="p">${fmt(b.price)}</span></div>`;
+    }).join("") + `</div>`;
+  }
+  return h;
+}
+let busy = false;
+function ask(q) {
+  q = q.trim();
+  if (!q || busy) return;
+  busy = true;
+  push(`<p>${esc(q)}</p>`, "me");
+  const t = push(`<span class="typing"><i></i><i></i><i></i></span>`, "ai");
+  t.style.padding = "0";
+  setTimeout(() => {
+    t.style.padding = "";
+    t.innerHTML = aiHTML(answer(q));
+    msgs.scrollTop = msgs.scrollHeight;
+    busy = false;
+  }, 700 + Math.random() * 500);
+}
+$("#askForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const i = $("#askInput");
+  ask(i.value); i.value = "";
+});
+$("#chips").innerHTML = CHIPS.map(c => `<button type="button" class="chip">${c}</button>`).join("");
+$("#chips").addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) ask(c.textContent); });
+
+/* Opening state: a sample conversation so the demo shows what FamAi does */
+push(aiHTML({ text: ["Hi, I'm FamAi 📚 I know every book on Family Bookstore's shelves. What are you in the mood for?"] }), "ai");
+push(`<p>I just finished Narnia. What should I read next?</p>`, "me");
+push(aiHTML({ text: ["Great choice! If you want more magic and adventure, these are popular with Narnia fans right now:"], books: ["apollo", "lotm"] }), "ai");
+
+renderFilters();
+renderBooks();
+</script>
+</body>
+</html>
