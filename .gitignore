@@ -2,6 +2,7 @@ node_modules/
 build/
 dist/
 dist-pos/
+dist-ceo/
 coverage/
 .DS_Store
 *.log

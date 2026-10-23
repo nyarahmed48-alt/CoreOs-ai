@@ -41,6 +41,7 @@ import { SalesView } from "./SalesView";
 import { SettingsView } from "./SettingsView";
 import { DebtView } from "./DebtView";
 import { CloseShiftModal, LockScreen } from "./LockScreen";
+import { ActivationGate, useActivation } from "./ActivationGate";
 
 /* Printing a receipt from inside a full-screen application means hiding the
    application, not opening a second window: a second window is a popup, and
@@ -91,12 +92,24 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const { staff, shift } = useSession();
   const [tab, setTab] = useState<Tab>("register");
   const [closing, setClosing] = useState(false);
+  const activation = useActivation();
 
   /* The till locks only once the shop has people on it. A one-person market
      is never asked to sign in to its own counter. */
   const locked = data.settings.staffLogin && data.staff.some((p) => p.active) && !staff;
   const isOwner = !staff || staff.role === "owner";
   const tabs = TABS.filter((entry) => !entry.ownerOnly || isOwner);
+
+  /* Before anything else. An unactivated tablet shows one screen and nothing
+     behind it — but it keeps every sale and product it already had. */
+  if (!activation.active) {
+    return (
+      <div dir={dir} lang={lang}>
+        <style>{PRINT_CSS}</style>
+        <ActivationGate nonce={activation.state.nonce} onGranted={activation.grant} />
+      </div>
+    );
+  }
 
   return (
     <div

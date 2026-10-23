@@ -15,7 +15,8 @@
     "cf:dev": "npm run build:web && wrangler dev",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "build:ceo": "vite build --config vite.ceo.config.ts && node scripts/build-portable-pos.mjs dist-ceo ceo-portable.html CoreOS_Owner_Console.html"
   },
   "dependencies": {
     "@netlify/blobs": "^11.0.1",

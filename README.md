@@ -17,7 +17,6 @@ people you already employ rather than replace them.
 | `/coreos-ai`  | CoreOs.ai — the open model lab, 20 codenamed models to test        |
 | `/contact`    | Contact page, all routes leading to coreosgmail.com@gmail.com      |
 | `/pos`        | The market till — a working point of sale (lazy-loaded, not in nav) |
-| `/hub`        | Private launcher for everything above, behind a PIN (not in nav)    |
 | `/manager`    | The internal SaaS manager console (lazy-loaded, not linked in nav) |
 
 Client-side routing is a small History API router (`src/site/router.tsx`); the
@@ -65,26 +64,39 @@ src/
     ui.tsx            buttons, fields and the modal
 ```
 
-## The launcher (`/hub`)
+## The owner's console (`CoreOS_Owner_Console.html`)
 
-One page that opens everything this project runs — the till, the manager, the
-site, the demo shops, the planning papers — so a phone on a counter reaches
-the right screen without anyone remembering a path. `src/hub/apps.ts` is the
-list; adding a route and forgetting to add it there is the failure mode, so it
-sits in a file of its own.
+One file, kept on one phone, built by `npm run build:ceo`. **It is not on the
+site and must not be put there** — no route, no link, nothing to stumble on.
+It does two jobs:
 
-It asks for a PIN on a keypad rather than a text field, because it is opened
-on a phone and a keyboard covers half the screen. The PIN is stored as a
-SHA-256 hash, held for the browser session only, and `/hub` is disallowed in
-`robots.txt`.
+- **Tablets.** Issues the unlock codes that let a till sell, for a week, a
+  month, three months, a year or for ever, and keeps a list of what was issued
+  to whom.
+- **Apps.** Opens everything else — the till, the manager, the site, the demo
+  shops, the planning papers — by absolute URL, since it has no site around it.
 
-**It is a curtain, not a lock, and the page says so at the bottom.** This is
-ordinary JavaScript served to anyone who asks for the address: developer
-tools, the bundle, or simply typing `/pos` all walk straight past it. What it
-buys is that a phone left on a table does not show the list to whoever picks
-it up, and that one address is not an index of everything we run. Anything
-needing real protection — `/admin` — keeps its own server-side token, which
-this does not replace.
+### How a tablet is let in
+
+A till arrives locked. It shows a **request code** made from its own till
+number and a part that changes every time it asks. The shop sends that code —
+one WhatsApp button, or read down the phone — and the console turns it into an
+**unlock code** that fits that request and no other. The till checks it
+locally and starts working until the date runs out, at which point it locks,
+**rotates its request code** and asks again. Rotating is what actually spends
+a code: without it a shop would simply type last month's code back in for ever
+and the expiry date would be decoration.
+
+Nothing behind the lock is touched. A lapsed till still holds every sale and
+product, and they come back the moment it is unlocked again.
+
+**What this is worth, honestly.** The secret that makes the codes is compiled
+into both files, so anyone willing to pull the app apart can mint their own.
+It stops a shop copying the till onto a second tablet, or carrying on after
+they stop paying. It does not stop an engineer — that needs the server, and
+this is deliberately the same shape so the same codes can come from it later.
+Keep a copy of the console file somewhere safe: without it, no new tablet can
+be activated.
 
 ## The till (`/pos`)
 

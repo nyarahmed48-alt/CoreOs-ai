@@ -15,10 +15,11 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-const BUILT = "dist-pos";
-const OUT = "CoreOS_Market_POS_Portable.html";
+const BUILT = process.argv[2] ?? "dist-pos";
+const PAGE = process.argv[3] ?? "pos-portable.html";
+const OUT = process.argv[4] ?? "CoreOS_Market_POS_Portable.html";
 
-const page = join(BUILT, "pos-portable.html");
+const page = join(BUILT, PAGE);
 if (!existsSync(page)) {
   console.error(`${page} is missing — run the vite build first.`);
   process.exit(1);

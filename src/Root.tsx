@@ -33,9 +33,6 @@ const Manager = lazy(() => import("./App"));
 // shop's machine and never linked from the nav, so it is split out too.
 const Pos = lazy(() => import("./pos/PosApp"));
 
-// The launcher at /hub: one private page that opens everything else. Split out
-// and unlinked for the same reasons, and PIN-gated on top.
-const Hub = lazy(() => import("./hub/HubApp"));
 
 /** Customer portals and iframe embeds are published as `/?portal=<id>` (see
  *  App.tsx). Those links predate the marketing site and are live on client
@@ -74,14 +71,6 @@ function Routes() {
     return (
       <Suspense fallback={<ConsoleFallback />}>
         <Pos />
-      </Suspense>
-    );
-  }
-
-  if (path === "/hub") {
-    return (
-      <Suspense fallback={<ConsoleFallback />}>
-        <Hub />
       </Suspense>
     );
   }

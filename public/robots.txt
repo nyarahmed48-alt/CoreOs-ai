@@ -5,19 +5,18 @@
 # agent sandbox itself, which costs money per call and would burn quota on
 # crawler traffic.
 #
-# /hub is the private launcher and /pos is the cashier's till; neither is a
-# page a search result should lead to.
+# /pos is the cashier's till, not a page a search result should lead to. The
+# owner's console is deliberately not here at all: it is a file, never a route
+# on this site.
 #
 # This is a request, not a control. /admin enforces its own access with a
-# token — see worker/settings.ts, and the PIN on /hub is a curtain rather than
-# a lock — see src/hub/HubApp.tsx.
+# token — see worker/settings.ts.
 
 User-agent: *
 Allow: /
 Disallow: /manager
 Disallow: /admin
 Disallow: /api/
-Disallow: /hub
 Disallow: /pos
 
 Sitemap: https://coreosai.netlify.app/sitemap.xml

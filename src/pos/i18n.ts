@@ -275,6 +275,18 @@ const EN = {
     "This browser will not give the page a live camera. It usually will not for a page opened from a file. Take a photo instead — that uses the phone's own camera.",
   "camera.unknown": "Unknown barcode {code}",
 
+  "activate.title": "This till is not activated yet",
+  "activate.body":
+    "Send the code below to CoreOs. They will send back an unlock code for this tablet.",
+  "activate.yourCode": "Your request code",
+  "activate.send": "Send it on WhatsApp",
+  "activate.enterCode": "Unlock code",
+  "activate.unlock": "Unlock the till",
+  "activate.wrong": "That code does not match this tablet. Check it, or ask for a new one.",
+  "activate.message": "Please activate this till:",
+  "activate.dataSafe":
+    "Nothing has been lost. Sales and products on this tablet are kept, and come back as soon as it is unlocked.",
+  "activate.expired": "This till's licence has run out.",
   "staff.title": "Cashiers",
   "staff.hint":
     "Until you add someone, this till belongs to whoever is holding it. Add your cashiers and every sale, void and discount carries a name.",
@@ -564,6 +576,18 @@ const AR: Record<Key, string> = {
     "هذا المتصفح لا يعطي الصفحة كاميرا مباشرة، وغالباً لا يفعل ذلك لصفحة فُتحت من ملف. التقط صورة بدلاً من ذلك — فهي تستخدم كاميرا الهاتف نفسها.",
   "camera.unknown": "باركود غير معروف {code}",
 
+  "activate.title": "هذا الصندوق غير مُفعّل بعد",
+  "activate.body":
+    "أرسل الرمز أدناه إلى CoreOs، وسيرسلون لك رمز فتح خاص بهذا الجهاز.",
+  "activate.yourCode": "رمز الطلب",
+  "activate.send": "إرساله على واتساب",
+  "activate.enterCode": "رمز الفتح",
+  "activate.unlock": "فتح الصندوق",
+  "activate.wrong": "هذا الرمز لا يطابق هذا الجهاز. تحقق منه أو اطلب رمزاً جديداً.",
+  "activate.message": "يرجى تفعيل هذا الصندوق:",
+  "activate.dataSafe":
+    "لم يُفقد شيء. المبيعات والمواد على هذا الجهاز محفوظة وتعود فور فتحه.",
+  "activate.expired": "انتهت صلاحية هذا الصندوق.",
   "staff.title": "الكاشيرات",
   "staff.hint":
     "ما لم تُضف أحداً، هذا الصندوق لمن يمسكه. أضف الكاشيرات ليحمل كل بيع وإلغاء وخصم اسماً.",
@@ -851,6 +875,18 @@ const CKB: Record<Key, string> = {
     "ئەم وێبگەڕە کامێرای ڕاستەوخۆ نادات بە پەڕەکە، و زۆرجار ئەمە بۆ پەڕەیەک کە لە فایلێکەوە کراوەتەوە ناکات. لە جیاتی ئەوە وێنەیەک بگرە — ئەوە کامێرای خودی مۆبایل بەکاردەهێنێت.",
   "camera.unknown": "بارکۆدی نەناسراو {code}",
 
+  "activate.title": "ئەم سندوقە هێشتا چالاک نەکراوە",
+  "activate.body":
+    "ئەم کۆدەی خوارەوە بۆ CoreOs بنێرە، ئەوان کۆدی کردنەوەی تایبەت بەم ئامێرەت بۆ دەنێرنەوە.",
+  "activate.yourCode": "کۆدی داواکاری",
+  "activate.send": "بە واتسئاپ بینێرە",
+  "activate.enterCode": "کۆدی کردنەوە",
+  "activate.unlock": "کردنەوەی سندوق",
+  "activate.wrong": "ئەم کۆدە لەگەڵ ئەم ئامێرەدا ناگونجێت. بیپشکنە، یان کۆدێکی نوێ داوا بکە.",
+  "activate.message": "تکایە ئەم سندوقە چالاک بکە:",
+  "activate.dataSafe":
+    "هیچ شتێک لەدەست نەچووە. فرۆشتن و کاڵاکانی ئەم ئامێرە پارێزراون و هەر کە کرایەوە دەگەڕێنەوە.",
+  "activate.expired": "ماوەی ئەم سندوقە تەواو بووە.",
   "staff.title": "فرۆشیارەکان",
   "staff.hint":
     "تا کەسێک زیاد نەکەیت، ئەم سندوقە هی ئەو کەسەیە کە بەدەستیەتی. فرۆشیارەکانت زیاد بکە تا هەموو فرۆشتن و هەڵوەشاندنەوە و داشکاندنێک ناوێکی لەگەڵدا بێت.",
