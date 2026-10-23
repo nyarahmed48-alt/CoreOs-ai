@@ -131,6 +131,19 @@ export async function freezeCode(anyCode: string): Promise<string> {
   return `F-${await proof(tillPart(anyCode), "F")}`;
 }
 
+/**
+ * The stop code the first tills were built to check: made from the whole
+ * licence code rather than the till number.
+ *
+ * Tablets already in shops are running that build and will never run another
+ * unless somebody carries a file to them, so the office has to be able to make
+ * a code those tills accept. It is shown beside the ordinary one when the two
+ * differ, and quietly drops out of use as tablets are replaced.
+ */
+export async function legacyFreezeCode(licenceCode: string): Promise<string> {
+  return `F-${await proof(licenceCode, "F")}`;
+}
+
 /** Checks a code against the request this till actually made. Returns what it
     does, or null if it does nothing. */
 export async function checkCode(
@@ -143,9 +156,14 @@ export async function checkCode(
   const offered = `${match[2]}-${match[3]}`;
 
   if (match[1] === "F") {
-    return (await proof(tillPart(request), "F")) === offered
-      ? { kind: "freeze" }
-      : null;
+    /* Either shape stops the till: the one made from its till number, and the
+       one the earliest build made from the whole licence code. A console in a
+       drawer somewhere is still issuing the old shape, and a stop code that
+       fails because two files are a version apart is the worst possible time
+       to discover a version difference. */
+    const current = await proof(tillPart(request), "F");
+    const legacy = await proof(request, "F");
+    return offered === current || offered === legacy ? { kind: "freeze" } : null;
   }
 
   const days = Number(match[1]) as Duration;

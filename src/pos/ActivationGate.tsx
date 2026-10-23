@@ -22,7 +22,7 @@ import { KeyRound, Send } from "lucide-react";
 import { checkCode, randomPart, requestCode } from "../activation";
 import { usePos } from "./store";
 import { useT } from "./useT";
-import { whatsappNumber } from "./report";
+import { buildStamp, whatsappNumber } from "./report";
 import { Button, Field } from "./ui";
 
 const STATE_KEY = "coreos.pos.activation.v1";
@@ -332,6 +332,9 @@ export function LicencePanel() {
         </p>
         <p className="mt-1 text-[12px] leading-relaxed text-[#6b7490]">
           {t("licence.codeHint")}
+        </p>
+        <p dir="ltr" className="mt-2 font-mono text-[11.5px] text-[#4e576f]">
+          build {buildStamp()}
         </p>
         <p className="mt-2 text-[13px] text-[#98a0bb]">
           {t("licence.expires")}:{" "}

@@ -29,9 +29,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { GROUPS } from "./apps";
+import { buildStamp } from "../pos/report";
 import {
   describeDuration,
   freezeCode,
+  legacyFreezeCode,
   tillPart,
   unlockCode,
   type Duration,
@@ -271,6 +273,8 @@ function Security() {
   const [days, setDays] = useState<Duration>(30);
   const [shop, setShop] = useState("");
   const [code, setCode] = useState("");
+  /** The shape the first tablets understood, shown when it differs. */
+  const [legacy, setLegacy] = useState("");
   const [mode, setMode] = useState<"grant" | "freeze">("grant");
   const [copied, setCopied] = useState(false);
   const [rows, setRows] = useState<Issued[]>(loadRegister);
@@ -288,6 +292,11 @@ function Security() {
     const issued =
       mode === "freeze" ? await freezeCode(clean) : await unlockCode(clean, days);
     setCode(issued);
+    // Only computable from a full licence code, and only worth showing when a
+    // tablet is old enough to want it.
+    const older =
+      mode === "freeze" && isLicenceCode ? await legacyFreezeCode(clean) : "";
+    setLegacy(older && older !== issued ? older : "");
     setCopied(false);
     const row: Issued = {
       request: mode === "freeze" ? tillPart(clean) : clean,
@@ -335,6 +344,7 @@ function Security() {
               onChange={(event) => {
                 setRequest(event.target.value.toUpperCase());
                 setCode("");
+                setLegacy("");
               }}
               placeholder={mode === "freeze" ? "3NR-LET" : "3NR-LET-7K2Q"}
               className="h-[46px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 font-mono text-[17px] tracking-[0.1em] text-white outline-none placeholder:text-[#3a4460] focus:border-[#6c7bf0]"
@@ -364,6 +374,7 @@ function Security() {
             onClick={() => {
               setMode("grant");
               setCode("");
+              setLegacy("");
             }}
             className={`flex h-[44px] items-center justify-center gap-2 rounded-xl border text-[14px] font-semibold transition-colors ${
               mode === "grant"
@@ -378,6 +389,7 @@ function Security() {
             onClick={() => {
               setMode("freeze");
               setCode("");
+              setLegacy("");
             }}
             className={`flex h-[44px] items-center justify-center gap-2 rounded-xl border text-[14px] font-semibold transition-colors ${
               mode === "freeze"
@@ -457,6 +469,17 @@ function Security() {
               {copied ? <Check size={15} /> : <Copy size={15} />}
               {copied ? "Copied" : "Copy it"}
             </button>
+
+            {legacy ? (
+              <p className="mt-4 border-t border-[#2a1a22] pt-3 text-[12.5px] leading-relaxed text-[#f0a3b5]">
+                If their tablet is an older copy and refuses that code, send
+                this one instead:
+                <br />
+                <span className="mt-1 inline-block font-mono text-[16px] tracking-[0.1em] text-[#f0879d]">
+                  {legacy}
+                </span>
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>
@@ -580,6 +603,11 @@ function Security() {
         <br />
         Keep a copy of this file somewhere safe. Without it, no new tablet can
         be activated.
+        <br />
+        <br />
+        <span className="font-mono">Console build {buildStamp()}</span> — a
+        tablet's build is on its support report. If a code is refused and the
+        two are far apart, that is the first thing to check.
       </p>
     </div>
   );
