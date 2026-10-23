@@ -86,6 +86,20 @@ export function requestCode(tillId: string, nonce: string): string {
   return `${tillId}-${nonce}`;
 }
 
+/**
+ * The till's own name, out of whichever code someone has to hand.
+ *
+ * Two numbers live on a till and they look alike: the till number (`3NR-LET`),
+ * which is on the help screen and on every support report, and the licence
+ * code (`3NR-LET-7K2Q`), which is the till number plus a part that rotates.
+ * Whoever is on the phone will read out whichever they are looking at, so
+ * anything that only needs the till number takes either.
+ */
+export function tillPart(code: string): string {
+  const parts = code.trim().toUpperCase().split("-").filter(Boolean);
+  return parts.slice(0, 2).join("-");
+}
+
 async function proof(request: string, scope: string): Promise<string> {
   const bytes = await digest(`${SECRET}|${request.trim().toUpperCase()}|${scope}`);
   const body = fold(bytes, 8);
@@ -100,9 +114,21 @@ export async function unlockCode(
   return `${days}-${await proof(request, String(days))}`;
 }
 
-/** `F-XKM4-PQ7A`: shuts this one tablet, now. */
-export async function freezeCode(request: string): Promise<string> {
-  return `F-${await proof(request, "F")}`;
+/**
+ * `F-XKM4-PQ7A`: shuts this one tablet, now.
+ *
+ * Made from the till number alone, not the rotating licence code. A shop being
+ * stopped is usually a shop still working, and the number the office has for
+ * them — off a support report, or out of the register — is the till number. A
+ * stop code that only worked from a code the shop would have to go and read
+ * off a screen first is a stop code that does not get used.
+ *
+ * It can be typed more than once, which costs nothing: freezing a frozen
+ * tablet leaves it frozen. Unlock codes stay bound to the rotating licence
+ * code, because those have to be spendable.
+ */
+export async function freezeCode(anyCode: string): Promise<string> {
+  return `F-${await proof(tillPart(anyCode), "F")}`;
 }
 
 /** Checks a code against the request this till actually made. Returns what it
@@ -117,7 +143,9 @@ export async function checkCode(
   const offered = `${match[2]}-${match[3]}`;
 
   if (match[1] === "F") {
-    return (await proof(request, "F")) === offered ? { kind: "freeze" } : null;
+    return (await proof(tillPart(request), "F")) === offered
+      ? { kind: "freeze" }
+      : null;
   }
 
   const days = Number(match[1]) as Duration;

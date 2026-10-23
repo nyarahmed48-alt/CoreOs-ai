@@ -100,8 +100,20 @@ reaches an offline tablet on its own.
   issue another; the till is never told anything.
 - **A stop code.** `F-XXXX-XXXX`, made for one tablet. Typed into the till —
   on the locked screen or in Settings → Licence — it locks that tablet at
-  once, rotates the request so no old code works, and says plainly that CoreOs
-  stopped it rather than letting the shop think the till broke.
+  once, rotates the licence code so no old code works, and says plainly that
+  CoreOs stopped it rather than letting the shop think the till broke.
+
+**Two numbers, and which one each job takes.** A tablet's **till number**
+(`3NR-LET`) never changes: it is on the help screen, on every support report,
+and in the office's register. Its **licence code** (`3NR-LET-7K2Q`) is that
+number plus a part that rotates every time the till asks for a licence.
+
+Stopping a tablet takes **either** — the office is usually holding the till
+number off a support report, and a stop code that first required the shop to
+go and read a different number off a screen is a stop code nobody uses.
+Letting a tablet sell takes the **full licence code**, because an unlock has
+to be spendable: it is the rotation that stops last month's code opening the
+till again.
 
 A stop code they never type does nothing. That is the honest limit of an
 offline licence, and the reason Settings also shows every till its own code

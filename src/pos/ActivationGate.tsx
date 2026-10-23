@@ -330,6 +330,9 @@ export function LicencePanel() {
         <p dir="ltr" className="mt-1 font-mono text-[20px] tracking-[0.12em] text-white">
           {request}
         </p>
+        <p className="mt-1 text-[12px] leading-relaxed text-[#6b7490]">
+          {t("licence.codeHint")}
+        </p>
         <p className="mt-2 text-[13px] text-[#98a0bb]">
           {t("licence.expires")}:{" "}
           <span dir="ltr">

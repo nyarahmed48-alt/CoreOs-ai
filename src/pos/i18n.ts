@@ -281,7 +281,8 @@ const EN = {
   "licence.title": "Licence",
   "licence.hint":
     "This tablet works until the date below. Send the code to CoreOs before then and they will send back a new one.",
-  "licence.code": "This tablet's code",
+  "licence.code": "Licence code",
+  "licence.codeHint": "The first two parts are the till number. The whole code is what a new licence is made from.",
   "licence.expires": "Works until",
   "licence.never": "No expiry",
   "licence.daysLeft": "{n} days left",
@@ -602,7 +603,8 @@ const AR: Record<Key, string> = {
   "licence.title": "الاشتراك",
   "licence.hint":
     "هذا الجهاز يعمل حتى التاريخ أدناه. أرسل الرمز إلى CoreOs قبل ذلك ليرسلوا لك رمزاً جديداً.",
-  "licence.code": "رمز هذا الجهاز",
+  "licence.code": "رمز الاشتراك",
+  "licence.codeHint": "الجزءان الأولان هما رقم الصندوق. الرمز كاملاً هو ما يُصنع منه اشتراك جديد.",
   "licence.expires": "يعمل حتى",
   "licence.never": "بلا انتهاء",
   "licence.daysLeft": "باقي {n} يوم",
@@ -921,7 +923,8 @@ const CKB: Record<Key, string> = {
   "licence.title": "بەشداری",
   "licence.hint":
     "ئەم ئامێرە تا ئەو بەروارەی خوارەوە کار دەکات. پێش ئەو کاتە کۆدەکە بۆ CoreOs بنێرە و کۆدێکی نوێت بۆ دەنێرنەوە.",
-  "licence.code": "کۆدی ئەم ئامێرە",
+  "licence.code": "کۆدی بەشداری",
+  "licence.codeHint": "دوو بەشی یەکەم ژمارەی سندوقە. هەموو کۆدەکە ئەوەیە کە بەشداری نوێی لێ دروست دەکرێت.",
   "licence.expires": "کار دەکات تا",
   "licence.never": "بێ کۆتایی",
   "licence.daysLeft": "{n} ڕۆژ ماوە",

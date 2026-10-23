@@ -32,6 +32,7 @@ import { GROUPS } from "./apps";
 import {
   describeDuration,
   freezeCode,
+  tillPart,
   unlockCode,
   type Duration,
 } from "../activation";
@@ -275,7 +276,13 @@ function Security() {
   const [rows, setRows] = useState<Issued[]>(loadRegister);
 
   const clean = request.trim().toUpperCase();
-  const looksRight = /^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{4}$/.test(clean);
+  /* Either number a shop might read out: the till number on its own, or the
+     full licence code off the locked screen. */
+  const isTillNumber = /^[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(clean);
+  const isLicenceCode = /^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{4}$/.test(clean);
+  // Stopping needs only the till number; letting them sell needs the rotating
+  // code, because an unlock has to be spendable.
+  const looksRight = mode === "freeze" ? isTillNumber || isLicenceCode : isLicenceCode;
 
   async function approve() {
     const issued =
@@ -283,7 +290,7 @@ function Security() {
     setCode(issued);
     setCopied(false);
     const row: Issued = {
-      request: clean,
+      request: mode === "freeze" ? tillPart(clean) : clean,
       shop: shop.trim(),
       code: issued,
       days,
@@ -321,7 +328,7 @@ function Security() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
-              Their request code
+              {mode === "freeze" ? "Their till number, or licence code" : "Their licence code"}
             </span>
             <input
               value={request}
@@ -329,9 +336,14 @@ function Security() {
                 setRequest(event.target.value.toUpperCase());
                 setCode("");
               }}
-              placeholder="3NR-LET-7K2Q"
+              placeholder={mode === "freeze" ? "3NR-LET" : "3NR-LET-7K2Q"}
               className="h-[46px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 font-mono text-[17px] tracking-[0.1em] text-white outline-none placeholder:text-[#3a4460] focus:border-[#6c7bf0]"
             />
+            <span className="mt-1.5 block text-[12px] text-[#6b7490]">
+              {mode === "freeze"
+                ? "Either works. The till number is on their support report and in Settings → Help."
+                : "The three-part code on their locked screen, or in Settings → Licence."}
+            </span>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
@@ -404,11 +416,13 @@ function Security() {
           className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-[#6c7bf0] text-[15.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4] disabled:bg-[#2b3350] disabled:text-[#6b7490]"
         >
           {mode === "freeze" ? <Snowflake size={17} /> : <KeyRound size={17} />}
-          {!looksRight
-            ? "Paste their code first"
-            : mode === "freeze"
+          {looksRight
+            ? mode === "freeze"
               ? "Make the stop code"
-              : "Make the unlock code"}
+              : "Make the unlock code"
+            : isTillNumber
+              ? "An unlock needs their three-part licence code"
+              : "Paste their code first"}
         </button>
 
         {code ? (
@@ -538,6 +552,14 @@ function Security() {
         and a part that changes each time. The unlock code you send back only
         fits that one request, so it cannot be passed to another tablet or used
         twice. When the date runs out the till locks itself and asks again.
+        <br />
+        <br />
+        The two numbers: a tablet's <em>till number</em> (3NR-LET) never
+        changes and is on its support report; its <em>licence code</em>
+        (3NR-LET-7K2Q) is that number plus a part that rotates every time it
+        asks. Stopping a tablet takes either. Letting one sell takes the full
+        licence code, because that is what makes an unlock spendable — it is
+        the rotation that stops last month's code opening it again.
         <br />
         <br />
         Two ways to stop a shop. The quiet one is to issue short licences and
