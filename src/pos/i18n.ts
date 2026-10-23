@@ -278,6 +278,8 @@ const EN = {
   "activate.frozenTitle": "This till has been stopped",
   "activate.frozenBody":
     "CoreOs has stopped this tablet. Call them to sort it out — your sales and products are untouched and come back when it is unlocked.",
+  "licence.outOfTouch":
+    "This tablet has not reached CoreOs for {n} days. Connect it to the internet, or ask them for a code.",
   "licence.title": "Licence",
   "licence.hint":
     "This tablet works until the date below. Send the code to CoreOs before then and they will send back a new one.",
@@ -600,6 +602,8 @@ const AR: Record<Key, string> = {
   "activate.frozenTitle": "تم إيقاف هذا الصندوق",
   "activate.frozenBody":
     "أوقفت CoreOs هذا الجهاز. اتصل بهم لمعالجة الأمر — مبيعاتك وموادك كما هي وتعود عند إعادة الفتح.",
+  "licence.outOfTouch":
+    "لم يتصل هذا الجهاز بـ CoreOs منذ {n} يوم. وصّله بالإنترنت أو اطلب منهم رمزاً.",
   "licence.title": "الاشتراك",
   "licence.hint":
     "هذا الجهاز يعمل حتى التاريخ أدناه. أرسل الرمز إلى CoreOs قبل ذلك ليرسلوا لك رمزاً جديداً.",
@@ -920,6 +924,8 @@ const CKB: Record<Key, string> = {
   "activate.frozenTitle": "ئەم سندوقە ڕاگیراوە",
   "activate.frozenBody":
     "CoreOs ئەم ئامێرەی ڕاگرتووە. پەیوەندییان پێوە بکە بۆ چارەسەرکردنی — فرۆشتن و کاڵاکانت وەک خۆیانن و دەگەڕێنەوە کاتێک کرایەوە.",
+  "licence.outOfTouch":
+    "ئەم ئامێرە {n} ڕۆژە پەیوەندی بە CoreOs نەکردووە. بیبەستەوە بە ئینتەرنێت، یان کۆدێکیان لێ داوا بکە.",
   "licence.title": "بەشداری",
   "licence.hint":
     "ئەم ئامێرە تا ئەو بەروارەی خوارەوە کار دەکات. پێش ئەو کاتە کۆدەکە بۆ CoreOs بنێرە و کۆدێکی نوێت بۆ دەنێرنەوە.",

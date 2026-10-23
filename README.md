@@ -90,6 +90,25 @@ and the expiry date would be decoration.
 Nothing behind the lock is touched. A lapsed till still holds every sale and
 product, and they come back the moment it is unlocked again.
 
+### Checking in with the office
+
+`src/pos/licenceServer.ts` is the other half of stopping a shop: when the
+tablet can reach the network it asks whether it may still sell, so a freeze
+lands without anyone picking up a phone. Three rules decide how it behaves,
+and they are the whole design:
+
+- **A shop that cannot reach us keeps selling.** The connection drops
+  constantly in these shops; a till that stops when the wifi does is worse
+  than no till, so an unanswered check changes nothing.
+- **But not for ever.** Every answer carries a grace period. A tablet that has
+  heard nothing for that many days locks itself — otherwise pulling the wifi
+  out would be how a frozen till keeps working.
+- **Answers are cached**, so a freeze survives a restart with no network, and
+  so does permission.
+
+`LICENCE_URL` is empty until the office has somewhere to run the service, and
+with it empty the till behaves exactly as it does today: typed codes only.
+
 ### Stopping a shop
 
 Two ways, and both need the shop on the other end of a phone, because nothing

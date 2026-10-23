@@ -21,7 +21,7 @@
  * is what `standalone` is for: there is no site to exit to there.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   Boxes,
@@ -41,7 +41,14 @@ import { SalesView } from "./SalesView";
 import { SettingsView } from "./SettingsView";
 import { DebtView } from "./DebtView";
 import { CloseShiftModal, LockScreen } from "./LockScreen";
-import { ActivationGate, daysLeft, useActivation } from "./ActivationGate";
+import {
+  ActivationGate,
+  daysLeft,
+  publishRemote,
+  useActivation,
+  useRemote,
+} from "./ActivationGate";
+import { standing, watchLicence } from "./licenceServer";
 
 /* Printing a receipt from inside a full-screen application means hiding the
    application, not opening a second window: a second window is a popup, and
@@ -93,6 +100,15 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const [tab, setTab] = useState<Tab>("register");
   const [closing, setClosing] = useState(false);
   const activation = useActivation();
+  const remote = useRemote();
+  const office = standing(remote);
+
+  /* Ask the office whether this tablet may still sell, now and every minute
+     after. A tablet with no network simply never hears back, and carries on
+     until its grace runs out — see licenceServer.ts. */
+  useEffect(() => {
+    return watchLicence(data.settings.tillId, publishRemote);
+  }, [data.settings.tillId]);
 
   /* The till locks only once the shop has people on it. A one-person market
      is never asked to sign in to its own counter. */
@@ -100,15 +116,23 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const isOwner = !staff || staff.role === "owner";
   const tabs = TABS.filter((entry) => !entry.ownerOnly || isOwner);
 
-  /* Before anything else. An unactivated tablet shows one screen and nothing
-     behind it — but it keeps every sale and product it already had. */
-  if (!activation.active) {
+  /* Before anything else. A tablet locked by a typed code or by the office
+     shows one screen and nothing behind it — but it keeps every sale and
+     product it already had. */
+  if (!activation.active || office.state !== "fine") {
     return (
       <div dir={dir} lang={lang}>
         <style>{PRINT_CSS}</style>
         <ActivationGate
           nonce={activation.state.nonce}
-          frozen={activation.state.frozen}
+          frozen={activation.state.frozen || office.state === "frozen"}
+          officeMessage={
+            office.state === "frozen"
+              ? office.message
+              : office.state === "stale"
+                ? t("licence.outOfTouch", { n: office.days })
+                : undefined
+          }
           onGranted={activation.grant}
           onFrozen={activation.freeze}
         />

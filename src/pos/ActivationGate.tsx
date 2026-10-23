@@ -20,6 +20,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { KeyRound, Send } from "lucide-react";
 import { checkCode, randomPart, requestCode } from "../activation";
+import { cached, standing, watchLicence, type Known } from "./licenceServer";
 import { usePos } from "./store";
 import { useT } from "./useT";
 import { buildStamp, whatsappNumber } from "./report";
@@ -104,6 +105,26 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/** What the office last said, if it has said anything. */
+let remote: Known = cached();
+const remoteListeners = new Set<() => void>();
+
+export function publishRemote(next: Known) {
+  remote = next;
+  for (const listener of remoteListeners) listener();
+}
+
+export function useRemote(): Known {
+  return useSyncExternalStore(
+    (listener) => {
+      remoteListeners.add(listener);
+      return () => remoteListeners.delete(listener);
+    },
+    () => remote,
+    () => remote,
+  );
+}
+
 export function useActivation() {
   const state = useSyncExternalStore(
     subscribe,
@@ -151,11 +172,14 @@ export function useActivation() {
 export function ActivationGate({
   nonce,
   frozen,
+  officeMessage,
   onGranted,
   onFrozen,
 }: {
   nonce: string;
   frozen?: boolean;
+  /** Why the office locked it, where the office said. */
+  officeMessage?: string;
   onGranted: (until: number | null) => void;
   onFrozen: () => void;
 }) {
@@ -207,7 +231,7 @@ export function ActivationGate({
           {frozen ? t("activate.frozenTitle") : t("activate.title")}
         </h1>
         <p className="mt-2 text-center text-[14px] leading-relaxed text-[#98a0bb]">
-          {frozen ? t("activate.frozenBody") : t("activate.body")}
+          {officeMessage ?? (frozen ? t("activate.frozenBody") : t("activate.body"))}
         </p>
 
         <div className="mt-6 rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-4 text-center">
