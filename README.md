@@ -17,6 +17,7 @@ people you already employ rather than replace them.
 | `/coreos-ai`  | CoreOs.ai — the open model lab, 20 codenamed models to test        |
 | `/contact`    | Contact page, all routes leading to coreosgmail.com@gmail.com      |
 | `/pos`        | The market till — a working point of sale (lazy-loaded, not in nav) |
+| `/hub`        | Private launcher for everything above, behind a PIN (not in nav)    |
 | `/manager`    | The internal SaaS manager console (lazy-loaded, not linked in nav) |
 
 Client-side routing is a small History API router (`src/site/router.tsx`); the
@@ -63,6 +64,27 @@ src/
     Receipt.tsx       the 72mm receipt, on screen, on paper and as text
     ui.tsx            buttons, fields and the modal
 ```
+
+## The launcher (`/hub`)
+
+One page that opens everything this project runs — the till, the manager, the
+site, the demo shops, the planning papers — so a phone on a counter reaches
+the right screen without anyone remembering a path. `src/hub/apps.ts` is the
+list; adding a route and forgetting to add it there is the failure mode, so it
+sits in a file of its own.
+
+It asks for a PIN on a keypad rather than a text field, because it is opened
+on a phone and a keyboard covers half the screen. The PIN is stored as a
+SHA-256 hash, held for the browser session only, and `/hub` is disallowed in
+`robots.txt`.
+
+**It is a curtain, not a lock, and the page says so at the bottom.** This is
+ordinary JavaScript served to anyone who asks for the address: developer
+tools, the bundle, or simply typing `/pos` all walk straight past it. What it
+buys is that a phone left on a table does not show the list to whoever picks
+it up, and that one address is not an index of everything we run. Anything
+needing real protection — `/admin` — keeps its own server-side token, which
+this does not replace.
 
 ## The till (`/pos`)
 
