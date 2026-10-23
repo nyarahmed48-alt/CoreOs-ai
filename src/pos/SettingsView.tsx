@@ -27,6 +27,7 @@ import { Button, Field, Modal } from "./ui";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
 import { useWriteError, saveStaff, setStaffActive, useSession, signOut } from "./store";
 import { buildReport, errorCount, whatsappNumber } from "./report";
+import { LicencePanel } from "./ActivationGate";
 import { formatDateTime } from "./i18n";
 import type { Staff } from "./types";
 
@@ -266,6 +267,10 @@ export function SettingsView() {
 
         <Section title={t("audit.title")} hint="">
           <AuditList />
+        </Section>
+
+        <Section title={t("licence.title")} hint={t("licence.hint")}>
+          <LicencePanel />
         </Section>
 
         <Section title={t("support.title")} hint={t("support.hint")}>

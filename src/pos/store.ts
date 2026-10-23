@@ -128,8 +128,16 @@ function read(key: string): string | null {
   }
 }
 
-let data: PosData = parseData(read(DATA_KEY));
+const stored = read(DATA_KEY);
+let data: PosData = parseData(stored);
 messageLang = data.settings.lang;
+
+/* A new install writes itself out immediately rather than waiting for the
+   first edit. Until it does, every launch builds a fresh shop — including a
+   fresh till number, and that number is what a shop reads down the phone to
+   be activated or to get help. A till whose name changes each time it opens
+   cannot be supported. */
+if (!stored) persist(DATA_KEY, data);
 let cart: CartLine[] = (() => {
   try {
     return (JSON.parse(read(CART_KEY) ?? "[]") ?? []) as CartLine[];

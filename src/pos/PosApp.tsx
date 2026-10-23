@@ -41,7 +41,7 @@ import { SalesView } from "./SalesView";
 import { SettingsView } from "./SettingsView";
 import { DebtView } from "./DebtView";
 import { CloseShiftModal, LockScreen } from "./LockScreen";
-import { ActivationGate, useActivation } from "./ActivationGate";
+import { ActivationGate, daysLeft, useActivation } from "./ActivationGate";
 
 /* Printing a receipt from inside a full-screen application means hiding the
    application, not opening a second window: a second window is a popup, and
@@ -106,7 +106,12 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     return (
       <div dir={dir} lang={lang}>
         <style>{PRINT_CSS}</style>
-        <ActivationGate nonce={activation.state.nonce} onGranted={activation.grant} />
+        <ActivationGate
+          nonce={activation.state.nonce}
+          frozen={activation.state.frozen}
+          onGranted={activation.grant}
+          onFrozen={activation.freeze}
+        />
       </div>
     );
   }
@@ -175,6 +180,20 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           )}
         </nav>
       </header>
+
+      {/* A till that locks mid-morning with no warning is a shop that cannot
+          sell and does not know why. */}
+      {(() => {
+        const left = daysLeft(activation.state.until);
+        if (left === null || left > 3) return null;
+        return (
+          <p className="pos-noprint shrink-0 bg-[#3a2c12] px-4 py-2 text-[13px] text-[#f0c078]">
+            {left <= 1
+              ? t("licence.warningLast")
+              : t("licence.warning", { n: left })}
+          </p>
+        );
+      })()}
 
       {writeError ? (
         <p className="pos-noprint shrink-0 bg-[#3a1622] px-4 py-2 text-[13px] text-[#ffc2ce]">

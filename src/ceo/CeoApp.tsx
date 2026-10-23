@@ -25,12 +25,13 @@ import {
   Lock,
   LockOpen,
   ShieldCheck,
+  Snowflake,
   Trash2,
 } from "lucide-react";
 import { GROUPS } from "./apps";
 import {
-  checkUnlock,
   describeDuration,
+  freezeCode,
   unlockCode,
   type Duration,
 } from "../activation";
@@ -55,6 +56,9 @@ interface Issued {
   days: Duration;
   at: string;
   expires: number | null;
+  /** Your own mark: when this one comes back asking, do not issue another.
+      It is a note to yourself — the till cannot be told anything from here. */
+  hold?: boolean;
 }
 
 function loadRegister(): Issued[] {
@@ -266,6 +270,7 @@ function Security() {
   const [days, setDays] = useState<Duration>(30);
   const [shop, setShop] = useState("");
   const [code, setCode] = useState("");
+  const [mode, setMode] = useState<"grant" | "freeze">("grant");
   const [copied, setCopied] = useState(false);
   const [rows, setRows] = useState<Issued[]>(loadRegister);
 
@@ -273,7 +278,8 @@ function Security() {
   const looksRight = /^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{4}$/.test(clean);
 
   async function approve() {
-    const issued = await unlockCode(clean, days);
+    const issued =
+      mode === "freeze" ? await freezeCode(clean) : await unlockCode(clean, days);
     setCode(issued);
     setCopied(false);
     const row: Issued = {
@@ -282,7 +288,9 @@ function Security() {
       code: issued,
       days,
       at: new Date().toISOString(),
-      expires: days === 0 ? null : Date.now() + days * 86400000,
+      expires:
+        mode === "freeze" ? Date.now() : days === 0 ? null : Date.now() + days * 86400000,
+      hold: mode === "freeze",
     };
     const next = [row, ...rows.filter((existing) => existing.request !== clean)];
     setRows(next);
@@ -338,7 +346,38 @@ function Security() {
           </label>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setMode("grant");
+              setCode("");
+            }}
+            className={`flex h-[44px] items-center justify-center gap-2 rounded-xl border text-[14px] font-semibold transition-colors ${
+              mode === "grant"
+                ? "border-[#6c7bf0] bg-[#6c7bf0]/15 text-white"
+                : "border-[#232b40] text-[#98a0bb] hover:border-[#3a4460]"
+            }`}
+          >
+            <KeyRound size={16} /> Let them sell
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("freeze");
+              setCode("");
+            }}
+            className={`flex h-[44px] items-center justify-center gap-2 rounded-xl border text-[14px] font-semibold transition-colors ${
+              mode === "freeze"
+                ? "border-[#5d3346] bg-[#180f16] text-[#f0879d]"
+                : "border-[#232b40] text-[#98a0bb] hover:border-[#3a4460]"
+            }`}
+          >
+            <Snowflake size={16} /> Stop this tablet
+          </button>
+        </div>
+
+        <div className={`mt-3 flex flex-wrap gap-2 ${mode === "freeze" ? "hidden" : ""}`}>
           {DURATIONS.map((option) => (
             <button
               key={option}
@@ -364,16 +403,36 @@ function Security() {
           onClick={() => void approve()}
           className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-[#6c7bf0] text-[15.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4] disabled:bg-[#2b3350] disabled:text-[#6b7490]"
         >
-          <KeyRound size={17} />
-          {looksRight ? "Make the unlock code" : "Paste their code first"}
+          {mode === "freeze" ? <Snowflake size={17} /> : <KeyRound size={17} />}
+          {!looksRight
+            ? "Paste their code first"
+            : mode === "freeze"
+              ? "Make the stop code"
+              : "Make the unlock code"}
         </button>
 
         {code ? (
-          <div className="mt-4 rounded-xl border border-[#1f4034] bg-[#0d2119] px-4 py-4 text-center">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#78c9a3]">
-              Send this back — {describeDuration(days).toLowerCase()}
+          <div
+            className={`mt-4 rounded-xl border px-4 py-4 text-center ${
+              mode === "freeze"
+                ? "border-[#3d2230] bg-[#180f16]"
+                : "border-[#1f4034] bg-[#0d2119]"
+            }`}
+          >
+            <p
+              className={`text-[12px] font-semibold uppercase tracking-[0.08em] ${
+                mode === "freeze" ? "text-[#f0a3b5]" : "text-[#78c9a3]"
+              }`}
+            >
+              {mode === "freeze"
+                ? "Send this to stop the tablet"
+                : `Send this back — ${describeDuration(days).toLowerCase()}`}
             </p>
-            <p className="mt-2 font-mono text-[26px] font-bold tracking-[0.12em] text-[#8ee7bb]">
+            <p
+              className={`mt-2 font-mono text-[26px] font-bold tracking-[0.12em] ${
+                mode === "freeze" ? "text-[#f0879d]" : "text-[#8ee7bb]"
+              }`}
+            >
               {code}
             </p>
             <button
@@ -403,8 +462,14 @@ function Security() {
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-[#141b2d] overflow-hidden rounded-xl border border-[#1e2740]">
-            {rows.map((row) => {
+            {[...rows]
+              .sort((a, b) => (a.expires ?? Infinity) - (b.expires ?? Infinity))
+              .map((row) => {
               const lapsed = row.expires !== null && row.expires < Date.now();
+              const days =
+                row.expires === null
+                  ? null
+                  : Math.ceil((row.expires - Date.now()) / 86400000);
               return (
                 <li
                   key={row.request + row.at}
@@ -416,9 +481,13 @@ function Security() {
                     </p>
                     <p className="mt-0.5 text-[12.5px] text-[#6b7490]">
                       {row.shop ? `${row.shop} · ` : ""}
-                      {row.expires === null
-                        ? "no expiry"
-                        : `${lapsed ? "lapsed" : "until"} ${new Date(row.expires).toLocaleDateString("en-GB")}`}
+                      {row.hold
+                        ? "stopped"
+                        : row.expires === null
+                          ? "no expiry"
+                          : lapsed
+                            ? `lapsed ${new Date(row.expires).toLocaleDateString("en-GB")}`
+                            : `${days} day${days === 1 ? "" : "s"} left · ${new Date(row.expires).toLocaleDateString("en-GB")}`}
                     </p>
                   </div>
                   <span
@@ -430,6 +499,21 @@ function Security() {
                   >
                     {row.code}
                   </span>
+                  <button
+                    type="button"
+                    aria-label={`${row.hold ? "Allow" : "Hold"} ${row.request}`}
+                    title="Mark this one not to renew"
+                    onClick={() => {
+                      const next = rows.map((other) =>
+                        other === row ? { ...other, hold: !other.hold } : other,
+                      );
+                      setRows(next);
+                      saveRegister(next);
+                    }}
+                    className={`shrink-0 rounded-lg p-2 ${row.hold ? "text-[#f0879d]" : "text-[#6b7490] hover:text-[#f0c078]"}`}
+                  >
+                    <Snowflake size={15} />
+                  </button>
                   <button
                     type="button"
                     aria-label={`Forget ${row.request}`}
@@ -454,6 +538,15 @@ function Security() {
         and a part that changes each time. The unlock code you send back only
         fits that one request, so it cannot be passed to another tablet or used
         twice. When the date runs out the till locks itself and asks again.
+        <br />
+        <br />
+        Two ways to stop a shop. The quiet one is to issue short licences and
+        not renew — the till locks itself on the date, and the snowflake on a
+        row is your own reminder not to issue another. The direct one is a stop
+        code, which locks that tablet the moment it is typed in. Both need the
+        shop to be on the other end of a phone: a stop code they never type does
+        nothing, and nothing reaches a tablet that does not want to be reached
+        until there is a server to reach it with.
         <br />
         <br />
         What it is not: the secret that makes these codes is inside both files,

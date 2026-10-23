@@ -90,6 +90,25 @@ and the expiry date would be decoration.
 Nothing behind the lock is touched. A lapsed till still holds every sale and
 product, and they come back the moment it is unlocked again.
 
+### Stopping a shop
+
+Two ways, and both need the shop on the other end of a phone, because nothing
+reaches an offline tablet on its own.
+
+- **Don't renew.** Issue short licences and the till locks itself on the date.
+  The snowflake against a row in the register is a note to yourself not to
+  issue another; the till is never told anything.
+- **A stop code.** `F-XXXX-XXXX`, made for one tablet. Typed into the till —
+  on the locked screen or in Settings → Licence — it locks that tablet at
+  once, rotates the request so no old code works, and says plainly that CoreOs
+  stopped it rather than letting the shop think the till broke.
+
+A stop code they never type does nothing. That is the honest limit of an
+offline licence, and the reason Settings also shows every till its own code
+and expiry date: a shop that can see it is coming can ask before it happens,
+and a till that locks mid-morning with no warning is a shop that cannot sell
+and does not know why. The last three days carry a banner across the top.
+
 **What this is worth, honestly.** The secret that makes the codes is compiled
 into both files, so anyone willing to pull the app apart can mint their own.
 It stops a shop copying the till onto a second tablet, or carrying on after

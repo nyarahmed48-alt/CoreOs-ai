@@ -33,6 +33,20 @@ const SECRET = "coreos-activation-2026-till";
 
 export type Duration = 0 | 7 | 30 | 90 | 365;
 
+/**
+ * What a code does when it is typed in.
+ *
+ * `grant` opens the till for a while. `freeze` shuts it immediately and takes
+ * the current request with it, so the only way back is a new code from the
+ * office. A freeze needs the shop to type it, which makes it a tool for
+ * handing a tablet back, moving a licence to a new one, or a shop that accepts
+ * it is over — not a weapon against one that refuses to cooperate. Nothing
+ * reaches a tablet that does not want to be reached without a server.
+ */
+export type Verdict =
+  | { kind: "grant"; until: number | null }
+  | { kind: "freeze" };
+
 function fold(bytes: Uint8Array, length: number): string {
   let out = "";
   for (let i = 0; i < length; i++) {
@@ -72,39 +86,46 @@ export function requestCode(tillId: string, nonce: string): string {
   return `${tillId}-${nonce}`;
 }
 
+async function proof(request: string, scope: string): Promise<string> {
+  const bytes = await digest(`${SECRET}|${request.trim().toUpperCase()}|${scope}`);
+  const body = fold(bytes, 8);
+  return `${body.slice(0, 4)}-${body.slice(4)}`;
+}
+
 /** `30-XKM4-PQ7A`: how many days it buys, then the proof. */
 export async function unlockCode(
   request: string,
   days: Duration,
 ): Promise<string> {
-  const bytes = await digest(`${SECRET}|${request.trim().toUpperCase()}|${days}`);
-  const body = fold(bytes, 8);
-  return `${days}-${body.slice(0, 4)}-${body.slice(4)}`;
+  return `${days}-${await proof(request, String(days))}`;
 }
 
-export interface Granted {
-  /** Milliseconds since the epoch, or null for a code that never expires. */
-  until: number | null;
+/** `F-XKM4-PQ7A`: shuts this one tablet, now. */
+export async function freezeCode(request: string): Promise<string> {
+  return `F-${await proof(request, "F")}`;
 }
 
 /** Checks a code against the request this till actually made. Returns what it
-    grants, or null if it grants nothing. */
-export async function checkUnlock(
+    does, or null if it does nothing. */
+export async function checkCode(
   request: string,
   code: string,
-): Promise<Granted | null> {
+): Promise<Verdict | null> {
   const cleaned = code.trim().toUpperCase().replace(/\s/g, "");
-  const match = cleaned.match(/^(\d+)-?([A-Z0-9]{4})-?([A-Z0-9]{4})$/);
+  const match = cleaned.match(/^(F|\d+)-?([A-Z0-9]{4})-?([A-Z0-9]{4})$/);
   if (!match) return null;
+  const offered = `${match[2]}-${match[3]}`;
+
+  if (match[1] === "F") {
+    return (await proof(request, "F")) === offered ? { kind: "freeze" } : null;
+  }
 
   const days = Number(match[1]) as Duration;
   if (![0, 7, 30, 90, 365].includes(days)) return null;
-
-  const expected = await unlockCode(request, days);
-  const offered = `${days}-${match[2]}-${match[3]}`;
-  if (offered !== expected) return null;
+  if ((await proof(request, String(days))) !== offered) return null;
 
   return {
+    kind: "grant",
     until: days === 0 ? null : Date.now() + days * 24 * 60 * 60 * 1000,
   };
 }
