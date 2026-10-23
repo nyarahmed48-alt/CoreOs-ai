@@ -19,14 +19,19 @@
 
 import { useSyncExternalStore } from "react";
 import type {
+  AuditEntry,
   CartLine,
   Category,
+  Customer,
+  DebtEntry,
   PaymentMethod,
   PosData,
   Product,
   Sale,
   SaleLine,
   Settings,
+  Shift,
+  Staff,
 } from "./types";
 import {
   defaultSettings,
@@ -61,6 +66,11 @@ function freshData(lang: Lang = FIRST_LANG): PosData {
     categories: seedCategories(lang),
     products: seedProducts(lang),
     sales: [],
+    staff: [],
+    shifts: [],
+    audit: [],
+    customers: [],
+    debts: [],
   };
 }
 
@@ -78,6 +88,12 @@ function parseData(raw: string | null): PosData {
       categories: parsed.categories ?? [],
       products: parsed.products ?? [],
       sales: parsed.sales ?? [],
+      // Added after the first tills shipped; an older file simply has none.
+      staff: parsed.staff ?? [],
+      shifts: parsed.shifts ?? [],
+      audit: parsed.audit ?? [],
+      customers: parsed.customers ?? [],
+      debts: parsed.debts ?? [],
     };
   } catch {
     return freshData();
@@ -367,8 +383,12 @@ export function completeSale(input: {
   discount: number;
   method: PaymentMethod;
   tendered: number;
+  /** Required when the method is `later`: a sale on the book is owed by a
+      name, or it is just money gone. */
+  customer?: Customer;
 }): Sale {
-  const { totals, discount, method, tendered } = input;
+  const { totals, discount, method, tendered, customer } = input;
+  const who = actor();
   const sale: Sale = {
     id: newId("s"),
     no: data.settings.nextSaleNo,
@@ -379,8 +399,13 @@ export function completeSale(input: {
     rounding: totals.rounding,
     total: totals.total,
     method,
-    tendered: method === "cash" ? tendered : totals.total,
+    tendered: method === "cash" ? tendered : method === "later" ? 0 : totals.total,
     change: method === "cash" ? Math.max(0, tendered - totals.total) : 0,
+    staffId: who.id,
+    staffName: who.name,
+    shiftId: session?.shiftId ?? "",
+    customerId: customer?.id,
+    customerName: customer?.name,
   };
 
   const sold = new Map<string, number>();
@@ -395,15 +420,42 @@ export function completeSale(input: {
       sold.has(p.id) ? { ...p, stock: p.stock - (sold.get(p.id) ?? 0) } : p,
     ),
     sales: [sale, ...data.sales],
+    // A sale on the book is a line in that customer's page, written in the
+    // same commit as the sale so the two can never disagree.
+    debts:
+      method === "later" && customer
+        ? [
+            {
+              id: newId("d"),
+              customerId: customer.id,
+              at: new Date().toISOString(),
+              kind: "owed" as const,
+              amount: totals.total,
+              saleId: sale.id,
+              saleNo: sale.no,
+              staffId: who.id,
+              staffName: who.name,
+              note: "",
+            },
+            ...data.debts,
+          ]
+        : data.debts,
   }));
   commitCart([]);
+  log(
+    method === "later" ? "debt" : "sale",
+    method === "later"
+      ? `#${sale.no} ${customer?.name ?? ""} ${sale.total}`
+      : `#${sale.no} ${sale.total} ${method}`,
+  );
+  if (discount > 0) log("discount", `#${sale.no} ${discount}`);
   return sale;
 }
 
 /** Voiding is the only correction a market till needs: the goods come back,
     the money goes back, and the receipt number stays in the book so the
     sequence has no holes. */
-export function voidSale(id: string) {
+export function voidSale(id: string, reason = "", approvedBy = "") {
   const sale = data.sales.find((s) => s.id === id);
   if (!sale || sale.voidedAt) return;
 
@@ -418,9 +470,19 @@ export function voidSale(id: string) {
       returned.has(p.id) ? { ...p, stock: p.stock + (returned.get(p.id) ?? 0) } : p,
     ),
     sales: data.sales.map((s) =>
-      s.id === id ? { ...s, voidedAt: new Date().toISOString() } : s,
+      s.id === id
+        ? {
+            ...s,
+            voidedAt: new Date().toISOString(),
+            voidedBy: approvedBy,
+            voidReason: reason,
+          }
+        : s,
     ),
+    // A voided sale on the book was never owed.
+    debts: data.debts.filter((entry) => entry.saleId !== id),
   });
+  log("void", `#${sale.no} ${sale.total} — ${reason}`, approvedBy);
 }
 
 /* ------------------------------------------------------------------- backup */
@@ -448,4 +510,277 @@ export function importData(raw: string): string | null {
 export function resetToSeed() {
   commit(freshData());
   commitCart([]);
+}
+
+/* ------------------------------------------------------------------- staff */
+
+/**
+ * PINs.
+ *
+ * Hashed with a salt apiece, through the browser's own crypto where it exists
+ * and a weaker fallback where it does not. Be clear about what this buys: it
+ * stops a cashier reading a colleague's PIN off the screen or out of a backup
+ * file. It does not stop whoever holds that file, and it is not meant to — the
+ * point of the PIN is that the log below can say who did a thing.
+ */
+export async function hashPin(pin: string, salt: string): Promise<string> {
+  const text = `${salt}:${pin}`;
+  try {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(text),
+      );
+      return [...new Uint8Array(digest)]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
+  } catch {
+    // Older WebView, or a page the browser does not consider secure.
+  }
+  let hash = 5381;
+  for (let i = 0; i < text.length; i++) hash = (hash * 33) ^ text.charCodeAt(i);
+  return `weak-${(hash >>> 0).toString(16)}`;
+}
+
+export function newSalt(): string {
+  return newId("s").slice(2);
+}
+
+export async function saveStaff(input: {
+  id?: string;
+  name: string;
+  role: Staff["role"];
+  pin?: string;
+}): Promise<void> {
+  const existing = input.id ? data.staff.find((s) => s.id === input.id) : undefined;
+  const salt = existing?.pinSalt ?? newSalt();
+  const pinHash = input.pin
+    ? await hashPin(input.pin, salt)
+    : (existing?.pinHash ?? "");
+  const person: Staff = {
+    id: existing?.id ?? newId("u"),
+    name: input.name.trim(),
+    pinHash,
+    pinSalt: salt,
+    role: input.role,
+    active: existing?.active ?? true,
+  };
+  const first = data.staff.length === 0;
+  commit({
+    ...data,
+    settings: { ...data.settings, staffLogin: true },
+    staff: existing
+      ? data.staff.map((s) => (s.id === person.id ? person : s))
+      : [...data.staff, person],
+  });
+
+  /* Adding the first person switches the till on to signing in. Whoever is
+     standing there has just set it up and is plainly entitled to be at it, so
+     they are signed in rather than locked out of the screen they are halfway
+     through — otherwise the till bars the owner before they can add their
+     cashier. The float is zero because nobody has counted the drawer; they can
+     close the shift and open it properly when they do. */
+  if (first && !session) startShift(person, 0);
+}
+
+export function setStaffActive(id: string, active: boolean) {
+  commit({
+    ...data,
+    staff: data.staff.map((s) => (s.id === id ? { ...s, active } : s)),
+  });
+}
+
+/** Who is at the counter. Kept beside the shop's data rather than inside it,
+    so signing in on one tablet does not travel in a backup to another. */
+const SESSION_KEY = "coreos.pos.session.v1";
+let session: { staffId: string; shiftId: string } | null = (() => {
+  try {
+    const raw = read(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as { staffId: string; shiftId: string }) : null;
+  } catch {
+    return null;
+  }
+})();
+
+function setSession(next: typeof session) {
+  session = next;
+  if (next) persist(SESSION_KEY, next);
+  else {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // Nothing to clear if storage is blocked; the session is memory-only.
+    }
+  }
+  notify();
+}
+
+export function useSession(): { staff: Staff | null; shift: Shift | null } {
+  const current = useSyncExternalStore(
+    subscribe,
+    () => session,
+    () => session,
+  );
+  const posData = usePos();
+  if (!current) return { staff: null, shift: null };
+  return {
+    staff: posData.staff.find((s) => s.id === current.staffId) ?? null,
+    shift: posData.shifts.find((s) => s.id === current.shiftId) ?? null,
+  };
+}
+
+/** The person a sale is recorded against. A shop that has not added anyone is
+    its owner working alone, and is not asked to sign in. */
+function actor(): { id: string; name: string } {
+  if (!session) return { id: "", name: "" };
+  const person = data.staff.find((s) => s.id === session?.staffId);
+  return { id: person?.id ?? "", name: person?.name ?? "" };
+}
+
+export async function checkPin(staffId: string, pin: string): Promise<boolean> {
+  const person = data.staff.find((s) => s.id === staffId);
+  if (!person || !person.active) return false;
+  return (await hashPin(pin, person.pinSalt)) === person.pinHash;
+}
+
+/** Any owner's PIN will do — approving a void is the owner's job, not one
+    particular owner's. */
+export async function findOwnerByPin(pin: string): Promise<Staff | null> {
+  for (const person of data.staff) {
+    if (person.role !== "owner" || !person.active) continue;
+    if ((await hashPin(pin, person.pinSalt)) === person.pinHash) return person;
+  }
+  return null;
+}
+
+export function log(
+  action: AuditEntry["action"],
+  detail: string,
+  approvedBy?: string,
+) {
+  const who = actor();
+  const entry: AuditEntry = {
+    id: newId("a"),
+    at: new Date().toISOString(),
+    staffId: who.id,
+    staffName: who.name,
+    action,
+    detail,
+    approvedBy,
+  };
+  commit({ ...data, audit: [entry, ...data.audit].slice(0, data.settings.auditKeep) });
+}
+
+function startShift(person: Staff, openingFloat: number) {
+  const shift: Shift = {
+    id: newId("sh"),
+    staffId: person.id,
+    staffName: person.name,
+    openedAt: new Date().toISOString(),
+    openingFloat,
+  };
+  commit({ ...data, shifts: [shift, ...data.shifts] });
+  setSession({ staffId: person.id, shiftId: shift.id });
+  log("shift-open", `float ${openingFloat}`);
+  log("signed-in", person.role);
+}
+
+/** Signing in opens a shift, because a cashier at the counter with no shift
+    open is a drawer nobody can count. */
+export async function signIn(staffId: string, pin: string, openingFloat: number) {
+  if (!(await checkPin(staffId, pin))) return false;
+  const person = data.staff.find((s) => s.id === staffId);
+  if (!person) return false;
+  startShift(person, openingFloat);
+  return true;
+}
+
+/** What the drawer should hold: the float, plus everything taken in cash on
+    this shift. Sales on the book are not in it — that is the point of them. */
+export function expectedCash(shiftId: string): number {
+  const shift = data.shifts.find((s) => s.id === shiftId);
+  if (!shift) return 0;
+  const taken = data.sales
+    .filter((sale) => sale.shiftId === shiftId && !sale.voidedAt && sale.method === "cash")
+    .reduce((sum, sale) => sum + sale.total, 0);
+  const collected = data.debts
+    .filter((entry) => entry.kind === "paid" && entry.staffId === shift.staffId)
+    .filter((entry) => entry.at >= shift.openedAt)
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  return shift.openingFloat + taken + collected;
+}
+
+export function closeShift(countedCash: number) {
+  if (!session) return;
+  const shiftId = session.shiftId;
+  const expected = expectedCash(shiftId);
+  commit({
+    ...data,
+    shifts: data.shifts.map((shift) =>
+      shift.id === shiftId
+        ? { ...shift, closedAt: new Date().toISOString(), countedCash, expectedCash: expected }
+        : shift,
+    ),
+  });
+  log("shift-close", `counted ${countedCash}, expected ${expected}`);
+  setSession(null);
+}
+
+export function signOut() {
+  setSession(null);
+}
+
+/* ------------------------------------------------------------- debt book */
+
+export function saveCustomer(input: { id?: string; name: string; phone: string }): Customer {
+  const existing = input.id ? data.customers.find((c) => c.id === input.id) : undefined;
+  const customer: Customer = {
+    id: existing?.id ?? newId("c"),
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+  };
+  commit({
+    ...data,
+    customers: existing
+      ? data.customers.map((c) => (c.id === customer.id ? customer : c))
+      : [...data.customers, customer],
+  });
+  return customer;
+}
+
+export function balanceOf(posData: PosData, customerId: string): number {
+  return posData.debts
+    .filter((entry) => entry.customerId === customerId)
+    .reduce(
+      (sum, entry) => sum + (entry.kind === "owed" ? entry.amount : -entry.amount),
+      0,
+    );
+}
+
+export function totalOwed(posData: PosData): number {
+  return posData.customers.reduce(
+    (sum, customer) => sum + Math.max(0, balanceOf(posData, customer.id)),
+    0,
+  );
+}
+
+/** Money against a tab. Cash in hand, so it belongs to the drawer count as
+    much as a sale does. */
+export function recordPayment(customerId: string, amount: number, note = "") {
+  const who = actor();
+  const customer = data.customers.find((c) => c.id === customerId);
+  const entry: DebtEntry = {
+    id: newId("d"),
+    customerId,
+    at: new Date().toISOString(),
+    kind: "paid",
+    amount,
+    staffId: who.id,
+    staffName: who.name,
+    note,
+  };
+  commit({ ...data, debts: [entry, ...data.debts] });
+  log("payment", `${customer?.name ?? customerId} paid ${amount}`);
 }

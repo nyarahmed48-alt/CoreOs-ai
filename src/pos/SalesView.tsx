@@ -15,6 +15,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePos, voidSale } from "./store";
+import { ApprovalPrompt } from "./ApprovalPrompt";
 import { useT } from "./useT";
 import { formatDay, formatTime, type Lang } from "./i18n";
 import { Button, Empty, Modal } from "./ui";
@@ -75,7 +76,14 @@ export function SalesView() {
     return {
       sales: counted.length,
       voided: sales.length - counted.length,
-      revenue: counted.reduce((sum, sale) => sum + sale.total, 0),
+      // What was actually taken. Goods that left on the book are owed, not
+      // earned, so they are counted on their own line below.
+      revenue: counted
+        .filter((sale) => sale.method !== "later")
+        .reduce((sum, sale) => sum + sale.total, 0),
+      onBook: counted
+        .filter((sale) => sale.method === "later")
+        .reduce((sum, sale) => sum + sale.total, 0),
       cash: counted
         .filter((sale) => sale.method === "cash")
         .reduce((sum, sale) => sum + sale.total, 0),
@@ -129,6 +137,9 @@ export function SalesView() {
           <Stat label={t("sales.count")} value={String(report.sales)} />
           <Stat label={t("sales.cash")} value={m(report.cash)} />
           <Stat label={t("sales.card")} value={m(report.card)} />
+          {report.onBook > 0 ? (
+            <Stat label={t("sales.onBook")} value={m(report.onBook)} />
+          ) : null}
         </div>
 
         {report.top.length > 0 ? (
@@ -175,7 +186,11 @@ export function SalesView() {
                           time: formatTime(sale.at),
                           n: sale.lines.reduce((n, line) => n + line.qty, 0),
                           method: t(
-                            sale.method === "cash" ? "sales.cash" : "sales.card",
+                            sale.method === "cash"
+                              ? "sales.cash"
+                              : sale.method === "card"
+                                ? "sales.card"
+                                : "sales.later",
                           ),
                         })}
                       </p>
@@ -235,6 +250,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   const data = usePos();
   const { t, m } = useT();
   const [confirming, setConfirming] = useState(false);
+  const [approving, setApproving] = useState(false);
   // Read the sale back from the store so the receipt shows the void the moment
   // it is made, rather than the copy this modal opened with.
   const current = data.sales.find((s) => s.id === sale.id) ?? sale;
@@ -253,8 +269,8 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
                 variant="danger"
                 className="flex-1"
                 onClick={() => {
-                  voidSale(current.id);
                   setConfirming(false);
+                  setApproving(true);
                 }}
               >
                 {t("sales.voidButton", { no: current.no })}
@@ -273,6 +289,17 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             {t("sales.void")}
           </Button>
         )
+      ) : null}
+
+      {approving ? (
+        <ApprovalPrompt
+          title={t("sales.voidButton", { no: current.no })}
+          onClose={() => setApproving(false)}
+          onApproved={(approvedBy, reason) => {
+            voidSale(current.id, reason, approvedBy);
+            setApproving(false);
+          }}
+        />
       ) : null}
     </Modal>
   );

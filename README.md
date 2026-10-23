@@ -169,6 +169,42 @@ The till is not linked from the nav — it is opened directly on the shop's
 machine — and it is a lazy chunk, so a visitor reading the website never
 downloads it.
 
+### Cashiers, and the drawer count
+
+A shop with nobody on its staff list never sees a login: a one-person market
+will not type a PIN to sell its own bread. Add a second person and the till
+changes character.
+
+- **PINs** are hashed with a salt apiece. Be clear what that buys: it stops a
+  cashier reading a colleague's PIN off the screen or out of a backup file. It
+  does not stop whoever holds that file, and it is not meant to — the point of
+  the PIN is that the log can say who did a thing.
+- **Voids and discounts cost an owner's PIN and a sentence.** Neither is wrong
+  — a customer changes their mind, a box is dented — so the answer is not to
+  forbid them but to make each one carry a name and a reason. The reason is the
+  part an owner actually reads at the end of the week.
+- **Signing in opens a shift** with whatever is in the drawer. Closing it asks
+  for a count and shows it against what the till expected: float, plus cash
+  taken, plus money collected against the book. That difference is the number
+  this whole feature exists to produce.
+- **Settings is owner-only**, so a cashier cannot quietly change a price.
+
+Whoever adds the first owner is signed in on the spot — otherwise the till
+bars them from the screen they are halfway through setting up.
+
+### الدفتر — the book
+
+Neighbourhood shops sell on credit and keep it in a notebook. This is the same
+thing with the arithmetic done and every line stamped with who wrote it:
+**On the book** is a payment method at checkout, it demands a name, and the
+goods leave while the money does not.
+
+It answers the three questions a shopkeeper asks — who owes me, how much, and
+what have they paid — and nothing else. No accounts, no journals. Two
+consequences worth knowing: a sale on the book is **not** in the day's
+takings, because it was not taken; and money collected against a tab **is** in
+the drawer count, because it is cash in hand.
+
 ### Supporting fifty shops
 
 A shopkeeper cannot be asked to read a browser version down the phone, so the

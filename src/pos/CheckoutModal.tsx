@@ -13,8 +13,10 @@
  */
 
 import { useEffect, useState } from "react";
-import { Banknote, CreditCard } from "lucide-react";
-import { completeSale, usePos, type CartTotals } from "./store";
+import { Banknote, BookUser, CreditCard } from "lucide-react";
+import { balanceOf, completeSale, usePos, type CartTotals } from "./store";
+import { CustomerForm } from "./DebtView";
+import type { Customer } from "./types";
 import { IQD_NOTES, amount, parseAmount } from "./money";
 import { Button, Modal } from "./ui";
 import { useT } from "./useT";
@@ -40,6 +42,10 @@ export function CheckoutModal({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [tendered, setTendered] = useState(0);
   const [sale, setSale] = useState<Sale | null>(null);
+  /** Who is taking it on the book, when the method is `later`. */
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
 
   const [misScan, setMisScan] = useState("");
 
@@ -52,7 +58,10 @@ export function CheckoutModal({
     onScan: () => setMisScan(t("pay.misScan")),
   });
 
-  const short = method === "cash" && tendered < totals.total;
+  // A sale on the book needs a name against it, or it is just money gone.
+  const short =
+    (method === "cash" && tendered < totals.total) ||
+    (method === "later" && !customer);
   const change = Math.max(0, tendered - totals.total);
 
   useEffect(() => {
@@ -67,7 +76,9 @@ export function CheckoutModal({
   });
 
   function charge() {
-    setSale(completeSale({ totals, discount, method, tendered }));
+    setSale(
+      completeSale({ totals, discount, method, tendered, customer: customer ?? undefined }),
+    );
   }
 
   if (sale) {
@@ -112,7 +123,7 @@ export function CheckoutModal({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2">
         <MethodButton
           active={method === "cash"}
           onClick={() => setMethod("cash")}
@@ -125,7 +136,84 @@ export function CheckoutModal({
           icon={<CreditCard size={17} />}
           label={t("pay.card")}
         />
+        <MethodButton
+          active={method === "later"}
+          onClick={() => setMethod("later")}
+          icon={<BookUser size={17} />}
+          label={t("pay.later")}
+        />
       </div>
+
+      {method === "later" ? (
+        <div className="mt-4">
+          <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
+            {t("pay.laterWho")}
+          </p>
+          {customer ? (
+            <button
+              type="button"
+              onClick={() => setCustomer(null)}
+              className="flex w-full items-center justify-between rounded-xl border border-[#6c7bf0] bg-[#6c7bf0]/15 px-4 py-3 text-start"
+            >
+              <span className="text-[15px] font-semibold text-white">
+                {customer.name}
+              </span>
+              <span className="text-[13px] text-[#c6ccff]">
+                {t("debt.balance", { amount: m(balanceOf(data, customer.id)) })}
+              </span>
+            </button>
+          ) : (
+            <>
+              <input
+                value={customerQuery}
+                onChange={(event) => setCustomerQuery(event.target.value)}
+                placeholder={t("debt.search")}
+                aria-label={t("debt.search")}
+                className="h-[42px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
+              />
+              <ul className="mt-2 max-h-40 divide-y divide-[#141b2d] overflow-y-auto rounded-xl border border-[#1e2740]">
+                {data.customers
+                  .filter((person) => {
+                    const needle = customerQuery.trim().toLowerCase();
+                    return (
+                      !needle ||
+                      person.name.toLowerCase().includes(needle) ||
+                      person.phone.includes(needle)
+                    );
+                  })
+                  .slice(0, 20)
+                  .map((person) => (
+                    <li key={person.id}>
+                      <button
+                        type="button"
+                        onClick={() => setCustomer(person)}
+                        className="flex w-full items-center justify-between bg-[#0b1120] px-3 py-2.5 text-start hover:bg-[#111830]"
+                      >
+                        <span className="text-[14px] text-[#e7eaf6]">{person.name}</span>
+                        <span className="text-[12.5px] text-[#7e87a5]">
+                          {m(balanceOf(data, person.id))}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+              <Button className="mt-2 w-full" onClick={() => setAddingCustomer(true)}>
+                {t("debt.newCustomer")}
+              </Button>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {addingCustomer ? (
+        <CustomerForm
+          onClose={() => setAddingCustomer(false)}
+          onSaved={(saved) => {
+            setCustomer(saved);
+            setAddingCustomer(false);
+          }}
+        />
+      ) : null}
 
       {method === "cash" ? (
         <div className="mt-4">
@@ -211,9 +299,11 @@ export function CheckoutModal({
         disabled={short}
         onClick={charge}
       >
-        {short
-          ? t("pay.short", { amount: m(totals.total - tendered) })
-          : t("pay.complete", { amount: m(totals.total) })}
+        {method === "later" && !customer
+          ? t("debt.needsCustomer")
+          : short
+            ? t("pay.short", { amount: m(totals.total - tendered) })
+            : t("pay.complete", { amount: m(totals.total) })}
       </Button>
     </Modal>
   );

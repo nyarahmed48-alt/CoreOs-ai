@@ -22,16 +22,25 @@
  */
 
 import { useState } from "react";
-import { BarChart3, Boxes, Settings as SettingsIcon, ShoppingCart } from "lucide-react";
+import {
+  BarChart3,
+  Boxes,
+  BookUser,
+  LogOut,
+  Settings as SettingsIcon,
+  ShoppingCart,
+} from "lucide-react";
 import { Link } from "../site/router";
-import { setLanguage, usePos, useWriteError } from "./store";
+import { setLanguage, usePos, useSession, useWriteError } from "./store";
 import { watchForErrors } from "./report";
 import { useT } from "./useT";
-import { LANGS } from "./i18n";
+import { LANGS, formatTime } from "./i18n";
 import { RegisterView } from "./RegisterView";
 import { ProductsView } from "./ProductsView";
 import { SalesView } from "./SalesView";
 import { SettingsView } from "./SettingsView";
+import { DebtView } from "./DebtView";
+import { CloseShiftModal, LockScreen } from "./LockScreen";
 
 /* Printing a receipt from inside a full-screen application means hiding the
    application, not opening a second window: a second window is a popup, and
@@ -59,20 +68,35 @@ const PRINT_CSS = `
    report the shop sends afterwards. */
 watchForErrors();
 
-type Tab = "register" | "products" | "sales" | "settings";
+type Tab = "register" | "products" | "debt" | "sales" | "settings";
 
-const TABS: { id: Tab; label: "app.till" | "app.products" | "app.sales" | "app.settings"; icon: typeof ShoppingCart }[] = [
+const TABS: {
+  id: Tab;
+  label: "app.till" | "app.products" | "debt.title" | "app.sales" | "app.settings";
+  icon: typeof ShoppingCart;
+  /** Screens a cashier has no business in. */
+  ownerOnly?: boolean;
+}[] = [
   { id: "register", label: "app.till", icon: ShoppingCart },
   { id: "products", label: "app.products", icon: Boxes },
+  { id: "debt", label: "debt.title", icon: BookUser },
   { id: "sales", label: "app.sales", icon: BarChart3 },
-  { id: "settings", label: "app.settings", icon: SettingsIcon },
+  { id: "settings", label: "app.settings", icon: SettingsIcon, ownerOnly: true },
 ];
 
 export default function PosApp({ standalone = false }: { standalone?: boolean }) {
   const data = usePos();
   const writeError = useWriteError();
   const { t, lang, dir } = useT();
+  const { staff, shift } = useSession();
   const [tab, setTab] = useState<Tab>("register");
+  const [closing, setClosing] = useState(false);
+
+  /* The till locks only once the shop has people on it. A one-person market
+     is never asked to sign in to its own counter. */
+  const locked = data.settings.staffLogin && data.staff.some((p) => p.active) && !staff;
+  const isOwner = !staff || staff.role === "owner";
+  const tabs = TABS.filter((entry) => !entry.ownerOnly || isOwner);
 
   return (
     <div
@@ -109,7 +133,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
         </div>
 
         <nav className="flex items-center gap-1 overflow-x-auto">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -145,12 +169,39 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
         </p>
       ) : null}
 
+      {shift ? (
+        <div className="pos-noprint flex shrink-0 items-center justify-between gap-3 border-b border-[#141b2d] bg-[#080d18] px-3 py-1.5 text-[12.5px] text-[#7e87a5] sm:px-4">
+          <span className="truncate">
+            {t("shift.openedBy", {
+              name: shift.staffName,
+              time: formatTime(shift.openedAt),
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setClosing(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-[#8b96ff] hover:text-white"
+          >
+            <LogOut size={14} /> {t("shift.close")}
+          </button>
+        </div>
+      ) : null}
+
       <main className="flex min-h-0 flex-1 flex-col">
-        {tab === "register" ? <RegisterView /> : null}
-        {tab === "products" ? <ProductsView /> : null}
-        {tab === "sales" ? <SalesView /> : null}
-        {tab === "settings" ? <SettingsView /> : null}
+        {locked ? (
+          <LockScreen />
+        ) : (
+          <>
+            {tab === "register" ? <RegisterView /> : null}
+            {tab === "products" ? <ProductsView /> : null}
+            {tab === "debt" ? <DebtView /> : null}
+            {tab === "sales" ? <SalesView /> : null}
+            {tab === "settings" && isOwner ? <SettingsView /> : null}
+          </>
+        )}
       </main>
+
+      {closing ? <CloseShiftModal onClose={() => setClosing(false)} /> : null}
     </div>
   );
 }

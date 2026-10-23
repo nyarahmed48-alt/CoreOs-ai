@@ -25,8 +25,10 @@ import { useT } from "./useT";
 import { LANGS } from "./i18n";
 import { Button, Field, Modal } from "./ui";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
-import { useWriteError } from "./store";
+import { useWriteError, saveStaff, setStaffActive, useSession, signOut } from "./store";
 import { buildReport, errorCount, whatsappNumber } from "./report";
+import { formatDateTime } from "./i18n";
+import type { Staff } from "./types";
 
 export function SettingsView() {
   const data = usePos();
@@ -258,6 +260,14 @@ export function SettingsView() {
           </p>
         </Section>
 
+        <Section title={t("staff.title")} hint={t("staff.hint")}>
+          <StaffList />
+        </Section>
+
+        <Section title={t("audit.title")} hint="">
+          <AuditList />
+        </Section>
+
         <Section title={t("support.title")} hint={t("support.hint")}>
           <div className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3">
             <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
@@ -387,5 +397,210 @@ function Section({
       <p className="mt-1 text-[13px] leading-relaxed text-[#7e87a5]">{hint}</p>
       <div className="mt-4 space-y-3.5">{children}</div>
     </section>
+  );
+}
+
+/**
+ * The people who work the counter.
+ *
+ * Adding the first person switches the till from "anyone holding it" to "sign
+ * in to sell", which is a bigger change than it looks — so the till asks for
+ * an owner first: without one, nobody could ever approve a void.
+ */
+function StaffList() {
+  const data = usePos();
+  const { t } = useT();
+  const { staff: signedIn } = useSession();
+  const [editing, setEditing] = useState<Staff | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <>
+      <ul className="divide-y divide-[#141b2d] overflow-hidden rounded-xl border border-[#1e2740]">
+        {data.staff.length === 0 ? (
+          <li className="px-4 py-5 text-center text-[13.5px] text-[#6b7490]">
+            {t("lock.noStaff")}
+          </li>
+        ) : (
+          data.staff.map((person) => (
+            <li key={person.id} className="flex items-center gap-3 bg-[#0b1120] px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14.5px] font-medium text-[#e7eaf6]">
+                  {person.name}
+                  {person.active ? "" : ` · ${t("staff.removed")}`}
+                </p>
+                <p className="mt-0.5 text-[12.5px] text-[#6b7490]">
+                  {t(person.role === "owner" ? "staff.owner" : "staff.cashier")}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                className="min-h-[36px] shrink-0 px-3"
+                onClick={() => setEditing(person)}
+              >
+                {t("products.edit")}
+              </Button>
+              <Button
+                variant="quiet"
+                className="min-h-[36px] shrink-0 px-2.5"
+                onClick={() => setStaffActive(person.id, !person.active)}
+              >
+                {person.active ? t("staff.remove") : t("staff.restore")}
+              </Button>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" onClick={() => setAdding(true)}>
+          {t("staff.add")}
+        </Button>
+        {signedIn ? (
+          <Button onClick={signOut}>{t("shift.signOut")}</Button>
+        ) : null}
+      </div>
+
+      {adding || editing ? (
+        <StaffForm
+          person={editing}
+          mustBeOwner={data.staff.length === 0}
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function StaffForm({
+  person,
+  mustBeOwner,
+  onClose,
+}: {
+  person: Staff | null;
+  mustBeOwner: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useT();
+  const [name, setName] = useState(person?.name ?? "");
+  const [pin, setPin] = useState("");
+  const [role, setRole] = useState<Staff["role"]>(
+    person?.role ?? (mustBeOwner ? "owner" : "cashier"),
+  );
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!name.trim()) {
+      setError(t("staff.needsName"));
+      return;
+    }
+    if (!person && pin.length < 4) {
+      setError(t("staff.needsPin"));
+      return;
+    }
+    if (mustBeOwner && role !== "owner") {
+      setError(t("staff.needsOwner"));
+      return;
+    }
+    setBusy(true);
+    await saveStaff({ id: person?.id, name, role, pin: pin || undefined });
+    setBusy(false);
+    onClose();
+  }
+
+  return (
+    <Modal title={person ? person.name : t("staff.add")} onClose={onClose}>
+      <div className="space-y-3">
+        <Field
+          label={t("staff.name")}
+          autoFocus
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setError("");
+          }}
+        />
+        <Field
+          label={t("staff.pin")}
+          type="password"
+          inputMode="numeric"
+          value={pin}
+          placeholder={person ? t("staff.pinKeep") : ""}
+          onChange={(event) => {
+            setPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 8));
+            setError("");
+          }}
+        />
+        <div>
+          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
+            {t("staff.role")}
+          </span>
+          <div className="grid gap-2">
+            {(["owner", "cashier"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setRole(option)}
+                className={`rounded-xl border px-3 py-2.5 text-start text-[13.5px] transition-colors ${
+                  role === option
+                    ? "border-[#6c7bf0] bg-[#6c7bf0]/15 text-white"
+                    : "border-[#232b40] text-[#98a0bb] hover:border-[#3a4460]"
+                }`}
+              >
+                {t(option === "owner" ? "staff.owner" : "staff.cashier")}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error ? <p className="mt-3 text-[13.5px] text-[#f0879d]">{error}</p> : null}
+
+      <Button
+        variant="primary"
+        className="mt-4 h-[48px] w-full"
+        disabled={busy}
+        onClick={() => void save()}
+      >
+        {t("editor.save")}
+      </Button>
+    </Modal>
+  );
+}
+
+/** Everything that moved money or stock, newest first. */
+function AuditList() {
+  const data = usePos();
+  const { t } = useT();
+  const entries = data.audit.slice(0, 60);
+
+  if (entries.length === 0) {
+    return <p className="text-[13.5px] text-[#6b7490]">{t("audit.none")}</p>;
+  }
+
+  return (
+    <ul className="max-h-80 divide-y divide-[#141b2d] overflow-y-auto rounded-xl border border-[#1e2740]">
+      {entries.map((entry) => (
+        <li key={entry.id} className="bg-[#0b1120] px-4 py-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[13.5px] font-medium text-[#e7eaf6]">
+              {t(`audit.${entry.action}` as Parameters<typeof t>[0])}
+              {entry.staffName ? ` · ${entry.staffName}` : ""}
+            </span>
+            <span dir="ltr" className="shrink-0 text-[11.5px] text-[#6b7490]">
+              {formatDateTime(entry.at)}
+            </span>
+          </div>
+          <p dir="auto" className="mt-0.5 text-[12.5px] text-[#7e87a5]">
+            {entry.detail}
+            {entry.approvedBy ? ` · ${t("audit.approved", { name: entry.approvedBy })}` : ""}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -46,7 +46,9 @@ export interface SaleLine {
   qty: number;
 }
 
-export type PaymentMethod = "cash" | "card";
+/** `later` is the debt book: the goods leave, the money does not, and the
+    sale is owed by a named customer rather than taken. */
+export type PaymentMethod = "cash" | "card" | "later";
 
 export interface Sale {
   id: string;
@@ -67,9 +69,102 @@ export interface Sale {
   /** Cash handed over. Equals the total for a card sale. */
   tendered: number;
   change: number;
+  /** Who rang it up. A copy of the name, not a reference: the log has to read
+      correctly after a cashier leaves and is renamed or removed. */
+  staffId: string;
+  staffName: string;
+  /** The shift this sale belongs to, so a drawer can be counted against it. */
+  shiftId: string;
   /** Set when the sale is voided; the stock goes back on the shelf and the
       sale drops out of the day's totals but stays in the history. */
   voidedAt?: string;
+  /** Voiding asks who approved it and why — the two questions an owner has
+      when the day's takings are short. */
+  voidedBy?: string;
+  voidReason?: string;
+  /** For a sale on the book: who owes it. */
+  customerId?: string;
+  customerName?: string;
+}
+
+/**
+ * A person who works the counter.
+ *
+ * The PIN is kept as a hash with a salt. That is not real security — anyone
+ * holding the backup file can do as they please, and the shop's own owner can
+ * read everything — but it keeps a cashier from reading a colleague's PIN off
+ * the screen or out of an export, and it is what makes the log below mean
+ * something.
+ */
+export interface Staff {
+  id: string;
+  name: string;
+  pinHash: string;
+  pinSalt: string;
+  /** An owner may void, discount, change prices and open Settings. A cashier
+      may sell. */
+  role: "owner" | "cashier";
+  active: boolean;
+}
+
+/** What happened, who did it, and when. Written for the owner, not for us:
+    every entry here is something that moves money or stock. */
+export interface AuditEntry {
+  id: string;
+  at: string;
+  staffId: string;
+  staffName: string;
+  action:
+    | "signed-in"
+    | "sale"
+    | "void"
+    | "discount"
+    | "price"
+    | "shift-open"
+    | "shift-close"
+    | "debt"
+    | "payment";
+  /** Already-formatted detail: receipt numbers, amounts, product names. */
+  detail: string;
+  /** The owner who approved it, where approval was needed. */
+  approvedBy?: string;
+}
+
+/** One cashier's turn at the counter, opened with a float and closed with a
+    count. The difference between what the drawer holds and what the till
+    expected is the number this whole feature exists to produce. */
+export interface Shift {
+  id: string;
+  staffId: string;
+  staffName: string;
+  openedAt: string;
+  openingFloat: number;
+  closedAt?: string;
+  countedCash?: number;
+  expectedCash?: number;
+}
+
+/** A name in the debt book. */
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+}
+
+/** A line in one customer's page of the book: goods taken, or money paid. */
+export interface DebtEntry {
+  id: string;
+  customerId: string;
+  at: string;
+  kind: "owed" | "paid";
+  amount: number;
+  /** The sale that created it, for an owed line. */
+  saleId?: string;
+  saleNo?: number;
+  staffId: string;
+  staffName: string;
+  note: string;
 }
 
 export interface Settings {
@@ -93,6 +188,12 @@ export interface Settings {
   tillId: string;
   /** Where the "send report" button sends to. Set once, at setup. */
   supportPhone: string;
+  /** Off until the shop adds its first person, so a one-person shop is never
+      asked to sign in to its own till. */
+  staffLogin: boolean;
+  /** How much of the log to keep. Tablets are small and a busy counter writes
+      a lot of it. */
+  auditKeep: number;
   /** True while the shelf is still the sample one we shipped. It lets the
       sample products follow the language setting, and goes false for good the
       moment the shop sells something or edits anything — after that the names
@@ -106,6 +207,11 @@ export interface PosData {
   categories: Category[];
   products: Product[];
   sales: Sale[];
+  staff: Staff[];
+  shifts: Shift[];
+  audit: AuditEntry[];
+  customers: Customer[];
+  debts: DebtEntry[];
 }
 
 /** A cart line before it becomes a sale line. Holds the product id so price
