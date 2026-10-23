@@ -136,10 +136,38 @@ Settings exports a JSON backup and restores one.
   takings, but keeps its receipt number, so the book has no holes. Products are
   archived rather than deleted, so old receipts still read correctly.
 
-The till is English and left-to-right, pinned that way inside the Arabic-first
-site: it is the cashier-facing tool and was laid out for that. It is not linked
-from the nav — it is opened directly on the shop's machine — and it is a lazy
-chunk, so a visitor reading the website never downloads it.
+### Arabic, Kurdish and English
+
+The till opens in **Arabic**, because most of these counters are in Baghdad and
+a till that opens in English is a till somebody has to configure before they
+can sell anything. **Kurdish (Sorani)** is one press away for Slemani and
+Erbil, English for anyone else. The choice carries the receipts and the reports
+with it, and it is in the header as well as Settings — a cashier who cannot
+read the current language cannot be asked to find Settings to change it.
+
+- `src/pos/i18n.ts` — every string, in all three. One file, so the Arabic and
+  the Kurdish can be proofread in one sitting. The three tables are typed
+  against each other, so a missing translation is a build error rather than an
+  English word in the middle of an Arabic screen.
+- **Right-to-left is a `dir` flip**, not a second set of screens: the till was
+  written in logical properties (`ps-`, `me-`, `start-`, `text-start`)
+  throughout.
+- **Digits stay Latin** in all three. Iraqi price lists, shelf labels and bank
+  notes are written that way, and a cashier reading ٧٥٠ off a screen against
+  750 on the shelf is a mistake waiting to happen. The currency follows the
+  language — `د.ع` beside Arabic and Kurdish, `IQD` in English — which also
+  stops a right-to-left line reordering the price into "IQD 250".
+- **Receipt dates are built by hand** rather than localised. Locale formatting
+  puts invisible direction marks between the parts, which a right-to-left line
+  reorders into nonsense and a thermal printer handles worse still.
+- The **sample shelf is written in all three**, so a shop trying the till in
+  Kurdish does not read its own demo stock in Arabic. It follows the language
+  until the shop sells something or edits anything; after that the names are
+  the shop's own and nothing rewrites them.
+
+The till is not linked from the nav — it is opened directly on the shop's
+machine — and it is a lazy chunk, so a visitor reading the website never
+downloads it.
 
 ### The portable till
 

@@ -20,6 +20,7 @@ import { Button, Field, Modal, Select } from "./ui";
 import { CameraScanner } from "./CameraScanner";
 import { useWedgeScanner } from "./wedge";
 import { beep } from "./beep";
+import { useT } from "./useT";
 import type { Product } from "./types";
 
 export function ProductEditor({
@@ -36,6 +37,7 @@ export function ProductEditor({
       naming it there and then is to sell it. */
   onSaved?: (product: Product) => void;
 }) {
+  const { t } = useT();
   const [draft, setDraft] = useState<Product>(product);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -53,7 +55,7 @@ export function ProductEditor({
 
   function save() {
     if (!draft.name.trim()) {
-      setError("A product needs a name.");
+      setError(t("editor.needsName"));
       return;
     }
     const saved = { ...draft, name: draft.name.trim(), barcode: draft.barcode.trim() };
@@ -63,10 +65,10 @@ export function ProductEditor({
   }
 
   return (
-    <Modal title={product.name ? "Edit product" : "New product"} onClose={onClose}>
+    <Modal title={product.name ? t("editor.edit") : t("editor.new")} onClose={onClose}>
       <div className="space-y-3.5">
         <Field
-          label="Name"
+          label={t("editor.name")}
           value={draft.name}
           autoFocus
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
@@ -74,23 +76,23 @@ export function ProductEditor({
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <Field
-              label="Barcode"
+              label={t("editor.barcode")}
               data-scan-through=""
               value={draft.barcode}
-              hint="Scan it with a USB scanner, the camera, or type it. Leave empty for loose goods."
+              hint={t("editor.barcodeHint")}
               onChange={(event) => setDraft({ ...draft, barcode: event.target.value })}
             />
           </div>
           <Button
             className="mb-6 shrink-0 px-3.5"
             onClick={() => setScanning(true)}
-            aria-label="Capture the barcode with the camera"
+            aria-label={t("editor.captureLabel")}
           >
             <ScanLine size={17} />
           </Button>
         </div>
         <Select
-          label="Category"
+          label={t("editor.category")}
           value={draft.categoryId}
           onChange={(value) => setDraft({ ...draft, categoryId: value })}
         >
@@ -102,7 +104,7 @@ export function ProductEditor({
         </Select>
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label="Price (IQD)"
+            label={t("editor.price")}
             inputMode="numeric"
             value={draft.price ? amount(draft.price) : ""}
             onChange={(event) =>
@@ -110,7 +112,7 @@ export function ProductEditor({
             }
           />
           <Field
-            label="In stock"
+            label={t("editor.stock")}
             inputMode="numeric"
             value={String(draft.stock)}
             onChange={(event) =>
@@ -122,11 +124,11 @@ export function ProductEditor({
           />
         </div>
         <Field
-          label="Warn at"
+          label={t("editor.warnAt")}
           inputMode="numeric"
           value={draft.lowStockAt >= 0 ? String(draft.lowStockAt) : ""}
-          placeholder="Use the shop default"
-          hint="Colour this product amber once stock drops to this number."
+          placeholder={t("editor.warnPlaceholder")}
+          hint={t("editor.warnHint")}
           onChange={(event) => {
             const raw = event.target.value.replace(/[^0-9]/g, "");
             setDraft({ ...draft, lowStockAt: raw === "" ? -1 : parseInt(raw, 10) });
@@ -137,7 +139,7 @@ export function ProductEditor({
 
         {scanning ? (
           <CameraScanner
-            title="Capture this barcode"
+            title={t("editor.captureTitle")}
             mode="once"
             onClose={() => setScanning(false)}
             onCode={(code) => {
@@ -149,7 +151,7 @@ export function ProductEditor({
 
         <div className="flex gap-2 pt-1">
           <Button variant="primary" className="flex-1" onClick={save}>
-            Save
+            {t("editor.save")}
           </Button>
           {product.name ? (
             <Button
@@ -159,7 +161,7 @@ export function ProductEditor({
                 onClose();
               }}
             >
-              {draft.archived ? "Restore" : "Archive"}
+              {draft.archived ? t("editor.restore") : t("editor.archive")}
             </Button>
           ) : null}
         </div>

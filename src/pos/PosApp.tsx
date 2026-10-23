@@ -7,9 +7,13 @@
  * The POS shell.
  *
  * Four screens, one row of tabs, and no chrome from the marketing site: the
- * till is a tool someone stands at for eight hours, not a page they read. It
- * is pinned left-to-right and English — this is the cashier-facing product,
- * and its layout was built for that.
+ * till is a tool someone stands at for eight hours, not a page they read.
+ *
+ * It takes its language and its direction from the shop's own setting rather
+ * than the site's: a counter in Baghdad is worked in Arabic and one in Slemani
+ * in Kurdish, and both are read right to left. The layout is written in
+ * logical properties throughout, so that is a `dir` flip rather than a second
+ * set of screens.
  *
  * Loaded lazily from the route table, so a visitor reading the website never
  * downloads it. The same component is also built into a single portable HTML
@@ -20,7 +24,9 @@
 import { useState } from "react";
 import { BarChart3, Boxes, Settings as SettingsIcon, ShoppingCart } from "lucide-react";
 import { Link } from "../site/router";
-import { usePos, useWriteError } from "./store";
+import { setLanguage, usePos, useWriteError } from "./store";
+import { useT } from "./useT";
+import { LANGS } from "./i18n";
 import { RegisterView } from "./RegisterView";
 import { ProductsView } from "./ProductsView";
 import { SalesView } from "./SalesView";
@@ -50,22 +56,23 @@ const PRINT_CSS = `
 
 type Tab = "register" | "products" | "sales" | "settings";
 
-const TABS: { id: Tab; label: string; icon: typeof ShoppingCart }[] = [
-  { id: "register", label: "Till", icon: ShoppingCart },
-  { id: "products", label: "Products", icon: Boxes },
-  { id: "sales", label: "Sales", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: SettingsIcon },
+const TABS: { id: Tab; label: "app.till" | "app.products" | "app.sales" | "app.settings"; icon: typeof ShoppingCart }[] = [
+  { id: "register", label: "app.till", icon: ShoppingCart },
+  { id: "products", label: "app.products", icon: Boxes },
+  { id: "sales", label: "app.sales", icon: BarChart3 },
+  { id: "settings", label: "app.settings", icon: SettingsIcon },
 ];
 
 export default function PosApp({ standalone = false }: { standalone?: boolean }) {
   const data = usePos();
   const writeError = useWriteError();
+  const { t, lang, dir } = useT();
   const [tab, setTab] = useState<Tab>("register");
 
   return (
     <div
-      dir="ltr"
-      lang="en"
+      dir={dir}
+      lang={lang}
       className="flex h-[100dvh] flex-col overflow-hidden bg-[#05060a] text-[#e7eaf6]"
     >
       <style>{PRINT_CSS}</style>
@@ -76,6 +83,24 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           <span className="truncate font-display text-[15px] font-semibold text-white">
             {data.settings.shopName}
           </span>
+          <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-[#1e2740] p-0.5">
+            {LANGS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                lang={option.id}
+                onClick={() => setLanguage(option.id)}
+                aria-pressed={lang === option.id}
+                className={`rounded-md px-2 py-1 text-[12px] font-semibold transition-colors ${
+                  lang === option.id
+                    ? "bg-[#6c7bf0]/20 text-[#c6ccff]"
+                    : "text-[#6b7490] hover:text-white"
+                }`}
+              >
+                {option.id === "en" ? "EN" : option.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         <nav className="flex items-center gap-1 overflow-x-auto">
@@ -86,7 +111,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
               onClick={() => setTab(id)}
               /* The label is hidden on a phone to keep four tabs on one row,
                  so the name has to live on the element itself. */
-              aria-label={label}
+              aria-label={t(label)}
               aria-current={tab === id ? "page" : undefined}
               className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors ${
                 tab === id
@@ -95,7 +120,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
               }`}
             >
               <Icon size={16} />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="hidden sm:inline">{t(label)}</span>
             </button>
           ))}
           {standalone ? null : (
@@ -103,7 +128,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
               to="/"
               className="ms-1 hidden shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7490] hover:text-white lg:inline-block"
             >
-              Exit
+              {t("app.exit")}
             </Link>
           )}
         </nav>

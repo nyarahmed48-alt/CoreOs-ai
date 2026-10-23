@@ -17,14 +17,18 @@ import {
   exportData,
   importData,
   resetToSeed,
+  setLanguage,
   updateSettings,
   usePos,
 } from "./store";
+import { useT } from "./useT";
+import { LANGS } from "./i18n";
 import { Button, Field, Modal } from "./ui";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
 
 export function SettingsView() {
   const data = usePos();
+  const { t, lang } = useT();
   const { settings } = data;
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
@@ -48,7 +52,7 @@ export function SettingsView() {
     link.download = `pos-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setNotice("Backup downloaded.");
+    setNotice(t("settings.downloaded"));
     setError("");
   }
 
@@ -59,36 +63,63 @@ export function SettingsView() {
       setNotice("");
       return;
     }
-    setNotice("Backup restored.");
+    setNotice(t("settings.restored"));
     setError("");
   }
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl space-y-5 px-3 py-4 sm:px-5">
+        <Section title={t("settings.language")} hint={t("settings.languageHint")}>
+          <div className="grid grid-cols-3 gap-2">
+            {LANGS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                lang={option.id}
+                dir={option.dir}
+                onClick={() => setLanguage(option.id)}
+                aria-pressed={lang === option.id}
+                className={`flex h-[52px] items-center justify-center rounded-xl border text-[15px] font-semibold transition-colors ${
+                  lang === option.id
+                    ? "border-[#6c7bf0] bg-[#6c7bf0]/15 text-white"
+                    : "border-[#232b40] text-[#98a0bb] hover:border-[#3a4460] hover:text-white"
+                }`}
+              >
+                {option.name}
+              </button>
+            ))}
+          </div>
+          {settings.sampleShop ? (
+            <p className="text-[13px] leading-relaxed text-[#7e87a5]">
+              {t("settings.languageSample")}
+            </p>
+          ) : null}
+        </Section>
+
         <Section
-          title="Shop"
-          hint="This is what prints at the top of every receipt."
+          title={t("settings.shop")}
+          hint={t("settings.shopHint")}
         >
           <Field
-            label="Shop name"
+            label={t("settings.shopName")}
             value={settings.shopName}
             onChange={(event) => updateSettings({ shopName: event.target.value })}
           />
           <Field
-            label="Address"
+            label={t("settings.address")}
             value={settings.addressLine}
-            placeholder="Optional"
+            placeholder={t("settings.optional")}
             onChange={(event) => updateSettings({ addressLine: event.target.value })}
           />
           <Field
-            label="Phone"
+            label={t("settings.phone")}
             value={settings.phone}
-            placeholder="Optional"
+            placeholder={t("settings.optional")}
             onChange={(event) => updateSettings({ phone: event.target.value })}
           />
           <Field
-            label="Receipt footer"
+            label={t("settings.footer")}
             value={settings.receiptFooter}
             onChange={(event) =>
               updateSettings({ receiptFooter: event.target.value })
@@ -97,14 +128,14 @@ export function SettingsView() {
         </Section>
 
         <Section
-          title="Till"
-          hint="Prices are whole dinars throughout — there are no decimals anywhere in the system."
+          title={t("settings.till")}
+          hint={t("settings.tillHint")}
         >
           <Field
-            label="Round totals to"
+            label={t("settings.roundTo")}
             inputMode="numeric"
             value={String(settings.roundTo)}
-            hint="250 is the smallest note in ordinary use. Set 0 to switch rounding off."
+            hint={t("settings.roundHint")}
             onChange={(event) =>
               updateSettings({
                 roundTo: parseInt(event.target.value.replace(/[^0-9]/g, ""), 10) || 0,
@@ -112,10 +143,10 @@ export function SettingsView() {
             }
           />
           <Field
-            label="Warn on low stock at"
+            label={t("settings.lowStock")}
             inputMode="numeric"
             value={String(settings.lowStockAt)}
-            hint="Used by every product that does not set its own threshold."
+            hint={t("settings.lowStockHint")}
             onChange={(event) =>
               updateSettings({
                 lowStockAt:
@@ -124,7 +155,7 @@ export function SettingsView() {
             }
           />
           <Field
-            label="Next receipt number"
+            label={t("settings.nextReceipt")}
             inputMode="numeric"
             value={String(settings.nextSaleNo)}
             onChange={(event) =>
@@ -137,52 +168,54 @@ export function SettingsView() {
         </Section>
 
         <Section
-          title="Hand scanner"
-          hint="Nothing to set up — a counter scanner types like a keyboard and the till listens for it on every screen. Scan anything here to check yours is working."
+          title={t("settings.scanner")}
+          hint={t("settings.scannerHint")}
         >
           {lastScan ? (
             <div className="rounded-xl border border-[#1f4034] bg-[#0d2119] px-4 py-3">
               <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#78c9a3]">
-                Scanner working
+                {t("settings.scannerWorking")}
               </p>
               <p className="mt-1 break-all font-mono text-[17px] tracking-[0.06em] text-white">
                 {lastScan.code}
               </p>
               <p className="mt-2 text-[13px] text-[#8fb9a8]">
-                {lastScan.info.keys} characters in {lastScan.info.ms}ms
+                {t("settings.scannerSpeed", {
+                  keys: lastScan.info.keys,
+                  ms: lastScan.info.ms,
+                })}
+                {" · "}
                 {lastScan.info.suffix === "none"
-                  ? " · sends nothing at the end, which is fine — the till waits a moment and takes the code anyway"
-                  : ` · ends with ${lastScan.info.suffix === "tab" ? "Tab" : "Enter"}`}
+                  ? t("settings.scannerNoSuffix")
+                  : t("settings.scannerSuffix", {
+                      key: lastScan.info.suffix === "tab" ? "Tab" : "Enter",
+                    })}
               </p>
             </div>
           ) : (
             <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#232b40] px-4 py-5 text-[#7e87a5]">
               <ScanLine size={18} className="shrink-0" />
-              <p className="text-[13.5px]">
-                Waiting for a scan. Point the scanner at any barcode — a packet
-                on the shelf will do.
-              </p>
+              <p className="text-[13.5px]">{t("settings.scannerWaiting")}</p>
             </div>
           )}
           <p className="text-[13px] leading-relaxed text-[#7e87a5]">
-            If nothing appears, the scanner is not reaching this machine at all:
-            check the cable or the receiver, and try it in any text box to see
-            whether it types. A scanner that types but is not recognised here is
-            set to something unusually slow — put it back to its factory
-            setting with the sheet in its box.
+            {t("settings.scannerHelp")}
           </p>
         </Section>
 
         <Section
-          title="Backup"
-          hint={`${data.products.length} products and ${data.sales.length} sales are stored in this browser, on this device only.`}
+          title={t("settings.backup")}
+          hint={t("settings.backupHint", {
+            products: data.products.length,
+            sales: data.sales.length,
+          })}
         >
           <div className="flex flex-wrap gap-2">
             <Button onClick={download}>
-              <Download size={16} /> Export a backup
+              <Download size={16} /> {t("settings.export")}
             </Button>
             <Button onClick={() => fileRef.current?.click()}>
-              <Upload size={16} /> Restore from a file
+              <Upload size={16} /> {t("settings.restore")}
             </Button>
             <input
               ref={fileRef}
@@ -199,17 +232,15 @@ export function SettingsView() {
           {notice ? <p className="text-[13px] text-[#8ee7bb]">{notice}</p> : null}
           {error ? <p className="text-[13px] text-[#f0879d]">{error}</p> : null}
           <Button variant="danger" onClick={() => setResetting(true)}>
-            Wipe and start over
+            {t("settings.wipe")}
           </Button>
         </Section>
       </div>
 
       {resetting ? (
-        <Modal title="Wipe this till?" onClose={() => setResetting(false)}>
+        <Modal title={t("settings.wipeTitle")} onClose={() => setResetting(false)}>
           <p className="text-[14px] leading-relaxed text-[#c3c9dd]">
-            Every product, sale and setting on this device is deleted and replaced
-            with the sample shop. Export a backup first if there is anything here
-            you want to keep.
+            {t("settings.wipeBody")}
           </p>
           <div className="mt-4 flex gap-2">
             <Button
@@ -218,13 +249,13 @@ export function SettingsView() {
               onClick={() => {
                 resetToSeed();
                 setResetting(false);
-                setNotice("Till reset to the sample shop.");
+                setNotice(t("settings.wiped"));
               }}
             >
-              Wipe everything
+              {t("settings.wipeConfirm")}
             </Button>
             <Button variant="quiet" onClick={() => setResetting(false)}>
-              Cancel
+              {t("settings.cancel")}
             </Button>
           </div>
         </Modal>

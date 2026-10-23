@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { Lang } from "./i18n";
+
 /**
  * The POS domain, in one file.
  *
@@ -71,6 +73,9 @@ export interface Sale {
 }
 
 export interface Settings {
+  /** The language the counter is worked in — the till, the receipts and the
+      reports all follow it. */
+  lang: Lang;
   shopName: string;
   addressLine: string;
   phone: string;
@@ -82,6 +87,11 @@ export interface Settings {
   lowStockAt: number;
   /** The number the next receipt will carry. */
   nextSaleNo: number;
+  /** True while the shelf is still the sample one we shipped. It lets the
+      sample products follow the language setting, and goes false for good the
+      moment the shop sells something or edits anything — after that the names
+      are the shop's own and nothing rewrites them. */
+  sampleShop: boolean;
 }
 
 export interface PosData {

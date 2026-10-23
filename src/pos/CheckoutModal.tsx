@@ -15,8 +15,9 @@
 import { useEffect, useState } from "react";
 import { Banknote, CreditCard } from "lucide-react";
 import { completeSale, usePos, type CartTotals } from "./store";
-import { IQD_NOTES, amount, money, parseAmount } from "./money";
+import { IQD_NOTES, amount, parseAmount } from "./money";
 import { Button, Modal } from "./ui";
+import { useT } from "./useT";
 import { useWedgeScanner } from "./wedge";
 import { Receipt, ReceiptActions } from "./Receipt";
 import type { PaymentMethod, Sale } from "./types";
@@ -35,6 +36,7 @@ export function CheckoutModal({
   onDone: () => void;
 }) {
   const data = usePos();
+  const { t, m } = useT();
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [tendered, setTendered] = useState(0);
   const [sale, setSale] = useState<Sale | null>(null);
@@ -47,7 +49,7 @@ export function CheckoutModal({
      change on it. So the scan is swallowed and named instead. */
   useWedgeScanner({
     enabled: !sale,
-    onScan: () => setMisScan("Finish or cancel this sale before scanning the next item."),
+    onScan: () => setMisScan(t("pay.misScan")),
   });
 
   const short = method === "cash" && tendered < totals.total;
@@ -70,42 +72,42 @@ export function CheckoutModal({
 
   if (sale) {
     return (
-      <Modal title={`Receipt #${sale.no}`} onClose={onDone}>
+      <Modal title={t("receipt.no", { no: sale.no })} onClose={onDone}>
         {sale.method === "cash" && sale.change > 0 ? (
           <p className="pos-noprint mb-4 rounded-xl border border-[#1f4034] bg-[#0d2119] px-4 py-3 text-center">
             <span className="block text-[12px] uppercase tracking-[0.08em] text-[#78c9a3]">
-              Change due
+              {t("pay.changeDue")}
             </span>
             <span className="font-display text-[30px] font-bold text-[#8ee7bb]">
-              {money(sale.change)}
+              {m(sale.change)}
             </span>
           </p>
         ) : null}
         <Receipt sale={sale} settings={data.settings} />
         <ReceiptActions sale={sale} settings={data.settings} className="mt-4" />
         <Button variant="primary" className="pos-noprint mt-2 h-[50px] w-full" onClick={onDone}>
-          New sale
+          {t("pay.newSale")}
         </Button>
       </Modal>
     );
   }
 
   return (
-    <Modal title="Payment" onClose={onClose}>
+    <Modal title={t("pay.title")} onClose={onClose}>
       <div className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3">
-        <Row label={`Subtotal · ${totals.count} items`} value={money(totals.subtotal)} />
+        <Row label={t("pay.subtotal", { n: totals.count })} value={m(totals.subtotal)} />
         {discount > 0 ? (
-          <Row label="Discount" value={`-${money(discount)}`} />
+          <Row label={t("pay.discount")} value={`-${m(discount)}`} />
         ) : null}
         {totals.rounding !== 0 ? (
-          <Row label="Rounding" value={money(totals.rounding)} />
+          <Row label={t("pay.rounding")} value={m(totals.rounding)} />
         ) : null}
         <div className="mt-2 flex items-baseline justify-between border-t border-[#1b2337] pt-2">
           <span className="text-[13px] uppercase tracking-[0.08em] text-[#7e87a5]">
-            To pay
+            {t("pay.toPay")}
           </span>
           <span className="font-display text-[26px] font-bold text-white">
-            {money(totals.total)}
+            {m(totals.total)}
           </span>
         </div>
       </div>
@@ -115,13 +117,13 @@ export function CheckoutModal({
           active={method === "cash"}
           onClick={() => setMethod("cash")}
           icon={<Banknote size={17} />}
-          label="Cash"
+          label={t("pay.cash")}
         />
         <MethodButton
           active={method === "card"}
           onClick={() => setMethod("card")}
           icon={<CreditCard size={17} />}
-          label="Card"
+          label={t("pay.card")}
         />
       </div>
 
@@ -129,7 +131,7 @@ export function CheckoutModal({
         <div className="mt-4">
           <div className="flex items-center justify-between gap-3">
             <label className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
-              Cash taken
+              {t("pay.cashTaken")}
               <input
                 value={tendered ? amount(tendered) : ""}
                 inputMode="numeric"
@@ -140,12 +142,12 @@ export function CheckoutModal({
             </label>
             <div className="mt-6 shrink-0 text-end">
               <span className="block text-[12px] uppercase tracking-[0.08em] text-[#7e87a5]">
-                Change
+                {t("pay.change")}
               </span>
               <span
                 className={`font-display text-[24px] font-bold ${short ? "text-[#5b6480]" : "text-[#8ee7bb]"}`}
               >
-                {money(change)}
+                {m(change)}
               </span>
             </div>
           </div>
@@ -156,7 +158,7 @@ export function CheckoutModal({
               onClick={() => setTendered(totals.total)}
               className="rounded-lg border border-[#2c3a6a] bg-[#141b33] px-3 py-2 text-[13px] font-semibold text-[#c6ccff] hover:border-[#3d4f8f]"
             >
-              Exact
+              {t("pay.exact")}
             </button>
             {IQD_NOTES.map((note) => (
               <button
@@ -174,7 +176,7 @@ export function CheckoutModal({
                 onClick={() => setTendered(0)}
                 className="rounded-lg px-3 py-2 text-[13px] font-semibold text-[#7e87a5] hover:text-white"
               >
-                Reset
+                {t("pay.reset")}
               </button>
             ) : null}
           </div>
@@ -183,13 +185,13 @@ export function CheckoutModal({
 
       <details className="mt-4">
         <summary className="cursor-pointer text-[13px] font-medium text-[#7e87a5] hover:text-white">
-          Give a discount
+          {t("pay.giveDiscount")}
         </summary>
         <input
           value={discount ? amount(discount) : ""}
           inputMode="numeric"
           placeholder="0"
-          aria-label="Discount in dinars"
+          aria-label={t("pay.discountLabel")}
           onChange={(event) =>
             onDiscountChange(Math.min(totals.subtotal, parseAmount(event.target.value)))
           }
@@ -209,7 +211,9 @@ export function CheckoutModal({
         disabled={short}
         onClick={charge}
       >
-        {short ? `Short by ${money(totals.total - tendered)}` : `Complete · ${money(totals.total)}`}
+        {short
+          ? t("pay.short", { amount: m(totals.total - tendered) })
+          : t("pay.complete", { amount: m(totals.total) })}
       </Button>
     </Modal>
   );

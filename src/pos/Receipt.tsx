@@ -17,20 +17,20 @@ import { Printer, Share2 } from "lucide-react";
 import type { Sale, Settings } from "./types";
 import { money } from "./money";
 import { Button } from "./ui";
+import { useT } from "./useT";
+import { formatDateTime, translate, type Lang } from "./i18n";
 
 export function receiptDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(iso);
 }
 
 /** The same receipt as plain text, for sharing to a phone or saving as a
     file. Padded to 32 characters, the width of a 72mm roll. */
 export function receiptText(sale: Sale, settings: Settings): string {
+  const lang = settings.lang;
+  const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
+    translate(lang, key, vars);
+  const m = (value: number) => money(value, lang);
   const W = 32;
   const centre = (text: string) =>
     text.length >= W ? text : " ".repeat(Math.floor((W - text.length) / 2)) + text;
@@ -43,32 +43,39 @@ export function receiptText(sale: Sale, settings: Settings): string {
   if (settings.addressLine) out.push(centre(settings.addressLine));
   if (settings.phone) out.push(centre(settings.phone));
   out.push("-".repeat(W));
-  out.push(row(`Receipt #${sale.no}`, receiptDate(sale.at).split(",")[0] ?? ""));
+  out.push(row(t("receipt.no", { no: sale.no }), receiptDate(sale.at).split(",")[0] ?? ""));
   out.push("-".repeat(W));
 
   for (const line of sale.lines) {
     out.push(line.name.slice(0, W));
-    out.push(row(`  ${line.qty} x ${money(line.price)}`, money(line.price * line.qty)));
+    out.push(row(`  ${line.qty} x ${m(line.price)}`, m(line.price * line.qty)));
   }
 
   out.push("-".repeat(W));
-  out.push(row("Subtotal", money(sale.subtotal)));
-  if (sale.discount) out.push(row("Discount", `-${money(sale.discount)}`));
-  if (sale.rounding) out.push(row("Rounding", money(sale.rounding)));
-  out.push(row("TOTAL", money(sale.total)));
-  out.push(row(sale.method === "cash" ? "Cash" : "Card", money(sale.tendered)));
-  if (sale.method === "cash") out.push(row("Change", money(sale.change)));
-  if (sale.voidedAt) out.push(centre("*** VOIDED ***"));
+  out.push(row(t("receipt.subtotal"), m(sale.subtotal)));
+  if (sale.discount) out.push(row(t("receipt.discount"), `-${m(sale.discount)}`));
+  if (sale.rounding) out.push(row(t("receipt.rounding"), m(sale.rounding)));
+  out.push(row(t("receipt.total"), m(sale.total)));
+  out.push(
+    row(t(sale.method === "cash" ? "receipt.cash" : "receipt.card"), m(sale.tendered)),
+  );
+  if (sale.method === "cash") out.push(row(t("receipt.change"), m(sale.change)));
+  if (sale.voidedAt) out.push(centre(t("receipt.voided")));
   out.push("");
   if (settings.receiptFooter) out.push(centre(settings.receiptFooter));
   return out.join("\n");
 }
 
 export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) {
+  const { t, m, lang, dir } = useT();
   const line = "border-t border-dashed border-[#c2c6d0]";
 
   return (
-    <div className="pos-print mx-auto w-full max-w-[302px] bg-white px-4 py-5 font-mono text-[12px] leading-[1.6] text-black">
+    <div
+      dir={dir}
+      lang={lang}
+      className="pos-print mx-auto w-full max-w-[302px] bg-white px-4 py-5 font-mono text-[12px] leading-[1.6] text-black"
+    >
       <div className="text-center">
         <p className="text-[15px] font-bold uppercase tracking-[0.06em]">
           {settings.shopName}
@@ -78,8 +85,8 @@ export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) 
       </div>
 
       <div className={`mt-3 flex justify-between pt-2 ${line}`}>
-        <span>Receipt #{sale.no}</span>
-        <span>{receiptDate(sale.at)}</span>
+        <span>{t("receipt.no", { no: sale.no })}</span>
+        <span dir="ltr">{receiptDate(sale.at)}</span>
       </div>
 
       <div className={`mt-2 space-y-1 pt-2 ${line}`}>
@@ -88,31 +95,37 @@ export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) 
             <p>{item.name}</p>
             <div className="flex justify-between">
               <span>
-                {item.qty} x {money(item.price)}
+                {item.qty} x {m(item.price)}
               </span>
-              <span>{money(item.price * item.qty)}</span>
+              <span>{m(item.price * item.qty)}</span>
             </div>
           </div>
         ))}
       </div>
 
       <div className={`mt-2 space-y-1 pt-2 ${line}`}>
-        <Row label="Subtotal" value={money(sale.subtotal)} />
-        {sale.discount ? <Row label="Discount" value={`-${money(sale.discount)}`} /> : null}
-        {sale.rounding ? <Row label="Rounding" value={money(sale.rounding)} /> : null}
+        <Row label={t("receipt.subtotal")} value={m(sale.subtotal)} />
+        {sale.discount ? (
+          <Row label={t("receipt.discount")} value={`-${m(sale.discount)}`} />
+        ) : null}
+        {sale.rounding ? (
+          <Row label={t("receipt.rounding")} value={m(sale.rounding)} />
+        ) : null}
         <div className="flex justify-between text-[15px] font-bold">
-          <span>TOTAL</span>
-          <span>{money(sale.total)}</span>
+          <span>{t("receipt.total")}</span>
+          <span>{m(sale.total)}</span>
         </div>
         <Row
-          label={sale.method === "cash" ? "Cash" : "Card"}
-          value={money(sale.tendered)}
+          label={t(sale.method === "cash" ? "receipt.cash" : "receipt.card")}
+          value={m(sale.tendered)}
         />
-        {sale.method === "cash" ? <Row label="Change" value={money(sale.change)} /> : null}
+        {sale.method === "cash" ? (
+          <Row label={t("receipt.change")} value={m(sale.change)} />
+        ) : null}
       </div>
 
       {sale.voidedAt ? (
-        <p className="mt-3 text-center text-[13px] font-bold">*** VOIDED ***</p>
+        <p className="mt-3 text-center text-[13px] font-bold">{t("receipt.voided")}</p>
       ) : null}
 
       {settings.receiptFooter ? (
@@ -146,9 +159,11 @@ export function ReceiptActions({
   settings: Settings;
   className?: string;
 }) {
+  const { t } = useT();
+
   async function share() {
     const text = receiptText(sale, settings);
-    const title = `${settings.shopName} — receipt #${sale.no}`;
+    const title = `${settings.shopName} — ${translate(settings.lang, "receipt.no", { no: sale.no })}`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title, text });
@@ -169,10 +184,10 @@ export function ReceiptActions({
   return (
     <div className={`pos-noprint flex gap-2 ${className}`}>
       <Button variant="ghost" className="flex-1" onClick={() => window.print()}>
-        <Printer size={16} /> Print
+        <Printer size={16} /> {t("receipt.print")}
       </Button>
       <Button variant="ghost" className="flex-1" onClick={share}>
-        <Share2 size={16} /> Share
+        <Share2 size={16} /> {t("receipt.share")}
       </Button>
     </div>
   );

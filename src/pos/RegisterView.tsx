@@ -22,7 +22,7 @@ import {
   useCart,
   usePos,
 } from "./store";
-import { money } from "./money";
+import { useT } from "./useT";
 import { Button, Empty, Modal } from "./ui";
 import { CheckoutModal } from "./CheckoutModal";
 import { CameraScanner } from "./CameraScanner";
@@ -33,6 +33,7 @@ import type { Product } from "./types";
 
 export function RegisterView() {
   const data = usePos();
+  const { t, m } = useT();
   const cart = useCart();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -99,13 +100,13 @@ export function RegisterView() {
     if (found) {
       addToCart(found.id);
       beep("read");
-      const line = `${found.name} · ${money(found.price)}`;
+      const line = `${found.name} · ${m(found.price)}`;
       announce(line);
       return line;
     }
     beep("unknown");
     setUnknownCode(code);
-    return `Unknown barcode ${code}`;
+    return t("camera.unknown", { code });
   }
 
   /** Enter in the scan box. An exact barcode wins; failing that, a search that
@@ -149,15 +150,15 @@ export function RegisterView() {
                   submitScan();
                 }
               }}
-              placeholder="Scan a barcode, or search by name"
-              aria-label="Scan or search"
+              placeholder={t("till.search")}
+              aria-label={t("till.searchLabel")}
               className="h-[46px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] ps-10 pe-10 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
             />
             {query ? (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                aria-label="Clear search"
+                aria-label={t("till.clearSearch")}
                 className="absolute end-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[#7e87a5] hover:text-white"
               >
                 <X size={16} />
@@ -168,10 +169,10 @@ export function RegisterView() {
             variant="ghost"
             className="h-[46px] shrink-0 px-3.5"
             onClick={() => setScanning(true)}
-            aria-label="Scan with the camera"
+            aria-label={t("till.cameraLabel")}
           >
             <ScanLine size={18} />
-            <span className="hidden sm:inline">Camera</span>
+            <span className="hidden sm:inline">{t("till.camera")}</span>
           </Button>
           </div>
 
@@ -179,7 +180,7 @@ export function RegisterView() {
             <Chip
               active={categoryId === "all"}
               onClick={() => setCategoryId("all")}
-              label="All"
+              label={t("till.all")}
             />
             {data.categories.map((category) => (
               <Chip
@@ -194,7 +195,7 @@ export function RegisterView() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-24 sm:p-4 lg:pb-4">
           {results.length === 0 ? (
-            <Empty>Nothing matches. Try another word, or add it in Products.</Empty>
+            <Empty>{t("till.noMatch")}</Empty>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
               {results.map((product) => (
@@ -208,7 +209,7 @@ export function RegisterView() {
                   }
                   onPick={() => {
                     addToCart(product.id);
-                    announce(`${product.name} added`);
+                    announce(t("till.added", { name: product.name }));
                   }}
                 />
               ))}
@@ -223,7 +224,7 @@ export function RegisterView() {
       >
         <div className="flex items-center justify-between border-b border-[#1b2337] px-4 py-3">
           <h2 className="font-display text-[15px] font-semibold text-white">
-            Basket{" "}
+            {t("till.basket")}{" "}
             <span className="text-[#7e87a5]">
               {totals.count > 0 ? `· ${totals.count}` : ""}
             </span>
@@ -237,14 +238,14 @@ export function RegisterView() {
                   setDiscount(0);
                 }}
               >
-                <Trash2 size={15} /> Clear
+                <Trash2 size={15} /> {t("till.clear")}
               </Button>
             ) : null}
             <Button
               variant="quiet"
               className="lg:hidden"
               onClick={() => setBasketOpen(false)}
-              aria-label="Close basket"
+              aria-label={t("till.closeBasket")}
             >
               <X size={18} />
             </Button>
@@ -253,7 +254,7 @@ export function RegisterView() {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {cart.length === 0 ? (
-            <Empty>Scan an item to start a sale.</Empty>
+            <Empty>{t("till.emptyBasket")}</Empty>
           ) : (
             <ul className="divide-y divide-[#141b2d]">
               {totals.lines.map((line) => (
@@ -261,14 +262,14 @@ export function RegisterView() {
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-[14.5px] font-medium text-[#e7eaf6]">{line.name}</p>
                     <p className="shrink-0 text-[14.5px] font-semibold text-white">
-                      {money(line.price * line.qty)}
+                      {m(line.price * line.qty)}
                     </p>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-[12.5px] text-[#7e87a5]">{money(line.price)} each</p>
+                    <p className="text-[12.5px] text-[#7e87a5]">{m(line.price)} each</p>
                     <div className="flex items-center gap-1">
                       <Step
-                        label={`One less ${line.name}`}
+                        label={t("till.oneLess", { name: line.name })}
                         onClick={() => setQty(line.productId, line.qty - 1)}
                       >
                         <Minus size={15} />
@@ -276,7 +277,7 @@ export function RegisterView() {
                       <input
                         value={line.qty}
                         inputMode="numeric"
-                        aria-label={`Quantity of ${line.name}`}
+                        aria-label={t("till.qtyOf", { name: line.name })}
                         onChange={(event) => {
                           const next = parseInt(
                             event.target.value.replace(/[^0-9]/g, ""),
@@ -287,7 +288,7 @@ export function RegisterView() {
                         className="h-9 w-12 rounded-lg border border-[#232b40] bg-[#0a0f1c] text-center text-[14px] text-white outline-none focus:border-[#6c7bf0]"
                       />
                       <Step
-                        label={`One more ${line.name}`}
+                        label={t("till.oneMore", { name: line.name })}
                         onClick={() => setQty(line.productId, line.qty + 1)}
                       >
                         <Plus size={15} />
@@ -303,10 +304,10 @@ export function RegisterView() {
         <div className="border-t border-[#1b2337] px-4 py-3.5">
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] uppercase tracking-[0.08em] text-[#7e87a5]">
-              Total
+              {t("till.total")}
             </span>
             <span className="font-display text-[26px] font-bold text-white">
-              {money(totals.total)}
+              {m(totals.total)}
             </span>
           </div>
           <Button
@@ -315,7 +316,7 @@ export function RegisterView() {
             disabled={cart.length === 0}
             onClick={() => setCheckingOut(true)}
           >
-            Charge {money(totals.total)}
+            {t("till.charge", { amount: m(totals.total) })}
           </Button>
         </div>
       </aside>
@@ -328,9 +329,11 @@ export function RegisterView() {
           className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-[#232b40] bg-[#6c7bf0] px-4 py-3.5 text-[15px] font-semibold text-[#05060a] lg:hidden"
         >
           <span>
-            {totals.count} item{totals.count === 1 ? "" : "s"}
+            {totals.count === 1
+              ? t("till.itemsOne")
+              : t("till.items", { n: totals.count })}
           </span>
-          <span>{money(totals.total)} · View basket</span>
+          <span>{t("till.viewBasket", { amount: m(totals.total) })}</span>
         </button>
       ) : null}
 
@@ -345,7 +348,7 @@ export function RegisterView() {
 
       {scanning ? (
         <CameraScanner
-          title="Scan into the basket"
+          title={t("camera.basket")}
           mode="continuous"
           onClose={() => {
             setScanning(false);
@@ -353,9 +356,9 @@ export function RegisterView() {
           }}
           onCode={(code) => {
             const found = shelf.find((product) => product.barcode === code);
-            if (!found) return `Unknown barcode ${code}`;
+            if (!found) return t("camera.unknown", { code });
             addToCart(found.id);
-            return `${found.name} · ${money(found.price)}`;
+            return `${found.name} · ${m(found.price)}`;
           }}
           /* The camera keeps its own log and its own beep, so it does not go
              through ringUp: interrupting a run of scanning with a product form
@@ -364,14 +367,12 @@ export function RegisterView() {
       ) : null}
 
       {unknownCode ? (
-        <Modal title="Not on the shelf" onClose={() => setUnknownCode("")}>
+        <Modal title={t("till.unknownTitle")} onClose={() => setUnknownCode("")}>
           <p className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3 text-center font-mono text-[17px] tracking-[0.06em] text-white">
             {unknownCode}
           </p>
           <p className="mt-3 text-[14px] leading-relaxed text-[#98a0bb]">
-            Nothing on the shelf carries this barcode. If it is a new line, give
-            it a name and a price now — it goes into this basket and onto the
-            shelf for good.
+            {t("till.unknownBody")}
           </p>
           <Button
             variant="primary"
@@ -390,14 +391,14 @@ export function RegisterView() {
               setUnknownCode("");
             }}
           >
-            Add this product
+            {t("till.addThis")}
           </Button>
           <Button
             variant="quiet"
             className="mt-2 w-full"
             onClick={() => setUnknownCode("")}
           >
-            Not now
+            {t("till.notNow")}
           </Button>
         </Modal>
       ) : null}
@@ -410,7 +411,7 @@ export function RegisterView() {
           onSaved={(product) => {
             addToCart(product.id);
             beep("read");
-            announce(`${product.name} added`);
+            announce(t("till.added", { name: product.name }));
             scanRef.current?.focus();
           }}
         />
@@ -488,6 +489,7 @@ function Tile({
   lowStockAt: number;
   onPick: () => void;
 }) {
+  const { t, m } = useT();
   const out = product.stock <= 0;
   const low = !out && product.stock <= lowStockAt;
 
@@ -502,7 +504,7 @@ function Tile({
       </span>
       <span className="mt-2 flex items-end justify-between gap-2">
         <span className="font-display text-[15px] font-semibold text-white">
-          {money(product.price)}
+          {m(product.price)}
         </span>
         <span
           className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
@@ -513,7 +515,7 @@ function Tile({
                 : "text-[#6b7490]"
           }`}
         >
-          {out ? "Out" : `${product.stock} left`}
+          {out ? t("till.out") : t("till.left", { n: product.stock })}
         </span>
       </span>
     </button>

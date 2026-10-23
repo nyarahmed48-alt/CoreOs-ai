@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { X } from "lucide-react";
+import { useT } from "./useT";
 
 type Variant = "primary" | "ghost" | "quiet" | "danger";
 
@@ -109,6 +110,7 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  const { t } = useT();
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,7 +140,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("camera.close")}
             className="rounded-lg p-1.5 text-[#7e87a5] hover:bg-[#141b2d] hover:text-white"
           >
             <X size={18} />

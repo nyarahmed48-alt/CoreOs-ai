@@ -22,7 +22,7 @@ import {
   saveCategory,
   usePos,
 } from "./store";
-import { money } from "./money";
+import { useT } from "./useT";
 import { Button, Empty, Modal } from "./ui";
 import { ProductEditor } from "./ProductEditor";
 import { useWedgeScanner } from "./wedge";
@@ -32,6 +32,7 @@ type Filter = "all" | "low" | "archived";
 
 export function ProductsView() {
   const data = usePos();
+  const { t, m } = useT();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -102,40 +103,38 @@ export function ProductsView() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search products"
-              aria-label="Search products"
+              placeholder={t("products.search")}
+              aria-label={t("products.search")}
               className="h-[42px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] ps-10 pe-3 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
             />
           </div>
           <Button onClick={() => setManagingCategories(true)}>
-            <Tag size={16} /> Categories
+            <Tag size={16} /> {t("products.categories")}
           </Button>
           <Button variant="primary" onClick={() => setEditing(blankProduct())}>
-            <Plus size={16} /> Add product
+            <Plus size={16} /> {t("products.add")}
           </Button>
         </div>
 
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
-            All
+            {t("products.all")}
           </FilterChip>
           <FilterChip active={filter === "low"} onClick={() => setFilter("low")}>
-            Low stock{lowCount ? ` · ${lowCount}` : ""}
+            {lowCount ? t("products.lowCount", { n: lowCount }) : t("products.low")}
           </FilterChip>
           <FilterChip
             active={filter === "archived"}
             onClick={() => setFilter("archived")}
           >
-            Archived
+            {t("products.archived")}
           </FilterChip>
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-[#1e2740]">
           {rows.length === 0 ? (
             <Empty>
-              {filter === "low"
-                ? "Nothing is running low. "
-                : "No products here yet. "}
+              {filter === "low" ? t("products.nothingLow") : t("products.noneYet")}
             </Empty>
           ) : (
             <ul className="divide-y divide-[#141b2d]">
@@ -157,7 +156,7 @@ export function ProductsView() {
                     </div>
 
                     <p className="w-[92px] text-end font-display text-[14.5px] font-semibold text-white">
-                      {money(product.price)}
+                      {m(product.price)}
                     </p>
 
                     <div className="flex items-center gap-2">
@@ -170,14 +169,14 @@ export function ProductsView() {
                               : "text-[#98a0bb]"
                         }`}
                       >
-                        {product.stock} in stock
+                        {t("products.inStock", { n: product.stock })}
                       </span>
                       {!product.archived ? (
                         <Button
                           variant="quiet"
                           className="min-h-[36px] px-2.5"
                           onClick={() => receiveStock(product.id, 1)}
-                          aria-label={`Receive one ${product.name}`}
+                          aria-label={t("products.receiveOne", { name: product.name })}
                         >
                           <Package size={15} /> +1
                         </Button>
@@ -187,7 +186,7 @@ export function ProductsView() {
                         className="min-h-[36px] px-3"
                         onClick={() => setEditing(product)}
                       >
-                        Edit
+                        {t("products.edit")}
                       </Button>
                     </div>
                   </li>
@@ -239,11 +238,12 @@ function FilterChip({
 
 function CategoryManager({ onClose }: { onClose: () => void }) {
   const data = usePos();
+  const { t, m } = useT();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
   return (
-    <Modal title="Categories" onClose={onClose}>
+    <Modal title={t("products.categories")} onClose={onClose}>
       <ul className="divide-y divide-[#141b2d] overflow-hidden rounded-xl border border-[#1e2740]">
         {data.categories.map((category) => (
           <li key={category.id} className="flex items-center gap-2 bg-[#0b1120] px-3 py-2">
@@ -252,7 +252,7 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
               onChange={(event) =>
                 saveCategory({ ...category, name: event.target.value })
               }
-              aria-label={`Rename ${category.name}`}
+              aria-label={t("products.rename", { name: category.name })}
               className="h-[38px] flex-1 rounded-lg border border-transparent bg-transparent px-2 text-[14.5px] text-[#e7eaf6] outline-none hover:border-[#232b40] focus:border-[#6c7bf0]"
             />
             <Button
@@ -260,7 +260,7 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
               className="min-h-[36px] px-2.5 text-[#f0879d]"
               onClick={() => setError(deleteCategory(category.id) ?? "")}
             >
-              Remove
+              {t("products.remove")}
             </Button>
           </li>
         ))}
@@ -272,8 +272,8 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="New category"
-          aria-label="New category"
+          placeholder={t("products.newCategory")}
+          aria-label={t("products.newCategory")}
           className="h-[42px] flex-1 rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
         />
         <Button
@@ -285,7 +285,7 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
             setError("");
           }}
         >
-          Add
+          {t("products.addCategory")}
         </Button>
       </div>
     </Modal>

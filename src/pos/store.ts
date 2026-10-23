@@ -28,7 +28,13 @@ import type {
   SaleLine,
   Settings,
 } from "./types";
-import { DEFAULT_SETTINGS, SEED_CATEGORIES, seedProducts } from "./seed";
+import {
+  defaultSettings,
+  seedCategories,
+  seedProducts,
+  seedShopText,
+} from "./seed";
+import { translate, type Lang } from "./i18n";
 import { roundTotal } from "./money";
 
 const DATA_KEY = "coreos.pos.data.v1";
@@ -43,12 +49,17 @@ export function newId(prefix: string): string {
   return `${prefix}-${rand}`;
 }
 
-function freshData(): PosData {
+/** Arabic unless the shop says otherwise: most of these counters are in
+    Baghdad, and a till that opens in English is a till somebody has to
+    configure before they can sell anything. */
+const FIRST_LANG: Lang = "ar";
+
+function freshData(lang: Lang = FIRST_LANG): PosData {
   return {
     version: DATA_VERSION,
-    settings: { ...DEFAULT_SETTINGS },
-    categories: SEED_CATEGORIES.map((c) => ({ ...c })),
-    products: seedProducts(),
+    settings: defaultSettings(lang),
+    categories: seedCategories(lang),
+    products: seedProducts(lang),
     sales: [],
   };
 }
@@ -60,9 +71,10 @@ function parseData(raw: string | null): PosData {
   if (!raw) return freshData();
   try {
     const parsed = JSON.parse(raw) as Partial<PosData>;
+    const lang = parsed.settings?.lang ?? FIRST_LANG;
     return {
       version: DATA_VERSION,
-      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
+      settings: { ...defaultSettings(lang), ...(parsed.settings ?? {}) },
       categories: parsed.categories ?? [],
       products: parsed.products ?? [],
       sales: parsed.sales ?? [],
@@ -79,20 +91,29 @@ function parseData(raw: string | null): PosData {
     surfaced as a banner and the till carries on in memory. */
 let writeError = "";
 
-const NO_STORAGE =
-  "This browser is not letting the till save. It still works, but nothing is kept when the page closes — open the file directly rather than inside another app, or allow site data for it.";
+/* The language these messages are written in, kept beside them rather than
+   read off `data`. The first of them can be raised while `data` is still being
+   initialised — it is what a blocked read produces — and reaching for a
+   variable that is still being assigned throws a second error on top of the
+   first, which is how this screen once came up blank. */
+let messageLang: Lang = FIRST_LANG;
+
+function storageMessage(key: "store.noStorage" | "store.full"): string {
+  return translate(messageLang, key);
+}
 
 function read(key: string): string | null {
   try {
     return localStorage.getItem(key);
   } catch {
     // Touching localStorage at all can throw. Say so once, and carry on.
-    writeError = NO_STORAGE;
+    writeError = storageMessage("store.noStorage");
     return null;
   }
 }
 
 let data: PosData = parseData(read(DATA_KEY));
+messageLang = data.settings.lang;
 let cart: CartLine[] = (() => {
   try {
     return (JSON.parse(read(CART_KEY) ?? "[]") ?? []) as CartLine[];
@@ -118,14 +139,13 @@ function persist(key: string, value: unknown) {
       cause instanceof DOMException &&
       (cause.name === "QuotaExceededError" ||
         cause.name === "NS_ERROR_DOM_QUOTA_REACHED");
-    writeError = full
-      ? "This browser is out of storage. Sales are being kept in memory only — export a backup from Settings, then free some space."
-      : NO_STORAGE;
+    writeError = storageMessage(full ? "store.full" : "store.noStorage");
   }
 }
 
 function commit(next: PosData) {
   data = next;
+  messageLang = next.settings.lang;
   persist(DATA_KEY, data);
   notify();
 }
@@ -188,40 +208,40 @@ export function useWriteError(): string {
 
 export function saveProduct(product: Product) {
   const exists = data.products.some((p) => p.id === product.id);
-  commit({
+  commit(owned({
     ...data,
     products: exists
       ? data.products.map((p) => (p.id === product.id ? product : p))
       : [...data.products, product],
-  });
+  }));
 }
 
 export function setArchived(id: string, archived: boolean) {
-  commit({
+  commit(owned({
     ...data,
     products: data.products.map((p) => (p.id === id ? { ...p, archived } : p)),
-  });
+  }));
 }
 
 /** Goods arriving from the supplier. Kept separate from editing the count by
     hand so the common case is one tap and cannot mistype the running total. */
 export function receiveStock(id: string, units: number) {
-  commit({
+  commit(owned({
     ...data,
     products: data.products.map((p) =>
       p.id === id ? { ...p, stock: p.stock + units } : p,
     ),
-  });
+  }));
 }
 
 export function saveCategory(category: Category) {
   const exists = data.categories.some((c) => c.id === category.id);
-  commit({
+  commit(owned({
     ...data,
     categories: exists
       ? data.categories.map((c) => (c.id === category.id ? category : c))
       : [...data.categories, category],
-  });
+  }));
 }
 
 /** Refuses while anything is still filed under it — silently orphaning
@@ -231,14 +251,45 @@ export function deleteCategory(id: string): string | null {
     (p) => p.categoryId === id && !p.archived,
   ).length;
   if (inUse > 0) {
-    return `${inUse} product${inUse === 1 ? "" : "s"} still in this category. Move them first.`;
+    return inUse === 1
+      ? translate(data.settings.lang, "products.categoryInUseOne")
+      : translate(data.settings.lang, "products.categoryInUse", { n: inUse });
   }
-  commit({ ...data, categories: data.categories.filter((c) => c.id !== id) });
+  commit(owned({ ...data, categories: data.categories.filter((c) => c.id !== id) }));
   return null;
 }
 
 export function updateSettings(patch: Partial<Settings>) {
   commit({ ...data, settings: { ...data.settings, ...patch } });
+}
+
+/**
+ * Switch the counter's language.
+ *
+ * While the shelf is still the sample one we shipped, it switches with the
+ * language — a shop trying the till in Kurdish should not have to read its own
+ * demo stock in Arabic. The moment the shop sells something or edits anything
+ * the names are theirs, and this stops touching them.
+ */
+export function setLanguage(lang: Lang) {
+  if (lang === data.settings.lang) return;
+  if (!data.settings.sampleShop) {
+    commit({ ...data, settings: { ...data.settings, lang } });
+    return;
+  }
+  commit({
+    ...data,
+    settings: { ...data.settings, ...seedShopText(lang), lang },
+    categories: seedCategories(lang),
+    products: seedProducts(lang),
+  });
+}
+
+/** Everything the shop does to its own catalogue says "these are mine now". */
+function owned(next: PosData): PosData {
+  return next.settings.sampleShop
+    ? { ...next, settings: { ...next.settings, sampleShop: false } }
+    : next;
 }
 
 /* --------------------------------------------------------------------- cart */
@@ -337,14 +388,14 @@ export function completeSale(input: {
     sold.set(line.productId, (sold.get(line.productId) ?? 0) + line.qty);
   }
 
-  commit({
+  commit(owned({
     ...data,
     settings: { ...data.settings, nextSaleNo: data.settings.nextSaleNo + 1 },
     products: data.products.map((p) =>
       sold.has(p.id) ? { ...p, stock: p.stock - (sold.get(p.id) ?? 0) } : p,
     ),
     sales: [sale, ...data.sales],
-  });
+  }));
   commitCart([]);
   return sale;
 }
@@ -384,13 +435,13 @@ export function importData(raw: string): string | null {
   try {
     const parsed = JSON.parse(raw) as Partial<PosData>;
     if (!Array.isArray(parsed.products) || !Array.isArray(parsed.sales)) {
-      return "That file does not look like a till backup.";
+      return translate(data.settings.lang, "settings.badFile");
     }
     commit(parseData(raw));
     commitCart([]);
     return null;
   } catch {
-    return "That file could not be read.";
+    return translate(data.settings.lang, "settings.unreadable");
   }
 }
 

@@ -1,0 +1,686 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Arabic, Kurdish and English.
+ *
+ * A till in Baghdad is worked in Arabic and a till in Slemani in Kurdish, so
+ * the language is not a preference buried in settings — it is the first thing
+ * the shop picks, and the default is Arabic because that is where most of
+ * these counters are.
+ *
+ * Every string the cashier can see lives here, in one file, so the Arabic and
+ * the Kurdish can be proofread in one sitting rather than hunted through a
+ * dozen components. The same decision the public site made, for the same
+ * reason.
+ *
+ * Numbers stay in Latin digits in all three. Iraqi price lists, shelf labels
+ * and bank notes are written that way, and a cashier reading ٧٥٠ off a screen
+ * against 750 on the shelf is a mistake waiting to happen.
+ */
+
+export type Lang = "ar" | "ckb" | "en";
+
+export const LANGS: { id: Lang; name: string; dir: "rtl" | "ltr" }[] = [
+  { id: "ar", name: "العربية", dir: "rtl" },
+  { id: "ckb", name: "کوردی", dir: "rtl" },
+  { id: "en", name: "English", dir: "ltr" },
+];
+
+export function dirOf(lang: Lang): "rtl" | "ltr" {
+  return lang === "en" ? "ltr" : "rtl";
+}
+
+/** Dates and times, in the shop's language but never in Arabic-Indic digits —
+    see the note above about reading a screen against a shelf. */
+const LOCALES: Record<Lang, string> = {
+  ar: "ar-IQ-u-nu-latn",
+  ckb: "ckb-u-nu-latn",
+  en: "en-GB",
+};
+
+function two(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+/**
+ * `23/10/2026 10:07`, the same in every language.
+ *
+ * Localised date formatting puts invisible right-to-left marks between the
+ * parts, which a right-to-left line then reorders — the receipt date came out
+ * as "23م 10:07 2026/10/". Thermal printers make a worse job of those marks
+ * still. A numeric date needs no translating, so it is built by hand, on a
+ * 24-hour clock as Iraqi shops keep.
+ */
+export function formatDateTime(iso: string): string {
+  const at = new Date(iso);
+  return `${two(at.getDate())}/${two(at.getMonth() + 1)}/${at.getFullYear()} ${two(at.getHours())}:${two(at.getMinutes())}`;
+}
+
+export function formatDay(date: Date, lang: Lang): string {
+  try {
+    return date.toLocaleDateString(LOCALES[lang], {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return date.toLocaleDateString("en-GB");
+  }
+}
+
+/** Same reasoning as the date: plain 24-hour digits, which read the same way
+    in all three languages and sit inside a sentence without reordering it. */
+export function formatTime(iso: string): string {
+  const at = new Date(iso);
+  return `${two(at.getHours())}:${two(at.getMinutes())}`;
+}
+
+type Vars = Record<string, string | number>;
+
+const EN = {
+  "app.till": "Till",
+  "app.products": "Products",
+  "app.sales": "Sales",
+  "app.settings": "Settings",
+  "app.exit": "Exit",
+
+  "till.search": "Scan a barcode, or search by name",
+  "till.searchLabel": "Scan or search",
+  "till.clearSearch": "Clear search",
+  "till.camera": "Camera",
+  "till.cameraLabel": "Scan with the camera",
+  "till.all": "All",
+  "till.noMatch": "Nothing matches. Try another word, or add it in Products.",
+  "till.basket": "Basket",
+  "till.clear": "Clear",
+  "till.closeBasket": "Close basket",
+  "till.emptyBasket": "Scan an item to start a sale.",
+  "till.each": "{price} each",
+  "till.total": "Total",
+  "till.charge": "Charge {amount}",
+  "till.viewBasket": "{amount} · View basket",
+  "till.items": "{n} items",
+  "till.itemsOne": "1 item",
+  "till.qtyOf": "Quantity of {name}",
+  "till.oneLess": "One less {name}",
+  "till.oneMore": "One more {name}",
+  "till.out": "Out",
+  "till.left": "{n} left",
+  "till.added": "{name} added",
+  "till.unknownTitle": "Not on the shelf",
+  "till.unknownBody":
+    "Nothing on the shelf carries this barcode. If it is a new line, give it a name and a price now — it goes into this basket and onto the shelf for good.",
+  "till.addThis": "Add this product",
+  "till.notNow": "Not now",
+  "till.noProductFor": "No product for “{code}”",
+
+  "pay.title": "Payment",
+  "pay.subtotal": "Subtotal · {n} items",
+  "pay.discount": "Discount",
+  "pay.rounding": "Rounding",
+  "pay.toPay": "To pay",
+  "pay.cash": "Cash",
+  "pay.card": "Card",
+  "pay.cashTaken": "Cash taken",
+  "pay.change": "Change",
+  "pay.exact": "Exact",
+  "pay.reset": "Reset",
+  "pay.giveDiscount": "Give a discount",
+  "pay.discountLabel": "Discount in dinars",
+  "pay.complete": "Complete · {amount}",
+  "pay.short": "Short by {amount}",
+  "pay.misScan": "Finish or cancel this sale before scanning the next item.",
+  "pay.changeDue": "Change due",
+  "pay.newSale": "New sale",
+
+  "receipt.no": "Receipt #{no}",
+  "receipt.subtotal": "Subtotal",
+  "receipt.discount": "Discount",
+  "receipt.rounding": "Rounding",
+  "receipt.total": "TOTAL",
+  "receipt.cash": "Cash",
+  "receipt.card": "Card",
+  "receipt.change": "Change",
+  "receipt.voided": "*** VOIDED ***",
+  "receipt.print": "Print",
+  "receipt.share": "Share",
+
+  "products.search": "Search products",
+  "products.categories": "Categories",
+  "products.add": "Add product",
+  "products.all": "All",
+  "products.low": "Low stock",
+  "products.lowCount": "Low stock · {n}",
+  "products.archived": "Archived",
+  "products.nothingLow": "Nothing is running low.",
+  "products.noneYet": "No products here yet.",
+  "products.inStock": "{n} in stock",
+  "products.receiveOne": "Receive one {name}",
+  "products.edit": "Edit",
+  "products.rename": "Rename {name}",
+  "products.remove": "Remove",
+  "products.newCategory": "New category",
+  "products.addCategory": "Add",
+  "products.categoryInUse": "{n} products still in this category. Move them first.",
+  "products.categoryInUseOne": "1 product still in this category. Move it first.",
+
+  "editor.new": "New product",
+  "editor.edit": "Edit product",
+  "editor.name": "Name",
+  "editor.barcode": "Barcode",
+  "editor.barcodeHint":
+    "Scan it with a hand scanner, the camera, or type it. Leave empty for loose goods.",
+  "editor.captureLabel": "Capture the barcode with the camera",
+  "editor.captureTitle": "Capture this barcode",
+  "editor.category": "Category",
+  "editor.price": "Price (IQD)",
+  "editor.stock": "In stock",
+  "editor.warnAt": "Warn at",
+  "editor.warnPlaceholder": "Use the shop default",
+  "editor.warnHint": "Colour this product amber once stock drops to this number.",
+  "editor.needsName": "A product needs a name.",
+  "editor.save": "Save",
+  "editor.archive": "Archive",
+  "editor.restore": "Restore",
+
+  "sales.prevDay": "Previous day",
+  "sales.nextDay": "Next day",
+  "sales.pickDay": "Pick a day",
+  "sales.today": "Today",
+  "sales.takings": "Takings",
+  "sales.count": "Sales",
+  "sales.cash": "Cash",
+  "sales.card": "Card",
+  "sales.bestSellers": "Best sellers · {n} items sold",
+  "sales.none": "No sales on this day.",
+  "sales.line": "{time} · {n} items · {method}",
+  "sales.lineVoided": "{time} · {n} items · {method} · voided",
+  "sales.voidedNote": "{n} voided sales on this day, left out of the totals.",
+  "sales.voidedNoteOne": "1 voided sale on this day, left out of the totals.",
+  "sales.void": "Void this sale",
+  "sales.voidConfirm":
+    "Void this sale? The goods go back on the shelf and the money comes out of the day's takings.",
+  "sales.voidButton": "Void receipt #{no}",
+  "sales.keep": "Keep",
+
+  "settings.shop": "Shop",
+  "settings.shopHint": "This is what prints at the top of every receipt.",
+  "settings.shopName": "Shop name",
+  "settings.address": "Address",
+  "settings.phone": "Phone",
+  "settings.optional": "Optional",
+  "settings.footer": "Receipt footer",
+  "settings.language": "Language",
+  "settings.languageHint":
+    "The till, the receipts and the reports all follow this. Each cashier sees the same one, so pick the language the counter is worked in.",
+  "settings.languageSample":
+    "The sample shop is still untouched, so its products change language with it. Once you start selling, product names stay as you typed them.",
+  "settings.till": "Till",
+  "settings.tillHint":
+    "Prices are whole dinars throughout — there are no decimals anywhere in the system.",
+  "settings.roundTo": "Round totals to",
+  "settings.roundHint":
+    "250 is the smallest note in ordinary use. Set 0 to switch rounding off.",
+  "settings.lowStock": "Warn on low stock at",
+  "settings.lowStockHint":
+    "Used by every product that does not set its own threshold.",
+  "settings.nextReceipt": "Next receipt number",
+  "settings.scanner": "Hand scanner",
+  "settings.scannerHint":
+    "Nothing to set up — a counter scanner types like a keyboard and the till listens for it on every screen. Scan anything here to check yours is working.",
+  "settings.scannerWorking": "Scanner working",
+  "settings.scannerWaiting":
+    "Waiting for a scan. Point the scanner at any barcode — a packet on the shelf will do.",
+  "settings.scannerSpeed": "{keys} characters in {ms}ms",
+  "settings.scannerNoSuffix":
+    "sends nothing at the end, which is fine — the till waits a moment and takes the code anyway",
+  "settings.scannerSuffix": "ends with {key}",
+  "settings.scannerHelp":
+    "If nothing appears, the scanner is not reaching this machine at all: check the cable or the receiver, and try it in any text box to see whether it types. A scanner that types but is not recognised here is set to something unusually slow — put it back to its factory setting with the sheet in its box.",
+  "settings.backup": "Backup",
+  "settings.backupHint":
+    "{products} products and {sales} sales are stored in this browser, on this device only.",
+  "settings.export": "Export a backup",
+  "settings.restore": "Restore from a file",
+  "settings.downloaded": "Backup downloaded.",
+  "settings.restored": "Backup restored.",
+  "settings.badFile": "That file does not look like a till backup.",
+  "settings.unreadable": "That file could not be read.",
+  "settings.wipe": "Wipe and start over",
+  "settings.wipeTitle": "Wipe this till?",
+  "settings.wipeBody":
+    "Every product, sale and setting on this device is deleted and replaced with the sample shop. Export a backup first if there is anything here you want to keep.",
+  "settings.wipeConfirm": "Wipe everything",
+  "settings.cancel": "Cancel",
+  "settings.wiped": "Till reset to the sample shop.",
+
+  "camera.basket": "Scan into the basket",
+  "camera.starting": "Starting the camera…",
+  "camera.hold": "Hold the barcode inside the box.",
+  "camera.done": "Done scanning",
+  "camera.close": "Close",
+  "camera.takePhoto": "Take a photo of the barcode",
+  "camera.reading": "Reading the photo…",
+  "camera.noBarcode":
+    "No barcode found in that photo. Fill the frame with the barcode, hold the phone steady, and try again.",
+  "camera.photoFailed": "That photo could not be read. Try again.",
+  "camera.noCamera": "No camera on this machine. Use a hand scanner, or type the number.",
+  "camera.blocked":
+    "The camera was blocked for this page. Take a photo instead — that uses the phone's own camera — or allow camera access and try again.",
+  "camera.noLive":
+    "This browser will not give the page a live camera. It usually will not for a page opened from a file. Take a photo instead — that uses the phone's own camera.",
+  "camera.unknown": "Unknown barcode {code}",
+
+  "store.noStorage":
+    "This browser is not letting the till save. It still works, but nothing is kept when the page closes — open the file directly rather than inside another app, or allow site data for it.",
+  "store.full":
+    "This browser is out of storage. Sales are being kept in memory only — export a backup from Settings, then free some space.",
+} as const;
+
+export type Key = keyof typeof EN;
+
+const AR: Record<Key, string> = {
+  "app.till": "الصندوق",
+  "app.products": "المواد",
+  "app.sales": "المبيعات",
+  "app.settings": "الإعدادات",
+  "app.exit": "خروج",
+
+  "till.search": "امسح الباركود أو ابحث بالاسم",
+  "till.searchLabel": "مسح أو بحث",
+  "till.clearSearch": "مسح البحث",
+  "till.camera": "الكاميرا",
+  "till.cameraLabel": "المسح بالكاميرا",
+  "till.all": "الكل",
+  "till.noMatch": "لا توجد نتائج. جرّب كلمة أخرى، أو أضف المادة من صفحة المواد.",
+  "till.basket": "السلة",
+  "till.clear": "تفريغ",
+  "till.closeBasket": "إغلاق السلة",
+  "till.emptyBasket": "امسح مادة لبدء البيع.",
+  "till.each": "{price} للواحدة",
+  "till.total": "المجموع",
+  "till.charge": "استلام {amount}",
+  "till.viewBasket": "{amount} · عرض السلة",
+  "till.items": "{n} مواد",
+  "till.itemsOne": "مادة واحدة",
+  "till.qtyOf": "كمية {name}",
+  "till.oneLess": "إنقاص {name}",
+  "till.oneMore": "زيادة {name}",
+  "till.out": "نفد",
+  "till.left": "متبقي {n}",
+  "till.added": "تمت إضافة {name}",
+  "till.unknownTitle": "غير موجودة في المواد",
+  "till.unknownBody":
+    "لا توجد مادة بهذا الباركود. إذا كانت مادة جديدة، سجّل اسمها وسعرها الآن — تدخل هذه السلة وتُحفظ في المواد.",
+  "till.addThis": "إضافة هذه المادة",
+  "till.notNow": "ليس الآن",
+  "till.noProductFor": "لا توجد مادة بالرمز “{code}”",
+
+  "pay.title": "الدفع",
+  "pay.subtotal": "المجموع الفرعي · {n} مواد",
+  "pay.discount": "خصم",
+  "pay.rounding": "التقريب",
+  "pay.toPay": "المطلوب",
+  "pay.cash": "نقداً",
+  "pay.card": "بطاقة",
+  "pay.cashTaken": "المبلغ المستلم",
+  "pay.change": "الباقي",
+  "pay.exact": "المبلغ بالضبط",
+  "pay.reset": "إعادة",
+  "pay.giveDiscount": "إعطاء خصم",
+  "pay.discountLabel": "الخصم بالدينار",
+  "pay.complete": "إتمام البيع · {amount}",
+  "pay.short": "ناقص {amount}",
+  "pay.misScan": "أنهِ البيع أو ألغِه قبل مسح المادة التالية.",
+  "pay.changeDue": "الباقي للزبون",
+  "pay.newSale": "بيع جديد",
+
+  "receipt.no": "وصل رقم {no}",
+  "receipt.subtotal": "المجموع الفرعي",
+  "receipt.discount": "خصم",
+  "receipt.rounding": "التقريب",
+  "receipt.total": "المجموع",
+  "receipt.cash": "نقداً",
+  "receipt.card": "بطاقة",
+  "receipt.change": "الباقي",
+  "receipt.voided": "*** ملغي ***",
+  "receipt.print": "طباعة",
+  "receipt.share": "مشاركة",
+
+  "products.search": "البحث في المواد",
+  "products.categories": "المجموعات",
+  "products.add": "إضافة مادة",
+  "products.all": "الكل",
+  "products.low": "قاربت على النفاد",
+  "products.lowCount": "قاربت على النفاد · {n}",
+  "products.archived": "المؤرشفة",
+  "products.nothingLow": "لا توجد مواد قاربت على النفاد.",
+  "products.noneYet": "لا توجد مواد هنا بعد.",
+  "products.inStock": "{n} في المخزون",
+  "products.receiveOne": "إدخال واحدة من {name}",
+  "products.edit": "تعديل",
+  "products.rename": "إعادة تسمية {name}",
+  "products.remove": "حذف",
+  "products.newCategory": "مجموعة جديدة",
+  "products.addCategory": "إضافة",
+  "products.categoryInUse": "ما زالت {n} مواد في هذه المجموعة. انقلها أولاً.",
+  "products.categoryInUseOne": "ما زالت مادة واحدة في هذه المجموعة. انقلها أولاً.",
+
+  "editor.new": "مادة جديدة",
+  "editor.edit": "تعديل المادة",
+  "editor.name": "الاسم",
+  "editor.barcode": "الباركود",
+  "editor.barcodeHint":
+    "امسحه بالقارئ أو بالكاميرا، أو اكتبه. اتركه فارغاً للمواد التي تُباع بالوزن أو بالمفرد.",
+  "editor.captureLabel": "التقاط الباركود بالكاميرا",
+  "editor.captureTitle": "التقاط هذا الباركود",
+  "editor.category": "المجموعة",
+  "editor.price": "السعر (دينار)",
+  "editor.stock": "الكمية في المخزون",
+  "editor.warnAt": "التنبيه عند",
+  "editor.warnPlaceholder": "استخدام إعداد المحل",
+  "editor.warnHint": "تنبيه عندما تنزل الكمية إلى هذا العدد.",
+  "editor.needsName": "المادة تحتاج اسماً.",
+  "editor.save": "حفظ",
+  "editor.archive": "أرشفة",
+  "editor.restore": "استرجاع",
+
+  "sales.prevDay": "اليوم السابق",
+  "sales.nextDay": "اليوم التالي",
+  "sales.pickDay": "اختيار يوم",
+  "sales.today": "اليوم",
+  "sales.takings": "الواردات",
+  "sales.count": "عدد المبيعات",
+  "sales.cash": "نقداً",
+  "sales.card": "بطاقة",
+  "sales.bestSellers": "الأكثر مبيعاً · {n} قطعة",
+  "sales.none": "لا توجد مبيعات في هذا اليوم.",
+  "sales.line": "{time} · {n} مواد · {method}",
+  "sales.lineVoided": "{time} · {n} مواد · {method} · ملغي",
+  "sales.voidedNote": "{n} عمليات ملغية في هذا اليوم، غير محسوبة في المجاميع.",
+  "sales.voidedNoteOne": "عملية ملغية واحدة في هذا اليوم، غير محسوبة في المجاميع.",
+  "sales.void": "إلغاء هذه العملية",
+  "sales.voidConfirm":
+    "إلغاء هذه العملية؟ ترجع المواد إلى المخزون ويخرج المبلغ من واردات اليوم.",
+  "sales.voidButton": "إلغاء الوصل رقم {no}",
+  "sales.keep": "إبقاء",
+
+  "settings.shop": "المحل",
+  "settings.shopHint": "هذا ما يُطبع في أعلى كل وصل.",
+  "settings.shopName": "اسم المحل",
+  "settings.address": "العنوان",
+  "settings.phone": "الهاتف",
+  "settings.optional": "اختياري",
+  "settings.footer": "عبارة أسفل الوصل",
+  "settings.language": "اللغة",
+  "settings.languageHint":
+    "الصندوق والوصولات والتقارير كلها تتبع هذا الاختيار. اختر اللغة التي يُدار بها الكاونتر.",
+  "settings.languageSample":
+    "المواد التجريبية لم تُعدّل بعد، لذلك تتغير لغتها مع اللغة. بعد أول عملية بيع تبقى الأسماء كما كتبتها.",
+  "settings.till": "الصندوق",
+  "settings.tillHint": "كل المبالغ بالدينار الصحيح — لا توجد كسور في النظام.",
+  "settings.roundTo": "تقريب المجموع إلى",
+  "settings.roundHint": "٢٥٠ أصغر ورقة متداولة. ضع 0 لإيقاف التقريب.",
+  "settings.lowStock": "التنبيه عند نزول المخزون إلى",
+  "settings.lowStockHint": "يُستخدم لكل مادة لا تحدد حدّاً خاصاً بها.",
+  "settings.nextReceipt": "رقم الوصل القادم",
+  "settings.scanner": "قارئ الباركود",
+  "settings.scannerHint":
+    "لا يحتاج إعداداً — القارئ يكتب مثل لوحة المفاتيح، والصندوق ينصت له في كل الشاشات. امسح أي باركود هنا للتأكد أنه يعمل.",
+  "settings.scannerWorking": "القارئ يعمل",
+  "settings.scannerWaiting": "بانتظار مسح. وجّه القارئ إلى أي باركود — علبة من الرف تكفي.",
+  "settings.scannerSpeed": "{keys} رمزاً خلال {ms} جزء من الثانية",
+  "settings.scannerNoSuffix":
+    "لا يرسل شيئاً في النهاية، ولا بأس — ينتظر الصندوق لحظة ويأخذ الرقم",
+  "settings.scannerSuffix": "ينتهي بـ {key}",
+  "settings.scannerHelp":
+    "إذا لم يظهر شيء فالقارئ لا يصل إلى الجهاز أصلاً: افحص الكيبل أو المستقبل، وجرّبه في أي حقل كتابة لترى إن كان يكتب. القارئ الذي يكتب ولا يُقرأ هنا مضبوط على سرعة بطيئة جداً — أعده إلى ضبط المصنع بالورقة المرفقة في علبته.",
+  "settings.backup": "النسخة الاحتياطية",
+  "settings.backupHint": "{products} مادة و {sales} عملية بيع محفوظة في هذا المتصفح، على هذا الجهاز فقط.",
+  "settings.export": "تنزيل نسخة احتياطية",
+  "settings.restore": "استرجاع من ملف",
+  "settings.downloaded": "تم تنزيل النسخة الاحتياطية.",
+  "settings.restored": "تم الاسترجاع.",
+  "settings.badFile": "هذا الملف لا يبدو نسخة احتياطية للصندوق.",
+  "settings.unreadable": "تعذّرت قراءة الملف.",
+  "settings.wipe": "مسح كل شيء والبدء من جديد",
+  "settings.wipeTitle": "مسح هذا الصندوق؟",
+  "settings.wipeBody":
+    "تُحذف كل المواد والمبيعات والإعدادات على هذا الجهاز وتُستبدل بالمحل التجريبي. نزّل نسخة احتياطية أولاً إذا كان هنا شيء يهمك.",
+  "settings.wipeConfirm": "مسح كل شيء",
+  "settings.cancel": "إلغاء",
+  "settings.wiped": "أُعيد الصندوق إلى المحل التجريبي.",
+
+  "camera.basket": "المسح إلى السلة",
+  "camera.starting": "جارٍ تشغيل الكاميرا…",
+  "camera.hold": "ضع الباركود داخل الإطار.",
+  "camera.done": "انتهيت",
+  "camera.close": "إغلاق",
+  "camera.takePhoto": "التقاط صورة للباركود",
+  "camera.reading": "جارٍ قراءة الصورة…",
+  "camera.noBarcode":
+    "لم يُعثر على باركود في الصورة. املأ الإطار بالباركود، وثبّت الهاتف، وأعد المحاولة.",
+  "camera.photoFailed": "تعذّرت قراءة الصورة. أعد المحاولة.",
+  "camera.noCamera": "لا توجد كاميرا على هذا الجهاز. استخدم القارئ أو اكتب الرقم.",
+  "camera.blocked":
+    "الكاميرا محجوبة عن هذه الصفحة. التقط صورة بدلاً من ذلك — فهي تستخدم كاميرا الهاتف نفسها — أو اسمح بالوصول وأعد المحاولة.",
+  "camera.noLive":
+    "هذا المتصفح لا يعطي الصفحة كاميرا مباشرة، وغالباً لا يفعل ذلك لصفحة فُتحت من ملف. التقط صورة بدلاً من ذلك — فهي تستخدم كاميرا الهاتف نفسها.",
+  "camera.unknown": "باركود غير معروف {code}",
+
+  "store.noStorage":
+    "هذا المتصفح لا يسمح للصندوق بالحفظ. الصندوق يعمل، لكن لا يُحفظ شيء عند إغلاق الصفحة — افتح الملف مباشرة لا داخل تطبيق آخر، أو اسمح بحفظ بيانات الموقع.",
+  "store.full":
+    "لا توجد مساحة في هذا المتصفح. المبيعات محفوظة في الذاكرة فقط — نزّل نسخة احتياطية من الإعدادات ثم فرّغ بعض المساحة.",
+};
+
+const CKB: Record<Key, string> = {
+  "app.till": "سندوق",
+  "app.products": "کاڵاکان",
+  "app.sales": "فرۆشتنەکان",
+  "app.settings": "ڕێکخستنەکان",
+  "app.exit": "دەرچوون",
+
+  "till.search": "بارکۆد سکان بکە، یان بە ناو بگەڕێ",
+  "till.searchLabel": "سکان یان گەڕان",
+  "till.clearSearch": "سڕینەوەی گەڕان",
+  "till.camera": "کامێرا",
+  "till.cameraLabel": "سکان بە کامێرا",
+  "till.all": "هەموو",
+  "till.noMatch": "هیچ نەدۆزرایەوە. وشەیەکی تر تاقی بکەرەوە، یان لە کاڵاکان زیادی بکە.",
+  "till.basket": "سەبەتە",
+  "till.clear": "بەتاڵکردن",
+  "till.closeBasket": "داخستنی سەبەتە",
+  "till.emptyBasket": "کاڵایەک سکان بکە بۆ دەستپێکردنی فرۆشتن.",
+  "till.each": "{price} بۆ دانەیەک",
+  "till.total": "کۆی گشتی",
+  "till.charge": "وەرگرتنی {amount}",
+  "till.viewBasket": "{amount} · بینینی سەبەتە",
+  "till.items": "{n} دانە",
+  "till.itemsOne": "یەک دانە",
+  "till.qtyOf": "بڕی {name}",
+  "till.oneLess": "کەمکردنی {name}",
+  "till.oneMore": "زیادکردنی {name}",
+  "till.out": "نەماوە",
+  "till.left": "{n} ماوە",
+  "till.added": "{name} زیادکرا",
+  "till.unknownTitle": "لە کاڵاکاندا نییە",
+  "till.unknownBody":
+    "هیچ کاڵایەک بەم بارکۆدە نییە. ئەگەر کاڵایەکی نوێیە، ئێستا ناو و نرخی بنووسە — دەچێتە ناو ئەم سەبەتەیە و لە کاڵاکاندا دەمێنێتەوە.",
+  "till.addThis": "ئەم کاڵایە زیاد بکە",
+  "till.notNow": "ئێستا نا",
+  "till.noProductFor": "هیچ کاڵایەک بە “{code}” نییە",
+
+  "pay.title": "پارەدان",
+  "pay.subtotal": "کۆ · {n} دانە",
+  "pay.discount": "داشکاندن",
+  "pay.rounding": "خڕکردنەوە",
+  "pay.toPay": "پێویستە بدرێت",
+  "pay.cash": "نەقد",
+  "pay.card": "کارت",
+  "pay.cashTaken": "پارەی وەرگیراو",
+  "pay.change": "باقی",
+  "pay.exact": "تەواو",
+  "pay.reset": "سڕینەوە",
+  "pay.giveDiscount": "داشکاندن بدە",
+  "pay.discountLabel": "داشکاندن بە دینار",
+  "pay.complete": "تەواوکردن · {amount}",
+  "pay.short": "{amount} کەمە",
+  "pay.misScan": "پێش سکانی کاڵای داهاتوو ئەم فرۆشتنە تەواو بکە یان هەڵیوەشێنەوە.",
+  "pay.changeDue": "باقی بۆ کڕیار",
+  "pay.newSale": "فرۆشتنی نوێ",
+
+  "receipt.no": "وەسڵی ژمارە {no}",
+  "receipt.subtotal": "کۆ",
+  "receipt.discount": "داشکاندن",
+  "receipt.rounding": "خڕکردنەوە",
+  "receipt.total": "کۆی گشتی",
+  "receipt.cash": "نەقد",
+  "receipt.card": "کارت",
+  "receipt.change": "باقی",
+  "receipt.voided": "*** هەڵوەشێنراوە ***",
+  "receipt.print": "چاپ",
+  "receipt.share": "هاوبەشکردن",
+
+  "products.search": "گەڕان لە کاڵاکان",
+  "products.categories": "پۆلەکان",
+  "products.add": "زیادکردنی کاڵا",
+  "products.all": "هەموو",
+  "products.low": "کەم ماوە",
+  "products.lowCount": "کەم ماوە · {n}",
+  "products.archived": "ئەرشیفکراوەکان",
+  "products.nothingLow": "هیچ کاڵایەک کەم نەماوە.",
+  "products.noneYet": "هێشتا هیچ کاڵایەک لێرە نییە.",
+  "products.inStock": "{n} لە کۆگا",
+  "products.receiveOne": "وەرگرتنی یەک {name}",
+  "products.edit": "دەستکاری",
+  "products.rename": "گۆڕینی ناوی {name}",
+  "products.remove": "سڕینەوە",
+  "products.newCategory": "پۆلی نوێ",
+  "products.addCategory": "زیادکردن",
+  "products.categoryInUse": "هێشتا {n} کاڵا لەم پۆلەدان. سەرەتا بیانگوازەوە.",
+  "products.categoryInUseOne": "هێشتا یەک کاڵا لەم پۆلەدایە. سەرەتا بیگوازەوە.",
+
+  "editor.new": "کاڵای نوێ",
+  "editor.edit": "دەستکاری کاڵا",
+  "editor.name": "ناو",
+  "editor.barcode": "بارکۆد",
+  "editor.barcodeHint":
+    "بە سکانەر یان کامێرا سکانی بکە، یان بینووسە. بۆ کاڵای کێشراو بەتاڵی بهێڵەوە.",
+  "editor.captureLabel": "گرتنی بارکۆد بە کامێرا",
+  "editor.captureTitle": "گرتنی ئەم بارکۆدە",
+  "editor.category": "پۆل",
+  "editor.price": "نرخ (دینار)",
+  "editor.stock": "بڕ لە کۆگا",
+  "editor.warnAt": "ئاگادارکردنەوە لە",
+  "editor.warnPlaceholder": "ڕێکخستنی دوکان بەکاربهێنە",
+  "editor.warnHint": "کاتێک بڕەکە دەگاتە ئەم ژمارەیە ئاگادار بکەرەوە.",
+  "editor.needsName": "کاڵا پێویستی بە ناوە.",
+  "editor.save": "پاشەکەوت",
+  "editor.archive": "ئەرشیف",
+  "editor.restore": "گەڕاندنەوە",
+
+  "sales.prevDay": "ڕۆژی پێشوو",
+  "sales.nextDay": "ڕۆژی داهاتوو",
+  "sales.pickDay": "ڕۆژێک هەڵبژێرە",
+  "sales.today": "ئەمڕۆ",
+  "sales.takings": "داهات",
+  "sales.count": "ژمارەی فرۆشتن",
+  "sales.cash": "نەقد",
+  "sales.card": "کارت",
+  "sales.bestSellers": "زۆرترین فرۆشراو · {n} دانە",
+  "sales.none": "لەم ڕۆژەدا هیچ فرۆشتنێک نییە.",
+  "sales.line": "{time} · {n} دانە · {method}",
+  "sales.lineVoided": "{time} · {n} دانە · {method} · هەڵوەشێنراوە",
+  "sales.voidedNote": "{n} فرۆشتنی هەڵوەشێنراو لەم ڕۆژەدا، لە کۆکان ژمێردراو نین.",
+  "sales.voidedNoteOne": "یەک فرۆشتنی هەڵوەشێنراو لەم ڕۆژەدا، لە کۆکان نەژمێردراوە.",
+  "sales.void": "هەڵوەشاندنەوەی ئەم فرۆشتنە",
+  "sales.voidConfirm":
+    "ئەم فرۆشتنە هەڵبوەشێنرێتەوە؟ کاڵاکان دەگەڕێنەوە کۆگا و پارەکە لە داهاتی ڕۆژ کەم دەبێتەوە.",
+  "sales.voidButton": "هەڵوەشاندنەوەی وەسڵی {no}",
+  "sales.keep": "بیهێڵەوە",
+
+  "settings.shop": "دوکان",
+  "settings.shopHint": "ئەمە لە سەرەوەی هەموو وەسڵێک چاپ دەبێت.",
+  "settings.shopName": "ناوی دوکان",
+  "settings.address": "ناونیشان",
+  "settings.phone": "تەلەفۆن",
+  "settings.optional": "ئارەزوومەندانە",
+  "settings.footer": "دەقی خوارەوەی وەسڵ",
+  "settings.language": "زمان",
+  "settings.languageHint":
+    "سندوق و وەسڵەکان و ڕاپۆرتەکان هەموویان ئەمە پەیڕەو دەکەن. ئەو زمانە هەڵبژێرە کە لە کاونتەر پێی کار دەکرێت.",
+  "settings.languageSample":
+    "کاڵا نموونەییەکان هێشتا دەستکارییان نەکراوە، بۆیە زمانیان دەگۆڕێت. دوای یەکەم فرۆشتن ناوەکان وەک خۆت نووسیوتە دەمێننەوە.",
+  "settings.till": "سندوق",
+  "settings.tillHint": "هەموو بڕەکان بە دیناری تەواون — هیچ کەسرێک لە سیستەمەکەدا نییە.",
+  "settings.roundTo": "خڕکردنەوەی کۆ بۆ",
+  "settings.roundHint": "250 بچووکترین کاغەزی باوە. 0 دابنێ بۆ کوژاندنەوەی خڕکردنەوە.",
+  "settings.lowStock": "ئاگادارکردنەوە کاتێک کۆگا دەگاتە",
+  "settings.lowStockHint": "بۆ هەموو کاڵایەک کە سنووری تایبەتی خۆی دانەنابێت.",
+  "settings.nextReceipt": "ژمارەی وەسڵی داهاتوو",
+  "settings.scanner": "سکانەری دەستی",
+  "settings.scannerHint":
+    "پێویستی بە ڕێکخستن نییە — سکانەر وەک تەختەکلیل دەنووسێت و سندوق لە هەموو پەڕەیەکدا گوێی لێیە. لێرە هەر بارکۆدێک سکان بکە بۆ دڵنیابوون.",
+  "settings.scannerWorking": "سکانەر کاردەکات",
+  "settings.scannerWaiting": "چاوەڕێی سکانە. سکانەر ئاڕاستەی هەر بارکۆدێک بکە — پاکەتێکی سەر ڕەف بەسە.",
+  "settings.scannerSpeed": "{keys} نووسە لە {ms} میلی چرکە",
+  "settings.scannerNoSuffix":
+    "لە کۆتاییدا هیچ نانێرێت، کێشە نییە — سندوق ساتێک چاوەڕێ دەکات و کۆدەکە وەردەگرێت",
+  "settings.scannerSuffix": "بە {key} کۆتایی دێت",
+  "settings.scannerHelp":
+    "ئەگەر هیچ دەرنەکەوت، سکانەر بە تەواوی نەگەیشتووەتە ئەم ئامێرە: کێبڵ یان وەرگرەکە بپشکنە، و لە هەر خانەیەکی نووسیندا تاقی بکەرەوە بزانە دەنووسێت. سکانەرێک کە دەنووسێت بەڵام لێرە نانووسرێتەوە، لەسەر خێرایەکی زۆر هێواش ڕێکخراوە — بە پەڕەی ناو قوتییەکەی بیگەڕێنەوە بۆ ڕێکخستنی کارخانە.",
+  "settings.backup": "یەدەگ",
+  "settings.backupHint": "{products} کاڵا و {sales} فرۆشتن لەم وێبگەڕەدا پاشەکەوتکراون، تەنها لەم ئامێرەدا.",
+  "settings.export": "داگرتنی یەدەگ",
+  "settings.restore": "گەڕاندنەوە لە فایلێک",
+  "settings.downloaded": "یەدەگەکە داگیرا.",
+  "settings.restored": "گەڕێندرایەوە.",
+  "settings.badFile": "ئەم فایلە لە یەدەگی سندوق ناچێت.",
+  "settings.unreadable": "فایلەکە نەخوێندرایەوە.",
+  "settings.wipe": "سڕینەوەی هەموو شتێک و دەستپێکردنەوە",
+  "settings.wipeTitle": "ئەم سندوقە بسڕدرێتەوە؟",
+  "settings.wipeBody":
+    "هەموو کاڵا و فرۆشتن و ڕێکخستنێکی ئەم ئامێرە دەسڕدرێتەوە و دوکانی نموونەیی جێگەی دەگرێتەوە. ئەگەر شتێکی گرنگت لێرەیە، سەرەتا یەدەگ داگرە.",
+  "settings.wipeConfirm": "هەموویان بسڕەوە",
+  "settings.cancel": "پاشگەزبوونەوە",
+  "settings.wiped": "سندوق گەڕێندرایەوە بۆ دوکانی نموونەیی.",
+
+  "camera.basket": "سکان بۆ ناو سەبەتە",
+  "camera.starting": "کامێرا دەکرێتەوە…",
+  "camera.hold": "بارکۆد لە ناو چوارچێوەکە ڕابگرە.",
+  "camera.done": "تەواوبوو",
+  "camera.close": "داخستن",
+  "camera.takePhoto": "وێنەی بارکۆد بگرە",
+  "camera.reading": "وێنەکە دەخوێندرێتەوە…",
+  "camera.noBarcode":
+    "هیچ بارکۆدێک لەو وێنەیەدا نەدۆزرایەوە. چوارچێوەکە بە بارکۆد پڕ بکە، مۆبایل بچەسپێنە، و دووبارە تاقی بکەرەوە.",
+  "camera.photoFailed": "وێنەکە نەخوێندرایەوە. دووبارە تاقی بکەرەوە.",
+  "camera.noCamera": "هیچ کامێرایەک لەم ئامێرەدا نییە. سکانەر بەکاربهێنە، یان ژمارەکە بنووسە.",
+  "camera.blocked":
+    "کامێرا بۆ ئەم پەڕەیە ڕاگیراوە. لە جیاتی ئەوە وێنەیەک بگرە — ئەوە کامێرای خودی مۆبایل بەکاردەهێنێت — یان ڕێگە بدە و دووبارە تاقی بکەرەوە.",
+  "camera.noLive":
+    "ئەم وێبگەڕە کامێرای ڕاستەوخۆ نادات بە پەڕەکە، و زۆرجار ئەمە بۆ پەڕەیەک کە لە فایلێکەوە کراوەتەوە ناکات. لە جیاتی ئەوە وێنەیەک بگرە — ئەوە کامێرای خودی مۆبایل بەکاردەهێنێت.",
+  "camera.unknown": "بارکۆدی نەناسراو {code}",
+
+  "store.noStorage":
+    "ئەم وێبگەڕە ڕێگە بە سندوق نادات پاشەکەوت بکات. کار دەکات، بەڵام هیچ نامێنێتەوە کاتێک پەڕەکە دادەخرێت — فایلەکە ڕاستەوخۆ بکەرەوە نەک لە ناو ئەپێکی تردا، یان ڕێگە بە پاشەکەوتکردنی داتا بدە.",
+  "store.full":
+    "جێگا لەم وێبگەڕەدا نەماوە. فرۆشتنەکان تەنها لە بیرگەدان — لە ڕێکخستنەکان یەدەگێک داگرە، پاشان جێگا خاڵی بکە.",
+};
+
+const DICTS: Record<Lang, Record<Key, string>> = { en: EN, ar: AR, ckb: CKB };
+
+/** Fills {name} style holes. Missing keys fall back to English rather than
+    showing a cashier a dotted identifier. */
+export function translate(lang: Lang, key: Key, vars?: Vars): string {
+  const text = DICTS[lang]?.[key] ?? EN[key] ?? key;
+  if (!vars) return text;
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
+    name in vars ? String(vars[name]) : whole,
+  );
+}

@@ -15,7 +15,8 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePos, voidSale } from "./store";
-import { money } from "./money";
+import { useT } from "./useT";
+import { formatDay, formatTime, type Lang } from "./i18n";
 import { Button, Empty, Modal } from "./ui";
 import { Receipt, ReceiptActions } from "./Receipt";
 import type { Sale } from "./types";
@@ -39,20 +40,15 @@ function shiftDay(key: string, days: number): string {
   return dayKey(date.toISOString());
 }
 
-function dayLabel(key: string): string {
+function dayLabel(key: string, lang: Lang, today: string): string {
   const [year, month, day] = key.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  const label = date.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return key === todayKey() ? `Today · ${label}` : label;
+  const label = formatDay(new Date(year, month - 1, day), lang);
+  return key === todayKey() ? `${today} · ${label}` : label;
 }
 
 export function SalesView() {
   const data = usePos();
+  const { t, m, lang } = useT();
   const [day, setDay] = useState(todayKey());
   const [open, setOpen] = useState<Sale | null>(null);
 
@@ -101,20 +97,20 @@ export function SalesView() {
           <Button
             variant="quiet"
             onClick={() => setDay(shiftDay(day, -1))}
-            aria-label="Previous day"
+            aria-label={t("sales.prevDay")}
           >
             <ChevronLeft size={18} />
           </Button>
           <div className="text-center">
             <p className="font-display text-[15.5px] font-semibold text-white">
-              {dayLabel(day)}
+              {dayLabel(day, lang, t("sales.today"))}
             </p>
             <input
               type="date"
               value={day}
               max={todayKey()}
               onChange={(event) => setDay(event.target.value || todayKey())}
-              aria-label="Pick a day"
+              aria-label={t("sales.pickDay")}
               className="mt-1 rounded-lg border border-[#232b40] bg-[#0a0f1c] px-2 py-1 text-[12.5px] text-[#98a0bb] outline-none focus:border-[#6c7bf0]"
             />
           </div>
@@ -122,23 +118,23 @@ export function SalesView() {
             variant="quiet"
             disabled={day >= todayKey()}
             onClick={() => setDay(shiftDay(day, 1))}
-            aria-label="Next day"
+            aria-label={t("sales.nextDay")}
           >
             <ChevronRight size={18} />
           </Button>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <Stat label="Takings" value={money(report.revenue)} accent />
-          <Stat label="Sales" value={String(report.sales)} />
-          <Stat label="Cash" value={money(report.cash)} />
-          <Stat label="Card" value={money(report.card)} />
+          <Stat label={t("sales.takings")} value={m(report.revenue)} accent />
+          <Stat label={t("sales.count")} value={String(report.sales)} />
+          <Stat label={t("sales.cash")} value={m(report.cash)} />
+          <Stat label={t("sales.card")} value={m(report.card)} />
         </div>
 
         {report.top.length > 0 ? (
           <div className="mt-4 rounded-xl border border-[#1e2740] bg-[#0b1120] px-4 py-3">
             <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
-              Best sellers · {report.items} items sold
+              {t("sales.bestSellers", { n: report.items })}
             </p>
             <ul className="mt-2 space-y-1.5">
               {report.top.map((item) => (
@@ -149,7 +145,7 @@ export function SalesView() {
                   <span>
                     <span className="text-[#7e87a5]">{item.qty}×</span> {item.name}
                   </span>
-                  <span className="text-[#e7eaf6]">{money(item.total)}</span>
+                  <span className="text-[#e7eaf6]">{m(item.total)}</span>
                 </li>
               ))}
             </ul>
@@ -158,7 +154,7 @@ export function SalesView() {
 
         <div className="mt-4 overflow-hidden rounded-xl border border-[#1e2740]">
           {sales.length === 0 ? (
-            <Empty>No sales on this day.</Empty>
+            <Empty>{t("sales.none")}</Empty>
           ) : (
             <ul className="divide-y divide-[#141b2d]">
               {sales.map((sale) => (
@@ -172,23 +168,22 @@ export function SalesView() {
                       <p
                         className={`text-[14.5px] font-medium ${sale.voidedAt ? "text-[#6b7490] line-through" : "text-[#e7eaf6]"}`}
                       >
-                        Receipt #{sale.no}
+                        {t("receipt.no", { no: sale.no })}
                       </p>
                       <p className="mt-0.5 text-[12.5px] text-[#6b7490]">
-                        {new Date(sale.at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
+                        {t(sale.voidedAt ? "sales.lineVoided" : "sales.line", {
+                          time: formatTime(sale.at),
+                          n: sale.lines.reduce((n, line) => n + line.qty, 0),
+                          method: t(
+                            sale.method === "cash" ? "sales.cash" : "sales.card",
+                          ),
                         })}
-                        {" · "}
-                        {sale.lines.reduce((n, line) => n + line.qty, 0)} items ·{" "}
-                        {sale.method}
-                        {sale.voidedAt ? " · voided" : ""}
                       </p>
                     </div>
                     <span
                       className={`font-display text-[15px] font-semibold ${sale.voidedAt ? "text-[#6b7490] line-through" : "text-white"}`}
                     >
-                      {money(sale.total)}
+                      {m(sale.total)}
                     </span>
                   </button>
                 </li>
@@ -199,8 +194,9 @@ export function SalesView() {
 
         {report.voided > 0 ? (
           <p className="mt-3 text-[12.5px] text-[#6b7490]">
-            {report.voided} voided sale{report.voided === 1 ? "" : "s"} on this day,
-            left out of the totals.
+            {report.voided === 1
+              ? t("sales.voidedNoteOne")
+              : t("sales.voidedNote", { n: report.voided })}
           </p>
         ) : null}
       </div>
@@ -237,23 +233,21 @@ function Stat({
 
 function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   const data = usePos();
+  const { t, m } = useT();
   const [confirming, setConfirming] = useState(false);
   // Read the sale back from the store so the receipt shows the void the moment
   // it is made, rather than the copy this modal opened with.
   const current = data.sales.find((s) => s.id === sale.id) ?? sale;
 
   return (
-    <Modal title={`Receipt #${current.no}`} onClose={onClose}>
+    <Modal title={t("receipt.no", { no: current.no })} onClose={onClose}>
       <Receipt sale={current} settings={data.settings} />
       <ReceiptActions sale={current} settings={data.settings} className="mt-4" />
 
       {!current.voidedAt ? (
         confirming ? (
           <div className="pos-noprint mt-2 rounded-xl border border-[#3d2230] bg-[#180f16] px-4 py-3">
-            <p className="text-[13.5px] text-[#f0a3b5]">
-              Void this sale? The goods go back on the shelf and the money comes out
-              of the day's takings.
-            </p>
+            <p className="text-[13.5px] text-[#f0a3b5]">{t("sales.voidConfirm")}</p>
             <div className="mt-3 flex gap-2">
               <Button
                 variant="danger"
@@ -263,10 +257,10 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
                   setConfirming(false);
                 }}
               >
-                Void receipt #{current.no}
+                {t("sales.voidButton", { no: current.no })}
               </Button>
               <Button variant="quiet" onClick={() => setConfirming(false)}>
-                Keep
+                {t("sales.keep")}
               </Button>
             </div>
           </div>
@@ -276,7 +270,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             className="pos-noprint mt-2 w-full text-[#f0879d]"
             onClick={() => setConfirming(true)}
           >
-            Void this sale
+            {t("sales.void")}
           </Button>
         )
       ) : null}

@@ -27,6 +27,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2 } from "lucide-react";
 import { Button, Modal } from "./ui";
 import { beep } from "./beep";
+import { useT } from "./useT";
+import { translate } from "./i18n";
 
 /** The symbologies actually printed on shop goods. Narrowing the list makes
     detection faster and cuts false reads off packaging noise. */
@@ -158,6 +160,9 @@ export function CameraScanner({
      scanning loop below never has a reason to tear the camera down and start
      it again: restarting mid-basket costs a second of black screen and drops
      whatever was in front of the lens at the time. */
+  const { t, lang } = useT();
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const onCodeRef = useRef(onCode);
   onCodeRef.current = onCode;
   const onCloseRef = useRef(onClose);
@@ -277,12 +282,18 @@ export function CameraScanner({
         const name = (cause as DOMException)?.name;
         gaveUp = true;
         setSupport("unsupported");
+        /* Read through the ref: this runs inside an effect that must not be
+           torn down and restarted every time the language object changes, or
+           opening the camera would restart it mid-scan. */
         setError(
-          name === "NotFoundError"
-            ? "No camera on this machine. Use a USB scanner, or type the number."
-            : name === "NotAllowedError"
-              ? "The camera was blocked for this page. Take a photo instead — that uses the phone's own camera — or allow camera access and try again."
-              : "This browser will not give the page a live camera. It usually will not for a page opened from a file. Take a photo instead — that uses the phone's own camera.",
+          translate(
+            langRef.current,
+            name === "NotFoundError"
+              ? "camera.noCamera"
+              : name === "NotAllowedError"
+                ? "camera.blocked"
+                : "camera.noLive",
+          ),
         );
       }
     }
@@ -308,7 +319,7 @@ export function CameraScanner({
    * still beats typing thirteen digits.
    */
   async function readPhoto(file: File) {
-    setPhotoNote("Reading the photo…");
+    setPhotoNote(t("camera.reading"));
     const url = URL.createObjectURL(file);
     try {
       const image = new Image();
@@ -321,12 +332,10 @@ export function CameraScanner({
         setPhotoNote("");
         handle(code);
       } else {
-        setPhotoNote(
-          "No barcode found in that photo. Fill the frame with the barcode, hold the phone steady, and try again.",
-        );
+        setPhotoNote(t("camera.noBarcode"));
       }
     } catch {
-      setPhotoNote("That photo could not be read. Try again.");
+      setPhotoNote(t("camera.photoFailed"));
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -352,7 +361,7 @@ export function CameraScanner({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
             <Camera size={22} className="text-[#5b6480]" />
             <p className="text-[13.5px] text-[#98a0bb]">
-              {support === "checking" ? "Starting the camera…" : error}
+              {support === "checking" ? t("camera.starting") : error}
             </p>
           </div>
         ) : null}
@@ -372,7 +381,7 @@ export function CameraScanner({
         </ul>
       ) : support === "ready" ? (
         <p className="mt-3 text-center text-[13px] text-[#7e87a5]">
-          Hold the barcode inside the box.
+          {t("camera.hold")}
         </p>
       ) : null}
 
@@ -400,11 +409,11 @@ export function CameraScanner({
         className="mt-3 h-[48px] w-full"
         onClick={() => photoRef.current?.click()}
       >
-        <Camera size={17} /> Take a photo of the barcode
+        <Camera size={17} /> {t("camera.takePhoto")}
       </Button>
 
       <Button variant={support === "ready" ? "primary" : "ghost"} className="mt-2 h-[48px] w-full" onClick={onClose}>
-        {mode === "continuous" && log.length > 0 ? "Done scanning" : "Close"}
+        {mode === "continuous" && log.length > 0 ? t("camera.done") : t("camera.close")}
       </Button>
     </Modal>
   );
