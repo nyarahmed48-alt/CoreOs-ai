@@ -6,6 +6,11 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    // Stamped into the support report, so a desk can tell which of fifty
+    // tablets is running old code.
+    define: {
+      __POS_BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ")),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

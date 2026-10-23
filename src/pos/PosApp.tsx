@@ -25,6 +25,7 @@ import { useState } from "react";
 import { BarChart3, Boxes, Settings as SettingsIcon, ShoppingCart } from "lucide-react";
 import { Link } from "../site/router";
 import { setLanguage, usePos, useWriteError } from "./store";
+import { watchForErrors } from "./report";
 import { useT } from "./useT";
 import { LANGS } from "./i18n";
 import { RegisterView } from "./RegisterView";
@@ -53,6 +54,10 @@ const PRINT_CSS = `
   .pos-noprint { display: none !important; }
 }
 `;
+
+/* Started before the first render, so a crash on the way up is still in the
+   report the shop sends afterwards. */
+watchForErrors();
 
 type Tab = "register" | "products" | "sales" | "settings";
 

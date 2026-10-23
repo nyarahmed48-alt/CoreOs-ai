@@ -275,6 +275,22 @@ const EN = {
     "This browser will not give the page a live camera. It usually will not for a page opened from a file. Take a photo instead — that uses the phone's own camera.",
   "camera.unknown": "Unknown barcode {code}",
 
+  "support.title": "Help and reports",
+  "support.hint":
+    "If something goes wrong, send this report instead of describing it over the phone. It carries the till, the device and the last errors — and no product names, prices, customers or takings.",
+  "support.tillId": "Till number",
+  "support.tillIdHint": "Read this out when you call. It is how we find your till.",
+  "support.number": "Support WhatsApp number",
+  "support.numberHint": "With the country code, like 964xxxxxxxxx. Set once, when the till is installed.",
+  "support.send": "Send report on WhatsApp",
+  "support.copy": "Copy the report",
+  "support.save": "Save the report as a file",
+  "support.copied": "Report copied — paste it into WhatsApp.",
+  "support.saved": "Report saved.",
+  "support.noNumber": "No support number set yet, so the report was copied instead.",
+  "support.errors": "{n} errors recorded on this till",
+  "support.noErrors": "No errors recorded on this till.",
+  "support.preview": "See what gets sent",
   "store.noStorage":
     "This browser is not letting the till save. It still works, but nothing is kept when the page closes — open the file directly rather than inside another app, or allow site data for it.",
   "store.full":
@@ -472,6 +488,22 @@ const AR: Record<Key, string> = {
     "هذا المتصفح لا يعطي الصفحة كاميرا مباشرة، وغالباً لا يفعل ذلك لصفحة فُتحت من ملف. التقط صورة بدلاً من ذلك — فهي تستخدم كاميرا الهاتف نفسها.",
   "camera.unknown": "باركود غير معروف {code}",
 
+  "support.title": "المساعدة والتقارير",
+  "support.hint":
+    "إذا حدث خلل، أرسل هذا التقرير بدل شرح المشكلة بالهاتف. يحمل بيانات الصندوق والجهاز وآخر الأخطاء — ولا يحمل أسماء مواد ولا أسعاراً ولا زبائن ولا واردات.",
+  "support.tillId": "رقم الصندوق",
+  "support.tillIdHint": "اذكر هذا الرقم عند الاتصال. به نعرف صندوقك.",
+  "support.number": "رقم واتساب للدعم",
+  "support.numberHint": "مع مفتاح الدولة، مثل 964xxxxxxxxx. يُضبط مرة واحدة عند تركيب الصندوق.",
+  "support.send": "إرسال التقرير على واتساب",
+  "support.copy": "نسخ التقرير",
+  "support.save": "حفظ التقرير كملف",
+  "support.copied": "نُسخ التقرير — الصقه في واتساب.",
+  "support.saved": "حُفظ التقرير.",
+  "support.noNumber": "لم يُضبط رقم للدعم بعد، لذلك نُسخ التقرير بدلاً من إرساله.",
+  "support.errors": "{n} أخطاء مسجّلة على هذا الصندوق",
+  "support.noErrors": "لا توجد أخطاء مسجّلة على هذا الصندوق.",
+  "support.preview": "عرض ما سيُرسل",
   "store.noStorage":
     "هذا المتصفح لا يسمح للصندوق بالحفظ. الصندوق يعمل، لكن لا يُحفظ شيء عند إغلاق الصفحة — افتح الملف مباشرة لا داخل تطبيق آخر، أو اسمح بحفظ بيانات الموقع.",
   "store.full":
@@ -667,6 +699,22 @@ const CKB: Record<Key, string> = {
     "ئەم وێبگەڕە کامێرای ڕاستەوخۆ نادات بە پەڕەکە، و زۆرجار ئەمە بۆ پەڕەیەک کە لە فایلێکەوە کراوەتەوە ناکات. لە جیاتی ئەوە وێنەیەک بگرە — ئەوە کامێرای خودی مۆبایل بەکاردەهێنێت.",
   "camera.unknown": "بارکۆدی نەناسراو {code}",
 
+  "support.title": "یارمەتی و ڕاپۆرت",
+  "support.hint":
+    "ئەگەر کێشەیەک ڕوویدا، ئەم ڕاپۆرتە بنێرە لە جیاتی ڕوونکردنەوەی بە تەلەفۆن. زانیاری سندوق و ئامێر و دوا هەڵەکان هەڵدەگرێت — هیچ ناوی کاڵا و نرخ و کڕیار و داهاتێک ناگوازێتەوە.",
+  "support.tillId": "ژمارەی سندوق",
+  "support.tillIdHint": "کاتی پەیوەندیکردن ئەم ژمارەیە بڵێ. پێی سندوقەکەت دەدۆزینەوە.",
+  "support.number": "ژمارەی واتسئاپی پشتگیری",
+  "support.numberHint": "لەگەڵ کۆدی وڵات، وەک 964xxxxxxxxx. تەنها یەک جار لە کاتی دانانی سندوق ڕێک دەخرێت.",
+  "support.send": "ناردنی ڕاپۆرت بە واتسئاپ",
+  "support.copy": "لەبەرگرتنەوەی ڕاپۆرت",
+  "support.save": "پاشەکەوتکردنی ڕاپۆرت وەک فایل",
+  "support.copied": "ڕاپۆرت لەبەرگیرایەوە — لە واتسئاپدا بیلکێنە.",
+  "support.saved": "ڕاپۆرت پاشەکەوتکرا.",
+  "support.noNumber": "هێشتا ژمارەی پشتگیری دانەنراوە، بۆیە ڕاپۆرتەکە لەبەرگیرایەوە.",
+  "support.errors": "{n} هەڵە لەم سندوقەدا تۆمارکراون",
+  "support.noErrors": "هیچ هەڵەیەک لەم سندوقەدا تۆمار نەکراوە.",
+  "support.preview": "بینینی ئەوەی دەنێردرێت",
   "store.noStorage":
     "ئەم وێبگەڕە ڕێگە بە سندوق نادات پاشەکەوت بکات. کار دەکات، بەڵام هیچ نامێنێتەوە کاتێک پەڕەکە دادەخرێت — فایلەکە ڕاستەوخۆ بکەرەوە نەک لە ناو ئەپێکی تردا، یان ڕێگە بە پاشەکەوتکردنی داتا بدە.",
   "store.full":

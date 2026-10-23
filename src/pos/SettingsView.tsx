@@ -12,7 +12,7 @@
  */
 
 import { useRef, useState } from "react";
-import { Download, ScanLine, Upload } from "lucide-react";
+import { Download, LifeBuoy, ScanLine, Send, Upload } from "lucide-react";
 import {
   exportData,
   importData,
@@ -25,6 +25,8 @@ import { useT } from "./useT";
 import { LANGS } from "./i18n";
 import { Button, Field, Modal } from "./ui";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
+import { useWriteError } from "./store";
+import { buildReport, errorCount, whatsappNumber } from "./report";
 
 export function SettingsView() {
   const data = usePos();
@@ -37,6 +39,59 @@ export function SettingsView() {
   const [lastScan, setLastScan] = useState<{ code: string; info: ScanInfo } | null>(
     null,
   );
+  const writeError = useWriteError();
+  const [showReport, setShowReport] = useState(false);
+
+  /**
+   * One press instead of a phone call.
+   *
+   * WhatsApp is how a shop in Baghdad actually reaches anyone, so the report
+   * goes there when a support number has been set. Where it has not — or where
+   * the browser will not open it — the text goes to the clipboard instead, so
+   * the button never dead-ends on a counter at closing time.
+   */
+  async function sendReport() {
+    const text = buildReport(data, writeError);
+    const number = whatsappNumber(settings.supportPhone);
+    if (number) {
+      window.open(
+        `https://wa.me/${number}?text=${encodeURIComponent(text)}`,
+        "_blank",
+        "noopener",
+      );
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setNotice(t("support.noNumber"));
+    } catch {
+      saveReport();
+    }
+    setError("");
+  }
+
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(buildReport(data, writeError));
+      setNotice(t("support.copied"));
+      setError("");
+    } catch {
+      saveReport();
+    }
+  }
+
+  function saveReport() {
+    const url = URL.createObjectURL(
+      new Blob([buildReport(data, writeError)], { type: "text/plain" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `till-${settings.tillId}-report.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice(t("support.saved"));
+    setError("");
+  }
 
   useWedgeScanner({
     enabled: !resetting,
@@ -201,6 +256,59 @@ export function SettingsView() {
           <p className="text-[13px] leading-relaxed text-[#7e87a5]">
             {t("settings.scannerHelp")}
           </p>
+        </Section>
+
+        <Section title={t("support.title")} hint={t("support.hint")}>
+          <div className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
+              {t("support.tillId")}
+            </p>
+            <p dir="ltr" className="mt-1 font-mono text-[22px] tracking-[0.12em] text-white">
+              {settings.tillId}
+            </p>
+            <p className="mt-1 text-[12.5px] text-[#7e87a5]">{t("support.tillIdHint")}</p>
+          </div>
+
+          <Field
+            label={t("support.number")}
+            value={settings.supportPhone}
+            inputMode="tel"
+            dir="ltr"
+            placeholder="964xxxxxxxxx"
+            hint={t("support.numberHint")}
+            onChange={(event) => updateSettings({ supportPhone: event.target.value })}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={sendReport}>
+              <Send size={16} /> {t("support.send")}
+            </Button>
+            <Button onClick={copyReport}>{t("support.copy")}</Button>
+            <Button onClick={saveReport}>{t("support.save")}</Button>
+          </div>
+
+          <p className="flex items-center gap-2 text-[13px] text-[#7e87a5]">
+            <LifeBuoy size={15} className="shrink-0" />
+            {errorCount() === 0
+              ? t("support.noErrors")
+              : t("support.errors", { n: errorCount() })}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowReport((open) => !open)}
+            className="text-start text-[13px] font-medium text-[#8b96ff] hover:text-white"
+          >
+            {t("support.preview")}
+          </button>
+          {showReport ? (
+            <pre
+              dir="ltr"
+              className="max-h-64 overflow-auto rounded-xl border border-[#1e2740] bg-[#05060a] p-3 text-[11.5px] leading-relaxed text-[#98a0bb]"
+            >
+              {buildReport(data, writeError)}
+            </pre>
+          ) : null}
         </Section>
 
         <Section

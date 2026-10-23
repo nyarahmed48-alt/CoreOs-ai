@@ -87,6 +87,12 @@ export interface Settings {
   lowStockAt: number;
   /** The number the next receipt will carry. */
   nextSaleNo: number;
+  /** A short name for this installation, made on first run. Fifty tablets all
+      called "the till" cannot be told apart in a support queue; this is what a
+      shopkeeper reads down the phone, and what a report arrives under. */
+  tillId: string;
+  /** Where the "send report" button sends to. Set once, at setup. */
+  supportPhone: string;
   /** True while the shelf is still the sample one we shipped. It lets the
       sample products follow the language setting, and goes false for good the
       moment the shop sells something or edits anything — after that the names

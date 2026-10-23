@@ -33,9 +33,23 @@ const FOOTER: Names = {
   ckb: "سوپاس — تکایە وەسڵەکەت لای خۆت بهێڵەوە",
 };
 
+/** Short, spoken down a phone line, and hard to mishear: no vowels, no
+    look-alike characters. */
+function newTillId(): string {
+  const alphabet = "ACDEFGHJKLMNPQRTUVWXY349";
+  let id = "";
+  for (let i = 0; i < 6; i++) {
+    id += alphabet[Math.floor(Math.random() * alphabet.length)];
+    if (i === 2) id += "-";
+  }
+  return id;
+}
+
 export function defaultSettings(lang: Lang): Settings {
   return {
     lang,
+    tillId: newTillId(),
+    supportPhone: "",
     shopName: SHOP_NAME[lang],
     addressLine: "",
     phone: "",

@@ -169,6 +169,30 @@ The till is not linked from the nav — it is opened directly on the shop's
 machine — and it is a lazy chunk, so a visitor reading the website never
 downloads it.
 
+### Supporting fifty shops
+
+A shopkeeper cannot be asked to read a browser version down the phone, so the
+till gathers it instead. Settings carries:
+
+- **A till number** (`3NR-LET`), made on first run from characters that are
+  hard to mishear. It is what a shop reads out when they call, and what their
+  report arrives under.
+- **Send report on WhatsApp** — the device, the build stamp, storage state,
+  product and sale counts, and the last eight errors, which the till records
+  for itself through a global error handler. Where no support number is set,
+  or the browser blocks the hand-off, it falls back to the clipboard and then
+  to a file, so the button never dead-ends on a counter.
+
+The report is written in English whatever language the counter is worked in,
+because a support desk reads it rather than the shop. It carries **no product
+names, no prices, no customers and no takings** — counts and timings only, and
+the panel shows the shop exactly what it is about to send. The one thing
+support usually wants beyond it, the shop's own data, is the backup file
+below, which the shop chooses to send.
+
+`__POS_BUILD__` is stamped in at build time by both vite configs; without it a
+desk cannot tell which of fifty tablets is running old code.
+
 ### The portable till
 
 `CoreOS_Market_POS_Portable.html` is the same application as one file. Copy it
