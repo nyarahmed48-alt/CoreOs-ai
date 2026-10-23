@@ -31,8 +31,14 @@ const CACHE_KEY = "coreos.pos.licence.v1";
 
 /** Where the tills check in. Empty until the office has somewhere to run it,
     and the till falls back to typed codes alone — which is exactly how it
-    behaves today. */
+    behaves today. Filling this in is the whole switch-on. */
 export const LICENCE_URL = "";
+
+/** How long a tablet may go unanswered before it locks itself, when the
+    server does not say otherwise. Two weeks: long enough to survive a bad
+    month of Iraqi connectivity, short enough that unplugging the wifi is not
+    a way to keep a frozen till working for ever. */
+export const DEFAULT_GRACE_DAYS = 14;
 
 /** How often to ask while the till is open. A freeze lands within this. */
 const POLL_MS = 60_000;
@@ -117,7 +123,8 @@ export async function checkIn(tillId: string): Promise<Known> {
         until: typeof body.until === "number" ? body.until : null,
         // A server that forgets to say falls back to a fortnight, which is
         // long enough to survive a bad month of connectivity.
-        graceDays: typeof body.graceDays === "number" ? body.graceDays : 14,
+        graceDays:
+          typeof body.graceDays === "number" ? body.graceDays : DEFAULT_GRACE_DAYS,
         at: Date.now(),
         message: typeof body.message === "string" ? body.message : undefined,
       },
@@ -136,6 +143,11 @@ export function watchLicence(
   tillId: string,
   onChange: (known: Known) => void,
 ): () => void {
+  /* With nowhere to check in, there is nothing to wake up for. A timer firing
+     every minute on a cheap tablet to ask nobody anything is battery a shop
+     does not have to spare. */
+  if (!LICENCE_URL) return () => undefined;
+
   let stopped = false;
 
   async function tick() {
