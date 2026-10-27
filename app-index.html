@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover and no user scaling: this is a till, and a cashier
+         pinch-zooming the basket mid-queue is a bug, not a feature. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#05060a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CoreCashier" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>CoreCashier</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/pos/app-entry.tsx"></script>
+  </body>
+</html>

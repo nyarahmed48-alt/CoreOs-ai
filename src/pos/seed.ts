@@ -22,9 +22,9 @@ import type { Lang } from "./i18n";
 type Names = Record<Lang, string>;
 
 const SHOP_NAME: Names = {
-  en: "CoreOs Market",
-  ar: "سوبرماركت كور أو إس",
-  ckb: "مارکێتی کۆر ئۆ ئێس",
+  en: "CoreCashier",
+  ar: "كور كاشير",
+  ckb: "کۆر کاشیر",
 };
 
 const FOOTER: Names = {

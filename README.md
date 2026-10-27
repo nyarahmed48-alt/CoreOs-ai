@@ -148,7 +148,7 @@ this is deliberately the same shape so the same codes can come from it later.
 Keep a copy of the console file somewhere safe: without it, no new tablet can
 be activated.
 
-## The till (`/pos`)
+## CoreCashier — the till (`/pos`)
 
 A working point of sale for a market, not a demo: goods are rung up, stock
 comes off the shelf, receipts are numbered and printed, and the day's takings
@@ -312,6 +312,38 @@ below, which the shop chooses to send.
 
 `__POS_BUILD__` is stamped in at build time by both vite configs; without it a
 desk cannot tell which of fifty tablets is running old code.
+
+### CoreCashier as an installed app
+
+`npm run build:app` produces `dist-app/` — the till as a hostable, installable
+app. Drop that folder on any static host served over **https** and a tablet
+can add it to its home screen: full screen, its own icon, no browser chrome.
+
+It is built separately from the website on purpose and shares nothing with it
+— not a route, not a bundle, not a service worker. Paths are relative, so it
+runs from the root of a domain or a folder inside one without rebuilding.
+
+- `app-public/manifest.webmanifest` — name, colours, icons, `display:
+  standalone`.
+- `app-public/icons/` — drawn by `scripts/make-icons.py`, which writes PNG
+  bytes by hand so the build needs no image library and no network. The glyph
+  sits inside the middle 56% on the maskable icon, because Android launchers
+  crop to whatever shape they like.
+- `scripts/build-app.mjs` — renames the entry to `index.html` and **generates**
+  `sw.js` with this build's exact asset names. Generated rather than written,
+  because the names carry content hashes and a hand-typed precache list goes
+  stale on the next build — a till that precaches a file that no longer exists
+  opens to a blank screen.
+
+**The service worker ignores `Vary`, and that is not a detail.** Static hosts
+answer with `Vary: Origin` or `Vary: Accept-Encoding`; the Cache API honours
+Vary when matching, so a module script — fetched as CORS, carrying an `Origin`
+header — failed to match the very file the worker had just precached. The till
+served its shell and nothing else the first time the internet went away. It is
+`{ ignoreVary: true }` now, and the offline test covers it.
+
+A new build does not take over a running till: the worker activates on the
+next cold open, so a tablet mid-sale keeps the files it started on.
 
 ### The portable till
 

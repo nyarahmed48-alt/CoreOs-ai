@@ -212,7 +212,7 @@ function Console({ onLock }: { onLock: () => void }) {
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[11.5px] uppercase tracking-[0.16em] text-[#6b7490]">
-            CoreOs
+            CoreCashier
           </p>
           <h1 className="mt-2 font-brand text-[clamp(1.6rem,4vw,2.2rem)] font-extrabold tracking-[-0.03em] text-white">
             Owner's console

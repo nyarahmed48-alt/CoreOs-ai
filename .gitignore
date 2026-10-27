@@ -3,6 +3,7 @@ build/
 dist/
 dist-pos/
 dist-ceo/
+dist-app/
 coverage/
 .DS_Store
 *.log

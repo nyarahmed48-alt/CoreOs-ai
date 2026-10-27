@@ -89,7 +89,7 @@ export function SettingsView() {
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `till-${settings.tillId}-report.txt`;
+    link.download = `corecashier-${settings.tillId}-report.txt`;
     link.click();
     URL.revokeObjectURL(url);
     setNotice(t("support.saved"));
@@ -107,7 +107,7 @@ export function SettingsView() {
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `corecashier-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
     setNotice(t("settings.downloaded"));

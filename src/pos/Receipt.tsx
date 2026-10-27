@@ -20,6 +20,11 @@ import { Button } from "./ui";
 import { useT } from "./useT";
 import { formatDateTime, translate, type Lang } from "./i18n";
 
+/** The shop's name is theirs and sits at the top; this is ours, small, at the
+    bottom. A receipt in a customer's pocket is the only advertising a till
+    does. */
+const POWERED_BY = "Powered by CoreCashier";
+
 export function receiptDate(iso: string): string {
   return formatDateTime(iso);
 }
@@ -63,6 +68,7 @@ export function receiptText(sale: Sale, settings: Settings): string {
   if (sale.voidedAt) out.push(centre(t("receipt.voided")));
   out.push("");
   if (settings.receiptFooter) out.push(centre(settings.receiptFooter));
+  out.push(centre(POWERED_BY));
   return out.join("\n");
 }
 
@@ -131,6 +137,12 @@ export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) 
       {settings.receiptFooter ? (
         <p className={`mt-3 pt-2 text-center ${line}`}>{settings.receiptFooter}</p>
       ) : null}
+      <p
+        dir="ltr"
+        className={`mt-2 text-center text-[10px] tracking-[0.04em] ${settings.receiptFooter ? "" : `pt-2 ${line}`}`}
+      >
+        {POWERED_BY}
+      </p>
     </div>
   );
 }

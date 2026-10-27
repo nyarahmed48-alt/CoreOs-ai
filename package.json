@@ -10,13 +10,14 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:web": "vite build",
-    "build:pos": "vite build --config vite.pos.config.ts && node scripts/build-portable-pos.mjs",
+    "build:pos": "vite build --config vite.pos.config.ts && node scripts/build-portable-pos.mjs dist-pos pos-portable.html CoreCashier.html",
     "deploy": "npm run build:web && wrangler deploy",
     "cf:dev": "npm run build:web && wrangler dev",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
     "lint": "tsc --noEmit",
-    "build:ceo": "vite build --config vite.ceo.config.ts && node scripts/build-portable-pos.mjs dist-ceo ceo-portable.html CoreOS_Owner_Console.html"
+    "build:ceo": "vite build --config vite.ceo.config.ts && node scripts/build-portable-pos.mjs dist-ceo ceo-portable.html CoreCashier_Owner_Console.html",
+    "build:app": "vite build --config vite.app.config.ts && node scripts/build-app.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^11.0.1",

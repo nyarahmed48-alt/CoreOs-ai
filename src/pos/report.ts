@@ -123,7 +123,7 @@ export function buildReport(data: PosData, writeError: string): string {
   const { settings } = data;
   const lastSale = data.sales[0];
   const lines = [
-    "CoreOs till — support report",
+    "CoreCashier — support report",
     "",
     `Till ID:     ${settings.tillId}`,
     `Shop:        ${settings.shopName}`,

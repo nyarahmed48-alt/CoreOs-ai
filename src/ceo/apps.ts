@@ -38,8 +38,8 @@ export const GROUPS: AppGroup[] = [
     blurb: "The products with customers on the other end.",
     apps: [
       {
-        name: "The till",
-        what: "Point of sale — Arabic, Kurdish and English, scanner, debt book, cashier PINs.",
+        name: "CoreCashier",
+        what: "The till — Arabic, Kurdish and English, scanner, debt book, cashier PINs.",
         to: `${SITE}/pos`,
         unbuilt: true,
         note: "Not deployed — use the tablet file",
