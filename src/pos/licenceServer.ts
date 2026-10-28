@@ -90,6 +90,14 @@ export type Standing =
 /** What the cached answer means right now. Pure, so the gate and the licence
     panel read it the same way. */
 export function standing(known: Known, now = Date.now()): Standing {
+  /* Nowhere to check in with yet, so nothing to be out of touch with. Until
+     the Cloud plan exists, a till that has never been able to reach CoreOs
+     has not failed to — and telling a shop their tablet "has not reached
+     CoreOs" about a service nobody has sold them is how support calls are
+     made out of nothing. Any cached answer from an earlier build is ignored
+     for the same reason. */
+  if (!LICENCE_URL) return { state: "fine" };
+
   const { verdict, lastSeen } = known;
   if (!verdict) return { state: "fine" };
   if (verdict.frozen) return { state: "frozen", message: verdict.message };

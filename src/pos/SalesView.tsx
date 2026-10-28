@@ -14,7 +14,11 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { usePos, voidSale } from "./store";
+import {
+  usePos,
+  useReadOnly,
+  voidSale,
+} from "./store";
 import { ApprovalPrompt } from "./ApprovalPrompt";
 import { CloseDayModal } from "./CloseDay";
 import { closeFor, today } from "./store";
@@ -52,6 +56,7 @@ function dayLabel(key: string, lang: Lang, today: string): string {
 export function SalesView() {
   const data = usePos();
   const { t, m, lang } = useT();
+  const readOnly = useReadOnly();
   const [day, setDay] = useState(todayKey());
   const [open, setOpen] = useState<Sale | null>(null);
   const [closing, setClosing] = useState(false);
@@ -210,7 +215,7 @@ export function SalesView() {
           )}
         </div>
 
-        {day === today() ? (
+        {day === today() && !readOnly ? (
           <Button
             variant="ghost"
             className="mt-4 h-[46px] w-full"
@@ -266,6 +271,7 @@ function Stat({
 function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   const data = usePos();
   const { t, m } = useT();
+  const readOnly = useReadOnly();
   const [confirming, setConfirming] = useState(false);
   const [approving, setApproving] = useState(false);
   // Read the sale back from the store so the receipt shows the void the moment
@@ -297,7 +303,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
               </Button>
             </div>
           </div>
-        ) : (
+        ) : readOnly ? null : (
           <Button
             variant="quiet"
             className="pos-noprint mt-2 w-full text-[#f0879d]"

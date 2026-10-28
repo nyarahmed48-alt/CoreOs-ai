@@ -20,10 +20,11 @@ import { useMemo, useState } from "react";
 import { Phone, Plus, Search, UserPlus } from "lucide-react";
 import {
   balanceOf,
+  totalOwed,
   recordPayment,
   saveCustomer,
-  totalOwed,
   usePos,
+  useReadOnly,
 } from "./store";
 import { amount, parseAmount } from "./money";
 import { useT } from "./useT";
@@ -34,6 +35,7 @@ import type { Customer } from "./types";
 export function DebtView() {
   const data = usePos();
   const { t, m } = useT();
+  const readOnly = useReadOnly();
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState<Customer | null>(null);
@@ -83,9 +85,11 @@ export function DebtView() {
               className="h-[42px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] ps-10 pe-3 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
             />
           </div>
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <UserPlus size={16} /> {t("debt.add")}
-          </Button>
+          {readOnly ? null : (
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <UserPlus size={16} /> {t("debt.add")}
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-[#1e2740]">
@@ -197,6 +201,7 @@ function CustomerPage({
 }) {
   const data = usePos();
   const { t, m } = useT();
+  const readOnly = useReadOnly();
   const [paying, setPaying] = useState(0);
   const balance = balanceOf(data, customer.id);
   const history = data.debts
@@ -232,13 +237,13 @@ function CustomerPage({
             <Button
               variant="primary"
               className="flex-1"
-              disabled={paying <= 0}
+              disabled={paying <= 0 || readOnly}
               onClick={() => {
                 recordPayment(customer.id, Math.min(paying, balance));
                 setPaying(0);
               }}
             >
-              {t("debt.pay")}
+              {readOnly ? t("licence.readOnlyShort") : t("debt.pay")}
             </Button>
           </div>
         </div>

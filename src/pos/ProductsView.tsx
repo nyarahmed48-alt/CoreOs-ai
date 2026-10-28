@@ -21,6 +21,7 @@ import {
   receiveStock,
   saveCategory,
   usePos,
+  useReadOnly,
 } from "./store";
 import { useT } from "./useT";
 import { Button, Empty, Modal } from "./ui";
@@ -33,6 +34,7 @@ type Filter = "all" | "low" | "archived";
 export function ProductsView() {
   const data = usePos();
   const { t, m } = useT();
+  const readOnly = useReadOnly();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -108,12 +110,16 @@ export function ProductsView() {
               className="h-[42px] w-full rounded-xl border border-[#232b40] bg-[#0a0f1c] ps-10 pe-3 text-[15px] text-[#e7eaf6] outline-none placeholder:text-[#5b6480] focus:border-[#6c7bf0]"
             />
           </div>
-          <Button onClick={() => setManagingCategories(true)}>
-            <Tag size={16} /> {t("products.categories")}
-          </Button>
-          <Button variant="primary" onClick={() => setEditing(blankProduct())}>
-            <Plus size={16} /> {t("products.add")}
-          </Button>
+          {readOnly ? null : (
+            <>
+              <Button onClick={() => setManagingCategories(true)}>
+                <Tag size={16} /> {t("products.categories")}
+              </Button>
+              <Button variant="primary" onClick={() => setEditing(blankProduct())}>
+                <Plus size={16} /> {t("products.add")}
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -171,7 +177,7 @@ export function ProductsView() {
                       >
                         {t("products.inStock", { n: product.stock })}
                       </span>
-                      {!product.archived ? (
+                      {!product.archived && !readOnly ? (
                         <Button
                           variant="quiet"
                           className="min-h-[36px] px-2.5"
@@ -181,13 +187,15 @@ export function ProductsView() {
                           <Package size={15} /> +1
                         </Button>
                       ) : null}
-                      <Button
-                        variant="ghost"
-                        className="min-h-[36px] px-3"
-                        onClick={() => setEditing(product)}
-                      >
-                        {t("products.edit")}
-                      </Button>
+                      {readOnly ? null : (
+                        <Button
+                          variant="ghost"
+                          className="min-h-[36px] px-3"
+                          onClick={() => setEditing(product)}
+                        >
+                          {t("products.edit")}
+                        </Button>
+                      )}
                     </div>
                   </li>
                 );

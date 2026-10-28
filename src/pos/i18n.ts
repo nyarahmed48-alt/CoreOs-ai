@@ -290,6 +290,13 @@ const EN = {
   "licence.expires": "Works until",
   "licence.never": "No expiry",
   "licence.lifetime": "Offline plan: lifetime",
+  "licence.readOnlyShort": "The till is read-only until the licence is renewed.",
+  "licence.readOnly":
+    "This tablet's licence has run out, so it cannot take new sales for now. Nothing has been lost: your sales, products, debt book and day closes are all still here to look at, and you can save a backup from Settings. Send CoreOs your code and selling starts again the moment a new one is put in.",
+  "licence.readOnlyStopped":
+    "CoreOs has stopped this tablet, so it cannot take new sales for now. Nothing has been lost: your sales, products, debt book and day closes are all still here to look at, and you can save a backup from Settings. Please call CoreOs.",
+  "licence.readOnlyFix": "Put in a code",
+  "licence.readOnlyBlocked": "Not while the till is read-only.",
   "licence.daysLeft": "{n} days left",
   "licence.lastDay": "Last day",
   "licence.renew": "Ask for a renewal on WhatsApp",
@@ -656,6 +663,13 @@ const AR: Record<Key, string> = {
   "licence.expires": "يعمل حتى",
   "licence.never": "بلا انتهاء",
   "licence.lifetime": "خطة أوفلاين: مدى الحياة",
+  "licence.readOnlyShort": "الصندوق للقراءة فقط حتى يُجدَّد الاشتراك.",
+  "licence.readOnly":
+    "انتهى اشتراك هذا الجهاز، لذلك لا يمكنه تسجيل مبيعات جديدة حالياً. لم يُفقد شيء: مبيعاتك والمواد ودفتر الديون وإغلاقات اليوم كلها موجودة للاطلاع عليها، ويمكنك حفظ نسخة احتياطية من الإعدادات. أرسل رمزك إلى CoreOs ويعود البيع فور إدخال رمز جديد.",
+  "licence.readOnlyStopped":
+    "أوقفت CoreOs هذا الجهاز، لذلك لا يمكنه تسجيل مبيعات جديدة حالياً. لم يُفقد شيء: مبيعاتك والمواد ودفتر الديون وإغلاقات اليوم كلها موجودة للاطلاع عليها، ويمكنك حفظ نسخة احتياطية من الإعدادات. يرجى الاتصال بـ CoreOs.",
+  "licence.readOnlyFix": "إدخال رمز",
+  "licence.readOnlyBlocked": "غير ممكن والصندوق للقراءة فقط.",
   "licence.daysLeft": "باقي {n} يوم",
   "licence.lastDay": "آخر يوم",
   "licence.renew": "طلب التجديد على واتساب",
@@ -1020,6 +1034,13 @@ const CKB: Record<Key, string> = {
   "licence.expires": "کار دەکات تا",
   "licence.never": "بێ کۆتایی",
   "licence.lifetime": "پلانی ئۆفلاین: هەتاهەتایی",
+  "licence.readOnlyShort": "سندوقەکە تەنها بۆ خوێندنەوەیە تا مۆڵەت نوێ دەکرێتەوە.",
+  "licence.readOnly":
+    "مۆڵەتی ئەم تابلێتە کۆتایی هاتووە، بۆیە ئێستا ناتوانێت فرۆشتنی نوێ تۆمار بکات. هیچ شتێک لەدەست نەچووە: فرۆشتنەکان، کاڵاکان، دەفتەری قەرز و داخستنی ڕۆژەکان هەمووی لێرەن بۆ بینین، و دەتوانیت لە ڕێکخستنەکانەوە پاڵپشتێک پاشەکەوت بکەیت. کۆدەکەت بۆ CoreOs بنێرە و هەر کە کۆدێکی نوێ دانرا فرۆشتن دەگەڕێتەوە.",
+  "licence.readOnlyStopped":
+    "CoreOs ئەم تابلێتەی ڕاگرتووە، بۆیە ئێستا ناتوانێت فرۆشتنی نوێ تۆمار بکات. هیچ شتێک لەدەست نەچووە: فرۆشتنەکان، کاڵاکان، دەفتەری قەرز و داخستنی ڕۆژەکان هەمووی لێرەن بۆ بینین، و دەتوانیت لە ڕێکخستنەکانەوە پاڵپشتێک پاشەکەوت بکەیت. تکایە پەیوەندی بە CoreOs بکە.",
+  "licence.readOnlyFix": "کۆد دابنێ",
+  "licence.readOnlyBlocked": "نابێت کاتێک سندوقەکە تەنها بۆ خوێندنەوەیە.",
   "licence.daysLeft": "{n} ڕۆژ ماوە",
   "licence.lastDay": "دوا ڕۆژ",
   "licence.renew": "داوای نوێکردنەوە بە واتسئاپ",

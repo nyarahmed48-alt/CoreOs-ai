@@ -33,7 +33,9 @@ import {
 import { Link } from "../site/router";
 import {
   setLanguage,
+  setReadOnly,
   usePos,
+  useReadOnly,
   useSession,
   useStorageReady,
   useWriteError,
@@ -50,6 +52,8 @@ import { CloseShiftModal, LockScreen } from "./LockScreen";
 import {
   ActivationGate,
   daysLeft,
+  hasBeenActivated,
+  isLifetime,
   publishRemote,
   useActivation,
   useRemote,
@@ -108,7 +112,22 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const [closing, setClosing] = useState(false);
   const activation = useActivation();
   const remote = useRemote();
-  const office = standing(remote);
+  const lifetime = isLifetime(activation.state);
+  /* A till bought outright is not answerable to a server it never uses. */
+  const office = lifetime ? ({ state: "fine" } as const) : standing(remote);
+  const readOnly = useReadOnly();
+
+  /* Stopped by the office, or by a date that has passed. Either way the shop
+     keeps its books; it just cannot add to them. */
+  const stopped = activation.state.frozen || office.state === "frozen";
+  const selling = activation.active && office.state === "fine";
+  /* A tablet nobody has ever activated has nothing worth showing, so it gets
+     the activation screen. One that has been activated gets its books. */
+  const shutOut = !selling && !hasBeenActivated(activation.state);
+
+  useEffect(() => {
+    setReadOnly(!selling);
+  }, [selling]);
 
   /* Ask the office whether this tablet may still sell, now and every minute
      after. A tablet with no network simply never hears back, and carries on
@@ -149,23 +168,16 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     );
   }
 
-  /* Before anything else. A tablet locked by a typed code or by the office
-     shows one screen and nothing behind it — but it keeps every sale and
-     product it already had. */
-  if (!activation.active || office.state !== "fine") {
+  /* A tablet out of the box, with nothing in it yet: one screen, nothing
+     behind it. Everything else keeps its books — see the banner below. */
+  if (shutOut) {
     return (
       <div dir={dir} lang={lang}>
         <style>{PRINT_CSS}</style>
         <ActivationGate
           nonce={activation.state.nonce}
-          frozen={activation.state.frozen || office.state === "frozen"}
-          officeMessage={
-            office.state === "frozen"
-              ? office.message
-              : office.state === "stale"
-                ? t("licence.outOfTouch", { n: office.days })
-                : undefined
-          }
+          frozen={stopped}
+          officeMessage={office.state === "frozen" ? office.message : undefined}
           onGranted={activation.grant}
           onFrozen={activation.freeze}
         />
@@ -237,6 +249,30 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           )}
         </nav>
       </header>
+
+      {/* The licence has run out or the office has stopped this tablet.
+          Said politely and at length, because the shop has done nothing
+          wrong by being here and the first thing they will think is that
+          their year's takings have gone. */}
+      {readOnly ? (
+        <div className="pos-noprint flex shrink-0 flex-wrap items-center justify-between gap-3 bg-[#3a2c12] px-4 py-2.5">
+          <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-[#f0c078]">
+            {stopped
+              ? (office.state === "frozen" && office.message) ||
+                t("licence.readOnlyStopped")
+              : t("licence.readOnly")}
+          </p>
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={() => setTab("settings")}
+              className="shrink-0 rounded-lg border border-[#6a5424] px-3 py-1.5 text-[12.5px] font-semibold text-[#f0c078] hover:bg-[#4a3818]"
+            >
+              {t("licence.readOnlyFix")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* A till that locks mid-morning with no warning is a shop that cannot
           sell and does not know why. */}

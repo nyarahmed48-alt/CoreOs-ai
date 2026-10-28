@@ -20,6 +20,7 @@ import {
   setLanguage,
   updateSettings,
   usePos,
+  useReadOnly,
 } from "./store";
 import { useT } from "./useT";
 import { LANGS } from "./i18n";
@@ -37,6 +38,7 @@ export function SettingsView() {
   const data = usePos();
   const { t, lang } = useT();
   const activation = useActivation();
+  const readOnly = useReadOnly();
   const { settings } = data;
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
@@ -164,7 +166,7 @@ export function SettingsView() {
           ) : null}
         </Section>
 
-        <Section
+        <Section hidden={readOnly}
           title={t("settings.shop")}
           hint={t("settings.shopHint")}
         >
@@ -194,7 +196,7 @@ export function SettingsView() {
           />
         </Section>
 
-        <Section
+        <Section hidden={readOnly}
           title={t("settings.till")}
           hint={t("settings.tillHint")}
         >
@@ -234,7 +236,7 @@ export function SettingsView() {
           />
         </Section>
 
-        <Section
+        <Section hidden={readOnly}
           title={t("settings.scanner")}
           hint={t("settings.scannerHint")}
         >
@@ -270,7 +272,7 @@ export function SettingsView() {
           </p>
         </Section>
 
-        <Section title={t("staff.title")} hint={t("staff.hint")}>
+        <Section hidden={readOnly} title={t("staff.title")} hint={t("staff.hint")}>
           <StaffList />
         </Section>
 
@@ -355,9 +357,11 @@ export function SettingsView() {
             <Button onClick={() => void download()}>
               <Download size={16} /> {t("settings.export")}
             </Button>
-            <Button onClick={() => fileRef.current?.click()}>
-              <Upload size={16} /> {t("settings.restore")}
-            </Button>
+            {readOnly ? null : (
+              <Button onClick={() => fileRef.current?.click()}>
+                <Upload size={16} /> {t("settings.restore")}
+              </Button>
+            )}
             <input
               ref={fileRef}
               type="file"
@@ -372,9 +376,11 @@ export function SettingsView() {
           </div>
           {notice ? <p className="text-[13px] text-[#8ee7bb]">{notice}</p> : null}
           {error ? <p className="text-[13px] text-[#f0879d]">{error}</p> : null}
-          <Button variant="danger" onClick={() => setResetting(true)}>
-            {t("settings.wipe")}
-          </Button>
+          {readOnly ? null : (
+            <Button variant="danger" onClick={() => setResetting(true)}>
+              {t("settings.wipe")}
+            </Button>
+          )}
         </Section>
       </div>
 
@@ -471,12 +477,18 @@ export function SettingsView() {
 function Section({
   title,
   hint,
+  hidden,
   children,
 }: {
   title: string;
   hint: string;
+  /** Dropped entirely while the till is read-only. Everything in here
+      changes something, so leaving the controls on screen greyed out would
+      only invite a shop to keep tapping them. */
+  hidden?: boolean;
   children: React.ReactNode;
 }) {
+  if (hidden) return null;
   return (
     <section className="rounded-2xl border border-[#1e2740] bg-[#0b1120] px-4 py-4 sm:px-5">
       <h2 className="font-display text-[15.5px] font-semibold text-white">{title}</h2>

@@ -467,6 +467,58 @@ export function useCart(): CartLine[] {
   );
 }
 
+/* --------------------------------------------------------------- read-only */
+
+/**
+ * The books are open to read, and closed to write.
+ *
+ * A till whose licence has lapsed, or that the office has stopped, keeps
+ * everything it ever recorded and keeps showing it: the day's sales, the
+ * shelf, the debt book, every close. What it will not do is take another
+ * sale, void one, or change anything — those are the things the licence is
+ * actually for.
+ *
+ * It is enforced here rather than by hiding buttons, because hiding buttons
+ * is a promise that one missed button breaks. Every way of changing the books
+ * runs through one of the functions below, and each of them stops. The
+ * screens hide what they can on top of this, so a cashier is not left tapping
+ * a button that does nothing.
+ *
+ * Deliberately not blocked: reading, exporting a backup, switching language,
+ * signing in and out. A shop that has been stopped still has to be able to
+ * get at its own figures and take a copy away, and if signing in were blocked
+ * the owner could not even reach the screen that says so.
+ */
+let readOnly = false;
+
+export function setReadOnly(next: boolean) {
+  if (next === readOnly) return;
+  readOnly = next;
+  for (const listener of listeners) listener();
+}
+
+export function isReadOnly(): boolean {
+  return readOnly;
+}
+
+export function useReadOnly(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => readOnly,
+    () => readOnly,
+  );
+}
+
+/** Thrown by the two writes that cannot simply return nothing. The screens
+    that reach them catch it and say why; it should never escape to the user,
+    because those screens are supposed to be disabled already. */
+export class ReadOnlyError extends Error {
+  constructor() {
+    super("The till is read-only: its licence has lapsed or it has been stopped.");
+    this.name = "ReadOnlyError";
+  }
+}
+
 export function useWriteError(): string {
   return useSyncExternalStore(
     subscribe,
@@ -478,6 +530,7 @@ export function useWriteError(): string {
 /* ---------------------------------------------------------------- catalogue */
 
 export function saveProduct(product: Product) {
+  if (readOnly) return;
   const exists = data.products.some((p) => p.id === product.id);
   commit(owned({
     ...data,
@@ -488,6 +541,7 @@ export function saveProduct(product: Product) {
 }
 
 export function setArchived(id: string, archived: boolean) {
+  if (readOnly) return;
   commit(owned({
     ...data,
     products: data.products.map((p) => (p.id === id ? { ...p, archived } : p)),
@@ -497,6 +551,7 @@ export function setArchived(id: string, archived: boolean) {
 /** Goods arriving from the supplier. Kept separate from editing the count by
     hand so the common case is one tap and cannot mistype the running total. */
 export function receiveStock(id: string, units: number) {
+  if (readOnly) return;
   commit(owned({
     ...data,
     products: data.products.map((p) =>
@@ -506,6 +561,7 @@ export function receiveStock(id: string, units: number) {
 }
 
 export function saveCategory(category: Category) {
+  if (readOnly) return;
   const exists = data.categories.some((c) => c.id === category.id);
   commit(owned({
     ...data,
@@ -518,6 +574,7 @@ export function saveCategory(category: Category) {
 /** Refuses while anything is still filed under it — silently orphaning
     products is how a shelf goes missing from the till. */
 export function deleteCategory(id: string): string | null {
+  if (readOnly) return translate(data.settings.lang, "licence.readOnlyShort");
   const inUse = data.products.filter(
     (p) => p.categoryId === id && !p.archived,
   ).length;
@@ -531,6 +588,7 @@ export function deleteCategory(id: string): string | null {
 }
 
 export function updateSettings(patch: Partial<Settings>) {
+  if (readOnly) return;
   commit({ ...data, settings: { ...data.settings, ...patch } });
 }
 
@@ -643,6 +701,7 @@ export function completeSale(input: {
       name, or it is just money gone. */
   customer?: Customer;
 }): Sale {
+  if (readOnly) throw new ReadOnlyError();
   const { totals, discount, method, tendered, customer } = input;
   const who = actor();
   const sale: Sale = {
@@ -715,6 +774,7 @@ export function completeSale(input: {
     the money goes back, and the receipt number stays in the book so the
     sequence has no holes. */
 export function voidSale(id: string, reason = "", approvedBy = "") {
+  if (readOnly) return;
   const sale = data.sales.find((s) => s.id === id);
   if (!sale || sale.voidedAt) return;
 
@@ -753,6 +813,7 @@ export function exportData(): string {
 /** Replaces everything. The caller has already warned; this only refuses a
     file that is not a till. */
 export function importData(raw: string): string | null {
+  if (readOnly) return translate(data.settings.lang, "licence.readOnlyShort");
   try {
     const parsed = JSON.parse(raw) as Partial<PosData>;
     if (!Array.isArray(parsed.products) || !Array.isArray(parsed.sales)) {
@@ -783,6 +844,7 @@ export function importData(raw: string): string | null {
 }
 
 export function resetToSeed() {
+  if (readOnly) return;
   const fresh = freshData();
   data = fresh;
   messageLang = fresh.settings.lang;
@@ -842,6 +904,7 @@ export async function saveStaff(input: {
   role: Staff["role"];
   pin?: string;
 }): Promise<void> {
+  if (readOnly) return;
   const existing = input.id ? data.staff.find((s) => s.id === input.id) : undefined;
   const salt = existing?.pinSalt ?? newSalt();
   const pinHash = input.pin
@@ -874,6 +937,7 @@ export async function saveStaff(input: {
 }
 
 export function setStaffActive(id: string, active: boolean) {
+  if (readOnly) return;
   commit({
     ...data,
     staff: data.staff.map((s) => (s.id === id ? { ...s, active } : s)),
@@ -1023,6 +1087,7 @@ export function signOut() {
 /* ------------------------------------------------------------- debt book */
 
 export function saveCustomer(input: { id?: string; name: string; phone: string }): Customer {
+  if (readOnly) throw new ReadOnlyError();
   const existing = input.id ? data.customers.find((c) => c.id === input.id) : undefined;
   const customer: Customer = {
     id: existing?.id ?? newId("c"),
@@ -1058,6 +1123,7 @@ export function totalOwed(posData: PosData): number {
 /** Money against a tab. Cash in hand, so it belongs to the drawer count as
     much as a sale does. */
 export function recordPayment(customerId: string, amount: number, note = "") {
+  if (readOnly) return;
   const who = actor();
   const customer = data.customers.find((c) => c.id === customerId);
   const entry: DebtEntry = {
@@ -1149,6 +1215,7 @@ export function closeFor(posData: PosData, day: string): DayClose | undefined {
 
 /** Writes the day away. The owner who approved it is on the record. */
 export function closeDay(day: string, countedCash: number, approvedBy: string) {
+  if (readOnly) return;
   const figures = figuresFor(data, day);
   const who = actor();
   const close: DayClose = {

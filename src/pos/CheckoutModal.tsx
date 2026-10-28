@@ -14,7 +14,13 @@
 
 import { useEffect, useState } from "react";
 import { Banknote, BookUser, CreditCard } from "lucide-react";
-import { balanceOf, completeSale, usePos, type CartTotals } from "./store";
+import {
+  ReadOnlyError,
+  balanceOf,
+  completeSale,
+  usePos,
+  type CartTotals,
+} from "./store";
 import { CustomerForm } from "./DebtView";
 import type { Customer } from "./types";
 import { IQD_NOTES, amount, parseAmount } from "./money";
@@ -42,6 +48,7 @@ export function CheckoutModal({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [tendered, setTendered] = useState(0);
   const [sale, setSale] = useState<Sale | null>(null);
+  const [refused, setRefused] = useState("");
   /** Who is taking it on the book, when the method is `later`. */
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [addingCustomer, setAddingCustomer] = useState(false);
@@ -76,9 +83,22 @@ export function CheckoutModal({
   });
 
   function charge() {
-    setSale(
-      completeSale({ totals, discount, method, tendered, customer: customer ?? undefined }),
-    );
+    try {
+      setSale(
+        completeSale({ totals, discount, method, tendered, customer: customer ?? undefined }),
+      );
+    } catch (problem) {
+      /* The till went read-only between opening this modal and pressing the
+         button — a licence that ran out at the counter, or a stop code typed
+         in on another screen. The charge button is disabled for it, so this
+         is the race rather than the ordinary path, and a caught refusal
+         beats a crash mid-queue. */
+      if (problem instanceof ReadOnlyError) {
+        setRefused(t("licence.readOnlyShort"));
+        return;
+      }
+      throw problem;
+    }
   }
 
   if (sale) {
@@ -293,10 +313,16 @@ export function CheckoutModal({
         </p>
       ) : null}
 
+      {refused ? (
+        <p className="mt-4 rounded-xl border border-[#5d3346] bg-[#180f16] px-4 py-3 text-[13.5px] text-[#f0a3b5]">
+          {refused}
+        </p>
+      ) : null}
+
       <Button
         variant="primary"
         className="mt-5 h-[52px] w-full text-[16px]"
-        disabled={short}
+        disabled={short || refused !== ""}
         onClick={charge}
       >
         {method === "later" && !customer

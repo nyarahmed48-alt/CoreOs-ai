@@ -48,14 +48,35 @@ interface Activation {
       checking in with anybody: a shop that paid once is not a shop to lock
       because a server somewhere cannot be reached. */
   lifetime?: boolean;
+  /** This tablet has been activated at some point in its life.
+      
+      It decides which of two very different screens a locked till shows. A
+      tablet that has never been activated has nothing worth looking at, so it
+      gets the activation screen and nothing else. One whose licence has run
+      out has a shop's whole year in it, and gets the books in read-only —
+      being behind on a bill is not a reason to be locked out of your own
+      figures. Once set it is never cleared. */
+  everActivated?: boolean;
 }
 
 /** A lapsed licence has to ask with a *different* request code, or the shop
     simply types last month's unlock code back in and keeps the till for ever
     — which would make the expiry date decorative. Rotating the request is what
     actually spends a code. */
-function lapse(): Activation {
-  return { nonce: randomPart(4), until: null, activated: false, lifetime: false };
+function lapse(everActivated?: boolean): Activation {
+  /* Whether this tablet has ever been activated is passed in rather than read
+     off `current`, which the first call — from `load()`, before `current`
+     exists — cannot touch without throwing. That throw would be swallowed by
+     the catch around it and the till would come back looking factory fresh,
+     locking a shop out of a year of its own books on the day its licence ran
+     out. */
+  return {
+    nonce: randomPart(4),
+    until: null,
+    activated: false,
+    lifetime: false,
+    everActivated,
+  };
 }
 
 function load(): Activation {
@@ -63,10 +84,15 @@ function load(): Activation {
     const raw = localStorage.getItem(STATE_KEY);
     if (raw) {
       const state = JSON.parse(raw) as Activation;
+      /* A tablet activated under an older build has no mark saying so; its
+         own `activated` flag is the record, so it is promoted here rather
+         than being treated as a tablet fresh out of the box the day its
+         licence runs out. */
+      if (state.activated) state.everActivated = true;
       const expired =
         state.activated && state.until !== null && state.until <= Date.now();
       if (!expired) return state;
-      const lapsed = lapse();
+      const lapsed = lapse(true);
       save(lapsed);
       return lapsed;
     }
@@ -95,6 +121,11 @@ function save(state: Activation) {
 export function isActive(state: Activation): boolean {
   if (!state.activated) return false;
   return state.until === null || state.until > Date.now();
+}
+
+/** True once this tablet has ever been activated, however long ago. */
+export function hasBeenActivated(state: Activation): boolean {
+  return state.everActivated === true;
 }
 
 /** True for a till on the lifetime offline plan, which never lapses. */
@@ -155,7 +186,7 @@ export function useActivation() {
     const left = state.until - Date.now();
     if (left <= 0) return;
     const timer = window.setTimeout(
-      () => publish(lapse()),
+      () => publish(lapse(current.everActivated)),
       Math.min(left, 2 ** 31 - 1),
     );
     return () => window.clearTimeout(timer);
@@ -165,7 +196,14 @@ export function useActivation() {
     state,
     active: isActive(state),
     grant: (until: number | null, lifetime = false) => {
-      publish({ ...current, until, activated: true, frozen: false, lifetime });
+      publish({
+        ...current,
+        until,
+        activated: true,
+        frozen: false,
+        lifetime,
+        everActivated: true,
+      });
     },
     /** The office pulled this tablet. The request rotates with it, so the code
         that froze it cannot be run backwards and nothing but a new code from
@@ -177,11 +215,12 @@ export function useActivation() {
         activated: false,
         frozen: true,
         lifetime: false,
+        everActivated: current.everActivated,
       });
     },
     /** A fresh request, so the next code is a different one. */
     reset: () => {
-      publish(lapse());
+      publish(lapse(current.everActivated));
     },
   };
 }

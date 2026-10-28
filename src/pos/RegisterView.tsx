@@ -21,6 +21,7 @@ import {
   setQty,
   useCart,
   usePos,
+  useReadOnly,
 } from "./store";
 import { useT } from "./useT";
 import { Button, Empty, Modal } from "./ui";
@@ -35,6 +36,7 @@ export function RegisterView() {
   const data = usePos();
   const { t, m } = useT();
   const cart = useCart();
+  const readOnly = useReadOnly();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [discount, setDiscount] = useState(0);
@@ -313,10 +315,13 @@ export function RegisterView() {
           <Button
             variant="primary"
             className="mt-3 h-[52px] w-full text-[16px]"
-            disabled={cart.length === 0}
+            /* The banner at the top says why; the button only has to stop. */
+            disabled={cart.length === 0 || readOnly}
             onClick={() => setCheckingOut(true)}
           >
-            {t("till.charge", { amount: m(totals.total) })}
+            {readOnly
+              ? t("licence.readOnlyShort")
+              : t("till.charge", { amount: m(totals.total) })}
           </Button>
         </div>
       </aside>
