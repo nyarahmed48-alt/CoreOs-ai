@@ -28,6 +28,8 @@ import { useWedgeScanner, type ScanInfo } from "./wedge";
 import { useWriteError, saveStaff, setStaffActive, useSession, signOut } from "./store";
 import { buildReport, errorCount, whatsappNumber } from "./report";
 import { LicencePanel } from "./ActivationGate";
+import { ApprovalPrompt } from "./ApprovalPrompt";
+import { flushed } from "./store";
 import { formatDateTime } from "./i18n";
 import type { Staff } from "./types";
 
@@ -39,6 +41,9 @@ export function SettingsView() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [wipeWord, setWipeWord] = useState("");
+  const [wipeError, setWipeError] = useState("");
+  const [wipeStage, setWipeStage] = useState<"ask" | "approve" | "saving">("ask");
   const [lastScan, setLastScan] = useState<{ code: string; info: ScanInfo } | null>(
     null,
   );
@@ -101,7 +106,10 @@ export function SettingsView() {
     onScan: (code, info) => setLastScan({ code, info }),
   });
 
-  function download() {
+  async function download() {
+    // Wait for anything still being written. A backup taken a millisecond
+    // before the last sale reaches the disk is a backup missing a sale.
+    await flushed();
     const url = URL.createObjectURL(
       new Blob([exportData()], { type: "application/json" }),
     );
@@ -334,7 +342,7 @@ export function SettingsView() {
           })}
         >
           <div className="flex flex-wrap gap-2">
-            <Button onClick={download}>
+            <Button onClick={() => void download()}>
               <Download size={16} /> {t("settings.export")}
             </Button>
             <Button onClick={() => fileRef.current?.click()}>
@@ -361,26 +369,89 @@ export function SettingsView() {
       </div>
 
       {resetting ? (
-        <Modal title={t("settings.wipeTitle")} onClose={() => setResetting(false)}>
+        <Modal
+          title={t("settings.wipeTitle")}
+          onClose={() => {
+            setResetting(false);
+            setWipeWord("");
+            setWipeError("");
+            setWipeStage("ask");
+          }}
+        >
           <p className="text-[14px] leading-relaxed text-[#c3c9dd]">
             {t("settings.wipeBody")}
           </p>
+          <p className="mt-3 rounded-xl border border-[#3a2c12] bg-[#1d1608] px-4 py-2.5 text-[13px] text-[#f0c078]">
+            {t("wipe.backupFirst")}
+          </p>
+
+          {/* Typed out in full, in capitals. A shop that taps through two
+              dialogues by habit cannot type this one by habit. */}
+          <div className="mt-4">
+            <Field
+              label={t("wipe.word")}
+              dir="ltr"
+              autoCapitalize="characters"
+              value={wipeWord}
+              onChange={(event) => {
+                setWipeWord(event.target.value.toUpperCase());
+                setWipeError("");
+              }}
+            />
+          </div>
+
+          {wipeError ? (
+            <p className="mt-3 text-[13.5px] text-[#f0879d]">{wipeError}</p>
+          ) : null}
+
           <div className="mt-4 flex gap-2">
             <Button
               variant="danger"
               className="flex-1"
+              disabled={wipeStage === "saving"}
               onClick={() => {
-                resetToSeed();
-                setResetting(false);
-                setNotice(t("settings.wiped"));
+                if (wipeWord.trim() !== t("wipe.wordValue")) {
+                  setWipeError(t("wipe.wrongWord"));
+                  return;
+                }
+                setWipeStage("approve");
               }}
             >
-              {t("settings.wipeConfirm")}
+              {wipeStage === "saving" ? t("wipe.saving") : t("settings.wipeConfirm")}
             </Button>
-            <Button variant="quiet" onClick={() => setResetting(false)}>
+            <Button
+              variant="quiet"
+              onClick={() => {
+                setResetting(false);
+                setWipeWord("");
+                setWipeStage("ask");
+              }}
+            >
               {t("settings.cancel")}
             </Button>
           </div>
+
+          {wipeStage === "approve" ? (
+            <ApprovalPrompt
+              title={t("settings.wipeTitle")}
+              /* No "why?" here. The word typed out in full is the deliberate
+                 act, and a reason would be written into a log this very
+                 action is about to erase. */
+              needReason={false}
+              onClose={() => setWipeStage("ask")}
+              onApproved={async () => {
+                // The backup is not optional and not last: it is saved, and
+                // only then is anything deleted.
+                setWipeStage("saving");
+                await download();
+                resetToSeed();
+                setResetting(false);
+                setWipeWord("");
+                setWipeStage("ask");
+                setNotice(t("settings.wiped"));
+              }}
+            />
+          ) : null}
         </Modal>
       ) : null}
     </div>

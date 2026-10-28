@@ -148,6 +148,66 @@ this is deliberately the same shape so the same codes can come from it later.
 Keep a copy of the console file somewhere safe: without it, no new tablet can
 be activated.
 
+## Where the books live
+
+`src/pos/db.ts` — IndexedDB, one store per kind of thing, one record per sale.
+
+The till used to keep everything in a single JSON string in localStorage and
+rewrite the whole of it every time a customer paid. Measured against real
+records that is **409 kB written per sale at a thousand sales, 1.7 MB at five
+thousand**, and somewhere near **fourteen thousand it stops working** because
+localStorage is capped around five megabytes. A busy shop would have hit that
+inside a year, mid-queue, with nothing to show for it but "storage full".
+
+Now a sale writes the sale, the products whose stock moved, and the settings
+row — a kilobyte or two, whatever is behind it. Reads are still synchronous
+from memory, because a basket cannot wait on a database; writes are queued in
+order and the screen never blocks on them.
+
+- **`navigator.storage.persist()`** is requested at startup, so Android stops
+  treating a shop's books as cache it may evict.
+- **A fallback that keeps the shop selling.** No IndexedDB, a locked-down
+  browser, a database that will not open — the till drops back to the old
+  storage and carries on. `storageKind()` says which it is on, and the support
+  report carries it.
+- **Deltas by identity.** Every update builds new arrays and leaves untouched
+  objects alone, so finding what changed is pointer comparison, not a deep
+  diff. The two shapes a counter produces all day — one record added at the
+  front, one swapped in place — are checked first.
+
+### The migration, once
+
+`src/pos/migrate.ts` runs on a tablet with a year of trade on it, in a shop
+that has no idea the storage underneath changed. It gets one chance, so:
+
+- **Count before you cut.** Everything is written, then read back and counted.
+  Only when every store matches is the migration recorded.
+- **Never delete the old copy.** The blob is renamed to
+  `coreos.pos.data.v1.before-indexeddb`, not removed, even after a clean run.
+- **Keep the ids.** New records get full UUIDs; migrated ones keep theirs,
+  because rewriting them means rewriting every reference in sales lines,
+  debts, audit entries and shifts, and one missed reference is a sale pointing
+  at a product that no longer exists.
+- **Finish or change nothing.** One transaction. A tablet switched off halfway
+  leaves the database empty and the blob untouched, and the next launch tries
+  again.
+
+Covered by `src/pos/migrate.test.ts` against a real IndexedDB, including five
+thousand sales moving without loss and a tablet dying mid-write.
+
+### Identity
+
+Full `crypto.randomUUID()` everywhere, never a slice of one. The old eight
+characters were thirty-two bits: two records of a kind start colliding around
+seventy-seven thousand, and a shop at fifty thousand sales was inside the
+range where two could share an id. Once several tablets sync into one set of
+books that stops being a curiosity and becomes one shop's sale overwriting
+another's.
+
+Every sale also carries the tablet that rang it (`deviceId`) and a receipt
+number prefixed per till — **`T1-001300`**. Two tills in one shop count
+separately; without the prefix both would print #1001.
+
 ## CoreCashier — the till (`/pos`)
 
 A working point of sale for a market, not a demo: goods are rung up, stock

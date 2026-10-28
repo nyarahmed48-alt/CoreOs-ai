@@ -29,6 +29,7 @@ import type {
   Product,
   Sale,
   SaleLine,
+  DayClose,
   Settings,
   Shift,
   Staff,
@@ -40,18 +41,40 @@ import {
   seedShopText,
 } from "./seed";
 import { translate, type Lang } from "./i18n";
+import {
+  alreadyMigrated,
+  keepOldCopy,
+  migrateFromLocalStorage,
+  OLD_KEY,
+  receiptNumber,
+  wipeEverything,
+} from "./migrate";
+import { askToPersist, readAll, write, type Change, type StoreName } from "./db";
 import { roundTotal } from "./money";
 
 const DATA_KEY = "coreos.pos.data.v1";
 const CART_KEY = "coreos.pos.cart.v1";
 const DATA_VERSION = 1;
 
+/**
+ * A full UUID, never a slice of one.
+ *
+ * This used to keep the first eight characters, which is thirty-two bits: two
+ * records of the same kind start colliding around seventy-seven thousand of
+ * them, and a shop with fifty thousand sales was inside the range where two
+ * could share an id. Once several tablets sync into one set of books, an id
+ * collision stops being a curiosity and becomes one shop's sale overwriting
+ * another's.
+ */
 export function newId(prefix: string): string {
-  const rand =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10);
-  return `${prefix}-${rand}`;
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  // Old WebViews: four blocks of randomness, same width, no uniqueness claim
+  // beyond what the device's own Math.random can offer.
+  let out = "";
+  for (let i = 0; i < 4; i++) out += Math.random().toString(36).slice(2, 10);
+  return `${prefix}-${out}`;
 }
 
 /** Arabic unless the shop says otherwise: most of these counters are in
@@ -71,6 +94,7 @@ function freshData(lang: Lang = FIRST_LANG): PosData {
     audit: [],
     customers: [],
     debts: [],
+    closes: [],
   };
 }
 
@@ -94,6 +118,7 @@ function parseData(raw: string | null): PosData {
       audit: parsed.audit ?? [],
       customers: parsed.customers ?? [],
       debts: parsed.debts ?? [],
+      closes: parsed.closes ?? [],
     };
   } catch {
     return freshData();
@@ -128,16 +153,29 @@ function read(key: string): string | null {
   }
 }
 
-const stored = read(DATA_KEY);
-let data: PosData = parseData(stored);
+/* The books are read into memory once at startup and kept there. Every screen
+   reads them synchronously — a basket cannot wait on a database — and writes
+   go the other way, one record at a time, into IndexedDB. */
+let data: PosData = freshData();
 messageLang = data.settings.lang;
 
-/* A new install writes itself out immediately rather than waiting for the
-   first edit. Until it does, every launch builds a fresh shop — including a
-   fresh till number, and that number is what a shop reads down the phone to
-   be activated or to get help. A till whose name changes each time it opens
-   cannot be supported. */
-if (!stored) persist(DATA_KEY, data);
+/** `idb` once the database is open and the books are loaded; `localStorage`
+    if IndexedDB is missing or refused, which keeps an old or locked-down
+    tablet selling rather than failing. */
+let storageMode: "loading" | "idb" | "localStorage" = "loading";
+let ready = false;
+
+export function useStorageReady(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => ready,
+    () => ready,
+  );
+}
+
+export function storageKind(): string {
+  return storageMode;
+}
 let cart: CartLine[] = (() => {
   try {
     return (JSON.parse(read(CART_KEY) ?? "[]") ?? []) as CartLine[];
@@ -151,6 +189,112 @@ const listeners = new Set<() => void>();
 function notify() {
   for (const listener of listeners) listener();
 }
+
+/**
+ * Opening the books.
+ *
+ * Runs once, before the till draws anything. It opens the database, moves a
+ * shop off the old single-blob storage if it is still on it, reads everything
+ * into memory, and asks Android not to clear any of it.
+ *
+ * If any of that fails — no IndexedDB, a locked-down browser, a database that
+ * will not open — the till falls back to the storage it has always used and
+ * carries on selling. A shop losing its database layer should notice nothing
+ * except, eventually, the old size limit.
+ */
+async function boot(): Promise<void> {
+  const blob = read(DATA_KEY);
+
+  try {
+    if (!(await alreadyMigrated())) {
+      const result = await migrateFromLocalStorage(blob, parseData);
+      if (result.problem) {
+        // Counted and came up short. Stay on the old storage, keep the blob
+        // exactly where it is, and say so in the support report.
+        throw new Error(`migration check failed — ${result.problem}`);
+      }
+      if (result.ran) keepOldCopy();
+    }
+
+    const [
+      settingsRows,
+      products,
+      categories,
+      sales,
+      staff,
+      shifts,
+      audit,
+      customers,
+      debts,
+      closes,
+    ] = await Promise.all([
+      readAll<Settings & { id: string }>("settings"),
+      readAll<Product>("products"),
+      readAll<Category>("categories"),
+      readAll<Sale>("sales"),
+      readAll<Staff>("staff"),
+      readAll<Shift>("shifts"),
+      readAll<AuditEntry>("audit"),
+      readAll<Customer>("customers"),
+      readAll<DebtEntry>("debts"),
+      readAll<DayClose>("closes"),
+    ]);
+
+    const saved = settingsRows.find((row) => row.id === "settings");
+    const lang = saved?.lang ?? FIRST_LANG;
+    const settings = { ...defaultSettings(lang), ...(saved ?? {}) } as Settings;
+
+    const loaded: PosData = {
+      version: DATA_VERSION,
+      settings,
+      products,
+      categories,
+      // Newest first, the order every screen expects.
+      sales: sales.sort((a, b) => b.at.localeCompare(a.at)),
+      staff,
+      shifts: shifts.sort((a, b) => b.openedAt.localeCompare(a.openedAt)),
+      audit: audit.sort((a, b) => b.at.localeCompare(a.at)),
+      customers,
+      debts: debts.sort((a, b) => b.at.localeCompare(a.at)),
+      closes: closes.sort((a, b) => b.day.localeCompare(a.day)),
+    };
+
+    storageMode = "idb";
+    data = loaded;
+    messageLang = settings.lang;
+
+    // A brand new tablet: write the sample shop out so its till number and
+    // its shelf survive the next launch. Until it does, every launch builds a
+    // different shop, and the till number is what a shop reads down the phone
+    // to be activated or helped.
+    if (products.length === 0 && !saved) {
+      const fresh = freshData();
+      data = fresh;
+      messageLang = fresh.settings.lang;
+      queue(writeWholeBook(fresh));
+    }
+
+    void askToPersist();
+  } catch (cause) {
+    storageMode = "localStorage";
+    data = parseData(blob);
+    messageLang = data.settings.lang;
+    if (!blob) persist(DATA_KEY, data);
+    bootProblem = cause instanceof Error ? cause.message : String(cause);
+  }
+
+  ready = true;
+  notify();
+}
+
+/** Why the till is on the old storage, for the support report. */
+let bootProblem = "";
+
+export function storageProblem(): string {
+  return bootProblem;
+}
+
+void boot();
 
 function persist(key: string, value: unknown) {
   try {
@@ -167,10 +311,113 @@ function persist(key: string, value: unknown) {
   }
 }
 
+/**
+ * What changed between two versions of the books.
+ *
+ * Every update in this file builds new arrays and leaves the untouched objects
+ * alone, so identity is enough to find the difference — no deep comparison, no
+ * timestamps to trust. The two common shapes are checked first because they
+ * are what a counter does all day: one record added at the front (a sale, an
+ * audit line), or one record swapped in place (stock changing, a price edit).
+ */
+function deltaFor<T extends { id: string }>(
+  store: StoreName,
+  before: T[],
+  after: T[],
+): Change | null {
+  if (before === after) return null;
+
+  // Prepended: a new sale on top of everything that came before.
+  if (after.length === before.length + 1 && after[1] === before[0]) {
+    return { store, put: [after[0]] };
+  }
+
+  // Same length: scan for the ones that were replaced. Pointer comparisons
+  // over tens of thousands of rows cost less than building a map of them.
+  if (after.length === before.length) {
+    const put: T[] = [];
+    for (let i = 0; i < after.length; i++) {
+      if (after[i] !== before[i]) put.push(after[i]);
+    }
+    return put.length ? { store, put } : null;
+  }
+
+  // Anything else — a restore, a wipe, a removal — is worked out properly.
+  const was = new Map(before.map((row) => [row.id, row]));
+  const put: T[] = [];
+  for (const row of after) {
+    if (was.get(row.id) !== row) put.push(row);
+    was.delete(row.id);
+  }
+  const remove = [...was.keys()];
+  return put.length || remove.length ? { store, put, remove } : null;
+}
+
+/** Every record, for a first run, a restore, or a reset. */
+function writeWholeBook(book: PosData): Change[] {
+  return [
+    { store: "products", put: book.products },
+    { store: "categories", put: book.categories },
+    { store: "sales", put: book.sales },
+    { store: "staff", put: book.staff },
+    { store: "shifts", put: book.shifts },
+    { store: "audit", put: book.audit },
+    { store: "customers", put: book.customers },
+    { store: "debts", put: book.debts },
+    { store: "closes", put: book.closes },
+    { store: "settings", put: [{ id: "settings", ...book.settings }] },
+  ];
+}
+
+function changesBetween(before: PosData, after: PosData): Change[] {
+  const changes: Change[] = [];
+  const add = (change: Change | null) => {
+    if (change) changes.push(change);
+  };
+  add(deltaFor("products", before.products, after.products));
+  add(deltaFor("categories", before.categories, after.categories));
+  add(deltaFor("sales", before.sales, after.sales));
+  add(deltaFor("staff", before.staff, after.staff));
+  add(deltaFor("shifts", before.shifts, after.shifts));
+  add(deltaFor("audit", before.audit, after.audit));
+  add(deltaFor("customers", before.customers, after.customers));
+  add(deltaFor("debts", before.debts, after.debts));
+  add(deltaFor("closes", before.closes, after.closes));
+  if (before.settings !== after.settings) {
+    changes.push({ store: "settings", put: [{ id: "settings", ...after.settings }] });
+  }
+  return changes;
+}
+
+/* Writes are queued rather than awaited. A cashier pressing "complete" should
+   see the receipt immediately; the disk can catch up a few milliseconds later,
+   and the order is preserved because each write waits for the one before. */
+let writing: Promise<void> = Promise.resolve();
+
+function queue(changes: Change[]) {
+  if (changes.length === 0) return;
+  writing = writing
+    .then(() => write(changes))
+    .catch(() => {
+      // A failed write is the one thing a shop must be told about, since what
+      // is on screen is no longer what is on the tablet.
+      writeError = storageMessage("store.noStorage");
+      notify();
+    });
+}
+
+/** Everything written so far has landed. Used before exporting a backup and
+    by the tests. */
+export function flushed(): Promise<void> {
+  return writing;
+}
+
 function commit(next: PosData) {
+  const before = data;
   data = next;
   messageLang = next.settings.lang;
-  persist(DATA_KEY, data);
+  if (storageMode === "localStorage") persist(DATA_KEY, data);
+  else queue(changesBetween(before, next));
   notify();
 }
 
@@ -365,6 +612,7 @@ export function priceCart(
     const product = posData.products.find((p) => p.id === line.productId);
     if (!product) continue;
     lines.push({
+      id: newId("ln"),
       productId: product.id,
       name: product.name,
       price: product.price,
@@ -400,6 +648,8 @@ export function completeSale(input: {
   const sale: Sale = {
     id: newId("s"),
     no: data.settings.nextSaleNo,
+    receiptNo: receiptNumber(data.settings.tillPrefix, data.settings.nextSaleNo),
+    deviceId: data.settings.tillId,
     at: new Date().toISOString(),
     lines: totals.lines,
     subtotal: totals.subtotal,
@@ -441,6 +691,7 @@ export function completeSale(input: {
               amount: totals.total,
               saleId: sale.id,
               saleNo: sale.no,
+              receiptNo: sale.receiptNo,
               staffId: who.id,
               staffName: who.name,
               note: "",
@@ -453,10 +704,10 @@ export function completeSale(input: {
   log(
     method === "later" ? "debt" : "sale",
     method === "later"
-      ? `#${sale.no} ${customer?.name ?? ""} ${sale.total}`
-      : `#${sale.no} ${sale.total} ${method}`,
+      ? `${sale.receiptNo} ${customer?.name ?? ""} ${sale.total}`
+      : `${sale.receiptNo} ${sale.total} ${method}`,
   );
-  if (discount > 0) log("discount", `#${sale.no} ${discount}`);
+  if (discount > 0) log("discount", `${sale.receiptNo} ${discount}`);
   return sale;
 }
 
@@ -490,7 +741,7 @@ export function voidSale(id: string, reason = "", approvedBy = "") {
     // A voided sale on the book was never owed.
     debts: data.debts.filter((entry) => entry.saleId !== id),
   });
-  log("void", `#${sale.no} ${sale.total} — ${reason}`, approvedBy);
+  log("void", `${sale.receiptNo || sale.no} ${sale.total} — ${reason}`, approvedBy);
 }
 
 /* ------------------------------------------------------------------- backup */
@@ -507,8 +758,24 @@ export function importData(raw: string): string | null {
     if (!Array.isArray(parsed.products) || !Array.isArray(parsed.sales)) {
       return translate(data.settings.lang, "settings.badFile");
     }
-    commit(parseData(raw));
+    const restored = parseData(raw);
+    data = restored;
+    messageLang = restored.settings.lang;
+    if (storageMode === "idb") {
+      // A restore replaces the books rather than merging into them: anything
+      // the file does not mention is gone from this tablet by definition.
+      writing = writing
+        .then(() => wipeEverything())
+        .then(() => write(writeWholeBook(restored)))
+        .catch(() => {
+          writeError = storageMessage("store.noStorage");
+          notify();
+        });
+    } else {
+      persist(DATA_KEY, restored);
+    }
     commitCart([]);
+    notify();
     return null;
   } catch {
     return translate(data.settings.lang, "settings.unreadable");
@@ -516,8 +783,22 @@ export function importData(raw: string): string | null {
 }
 
 export function resetToSeed() {
-  commit(freshData());
+  const fresh = freshData();
+  data = fresh;
+  messageLang = fresh.settings.lang;
+  if (storageMode === "idb") {
+    writing = writing
+      .then(() => wipeEverything())
+      .then(() => write(writeWholeBook(fresh)))
+      .catch(() => {
+        writeError = storageMessage("store.noStorage");
+        notify();
+      });
+  } else {
+    persist(DATA_KEY, fresh);
+  }
   commitCart([]);
+  notify();
 }
 
 /* ------------------------------------------------------------------- staff */
@@ -791,4 +1072,110 @@ export function recordPayment(customerId: string, amount: number, note = "") {
   };
   commit({ ...data, debts: [entry, ...data.debts] });
   log("payment", `${customer?.name ?? customerId} paid ${amount}`);
+}
+
+/* --------------------------------------------------------------- closing up */
+
+export interface DayFigures {
+  day: string;
+  sales: number;
+  gross: number;
+  cash: number;
+  card: number;
+  onBook: number;
+  discounts: number;
+  voids: number;
+  voidedValue: number;
+  openingFloat: number;
+  expectedCash: number;
+}
+
+/** The local calendar day, which is the one a shop closes. */
+function dayOf(iso: string): string {
+  const at = new Date(iso);
+  return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(
+    at.getDate(),
+  ).padStart(2, "0")}`;
+}
+
+export function today(): string {
+  return dayOf(new Date().toISOString());
+}
+
+/**
+ * What the till says a day held.
+ *
+ * Goods that left on the book are counted separately from money that came in,
+ * because only one of them is in the drawer. Payments against a tab are, so
+ * they are added to what the drawer should hold.
+ */
+export function figuresFor(posData: PosData, day: string): DayFigures {
+  const ofDay = posData.sales.filter((sale) => dayOf(sale.at) === day);
+  const counted = ofDay.filter((sale) => !sale.voidedAt);
+  const voided = ofDay.filter((sale) => sale.voidedAt);
+  const sum = (list: Sale[], pick: (sale: Sale) => number) =>
+    list.reduce((total, sale) => total + pick(sale), 0);
+
+  const cash = sum(counted.filter((s) => s.method === "cash"), (s) => s.total);
+  const card = sum(counted.filter((s) => s.method === "card"), (s) => s.total);
+  const onBook = sum(counted.filter((s) => s.method === "later"), (s) => s.total);
+
+  const collected = posData.debts
+    .filter((entry) => entry.kind === "paid" && dayOf(entry.at) === day)
+    .reduce((total, entry) => total + entry.amount, 0);
+
+  const openingFloat = posData.shifts
+    .filter((shift) => dayOf(shift.openedAt) === day)
+    .reduce((total, shift) => total + shift.openingFloat, 0);
+
+  return {
+    day,
+    sales: counted.length,
+    gross: cash + card + onBook,
+    cash,
+    card,
+    onBook,
+    discounts: sum(counted, (sale) => sale.discount),
+    voids: voided.length,
+    voidedValue: sum(voided, (sale) => sale.total),
+    openingFloat,
+    expectedCash: openingFloat + cash + collected,
+  };
+}
+
+export function closeFor(posData: PosData, day: string): DayClose | undefined {
+  return posData.closes.find((close) => close.day === day);
+}
+
+/** Writes the day away. The owner who approved it is on the record. */
+export function closeDay(day: string, countedCash: number, approvedBy: string) {
+  const figures = figuresFor(data, day);
+  const who = actor();
+  const close: DayClose = {
+    id: newId("z"),
+    day,
+    closedAt: new Date().toISOString(),
+    staffId: who.id,
+    staffName: who.name,
+    approvedBy,
+    openingFloat: figures.openingFloat,
+    sales: figures.sales,
+    gross: figures.gross,
+    cash: figures.cash,
+    card: figures.card,
+    onBook: figures.onBook,
+    discounts: figures.discounts,
+    voids: figures.voids,
+    voidedValue: figures.voidedValue,
+    expectedCash: figures.expectedCash,
+    countedCash,
+    difference: countedCash - figures.expectedCash,
+  };
+  commit({
+    ...data,
+    // Closing the same day twice replaces the earlier count rather than
+    // stacking two contradictory ones.
+    closes: [close, ...data.closes.filter((row) => row.day !== day)],
+  });
+  log("shift-close", `${day} counted ${countedCash}, expected ${figures.expectedCash}`, approvedBy);
 }

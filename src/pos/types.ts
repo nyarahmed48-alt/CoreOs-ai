@@ -40,6 +40,9 @@ export interface Product {
 /** A line is a copy, not a reference: a receipt from March must still show
     March's price even after the shelf price changes. */
 export interface SaleLine {
+  /** Its own identity, so a line can be synced and reconciled on its own.
+      Older lines, written before this existed, are given one on migration. */
+  id: string;
   productId: string;
   name: string;
   price: number;
@@ -52,8 +55,15 @@ export type PaymentMethod = "cash" | "card" | "later";
 
 export interface Sale {
   id: string;
-  /** Human-facing receipt number, sequential per shop. */
+  /** Counts up on this tablet alone. */
   no: number;
+  /** What is printed and read out: `T1-000123`. Two tablets in one shop count
+      separately, so without the prefix they would both print #1001 and the
+      shop would have two different sales with the same receipt number. */
+  receiptNo: string;
+  /** Which tablet rang it up. Needed before several tills can sync into one
+      set of books without arguing. */
+  deviceId: string;
   /** ISO timestamp. */
   at: string;
   lines: SaleLine[];
@@ -144,6 +154,37 @@ export interface Shift {
   expectedCash?: number;
 }
 
+/**
+ * The end of a trading day, written down.
+ *
+ * Not a shift: a shift is one cashier's turn, and a day is the shop's. This is
+ * the figure an owner checks — what the till says it took against what is
+ * actually in the drawer — and the rest is there to explain a difference
+ * without going back through every sale.
+ */
+export interface DayClose {
+  id: string;
+  /** `2026-10-28`, the local day it covers. */
+  day: string;
+  closedAt: string;
+  staffId: string;
+  staffName: string;
+  /** Signed off by this owner. */
+  approvedBy: string;
+  openingFloat: number;
+  sales: number;
+  gross: number;
+  cash: number;
+  card: number;
+  onBook: number;
+  discounts: number;
+  voids: number;
+  voidedValue: number;
+  expectedCash: number;
+  countedCash: number;
+  difference: number;
+}
+
 /** A name in the debt book. */
 export interface Customer {
   id: string;
@@ -162,6 +203,9 @@ export interface DebtEntry {
   /** The sale that created it, for an owed line. */
   saleId?: string;
   saleNo?: number;
+  /** As printed: `T1-001002`. A customer disputing a line on their tab holds
+      the paper receipt, so the book has to show the same number back. */
+  receiptNo?: string;
   staffId: string;
   staffName: string;
   note: string;
@@ -180,8 +224,10 @@ export interface Settings {
   roundTo: number;
   /** Shop-wide low stock threshold, used by products that don't set their own. */
   lowStockAt: number;
-  /** The number the next receipt will carry. */
+  /** The number the next receipt will carry on this tablet. */
   nextSaleNo: number;
+  /** This till's mark on every receipt it prints — T1, T2, and so on. */
+  tillPrefix: string;
   /** A short name for this installation, made on first run. Fifty tablets all
       called "the till" cannot be told apart in a support queue; this is what a
       shopkeeper reads down the phone, and what a report arrives under. */
@@ -212,6 +258,7 @@ export interface PosData {
   audit: AuditEntry[];
   customers: Customer[];
   debts: DebtEntry[];
+  closes: DayClose[];
 }
 
 /** A cart line before it becomes a sale line. Holds the product id so price

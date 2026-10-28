@@ -57,6 +57,7 @@ export function defaultSettings(lang: Lang): Settings {
     roundTo: 250,
     lowStockAt: 5,
     nextSaleNo: 1001,
+    tillPrefix: "T1",
     staffLogin: false,
     auditKeep: 500,
     sampleShop: true,

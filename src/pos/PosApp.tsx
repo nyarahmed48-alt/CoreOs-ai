@@ -31,7 +31,13 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { Link } from "../site/router";
-import { setLanguage, usePos, useSession, useWriteError } from "./store";
+import {
+  setLanguage,
+  usePos,
+  useSession,
+  useStorageReady,
+  useWriteError,
+} from "./store";
 import { watchForErrors } from "./report";
 import { useT } from "./useT";
 import { LANGS, formatTime } from "./i18n";
@@ -97,6 +103,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const writeError = useWriteError();
   const { t, lang, dir } = useT();
   const { staff, shift } = useSession();
+  const storageReady = useStorageReady();
   const [tab, setTab] = useState<Tab>("register");
   const [closing, setClosing] = useState(false);
   const activation = useActivation();
@@ -110,11 +117,37 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     return watchLicence(data.settings.tillId, publishRemote);
   }, [data.settings.tillId]);
 
+  /* The page shell ships as Arabic, which is what most of these counters open
+     in, but a shop that switched to English should not be left with an
+     <html> element still claiming otherwise: it changes how the browser hyphen-
+     ates, how a screen reader speaks, and which way a stray unstyled element
+     lands. */
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = dir;
+  }, [lang, dir]);
+
   /* The till locks only once the shop has people on it. A one-person market
      is never asked to sign in to its own counter. */
   const locked = data.settings.staffLogin && data.staff.some((p) => p.active) && !staff;
   const isOwner = !staff || staff.role === "owner";
   const tabs = TABS.filter((entry) => !entry.ownerOnly || isOwner);
+
+  /* The books are read off the disk before the till draws. It is a few
+     milliseconds on a tablet, but drawing an empty shelf first and filling it
+     in afterwards would look, to a cashier mid-queue, exactly like a shop
+     whose stock had vanished. */
+  if (!storageReady) {
+    return (
+      <div
+        dir={dir}
+        lang={lang}
+        className="flex h-[100dvh] items-center justify-center bg-[#05060a]"
+      >
+        <span className="h-8 w-8 animate-pulse rounded-lg bg-[#6c7bf0]/40" />
+      </div>
+    );
+  }
 
   /* Before anything else. A tablet locked by a typed code or by the office
      shows one screen and nothing behind it — but it keeps every sale and

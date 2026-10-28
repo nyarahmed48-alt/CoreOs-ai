@@ -25,6 +25,12 @@ import { formatDateTime, translate, type Lang } from "./i18n";
     does. */
 const POWERED_BY = "Powered by CoreCashier";
 
+/** `T1-001300` on anything rung up since tills got their own prefix, and the
+    bare number on a sale from before that. */
+export function receiptLabel(sale: Pick<Sale, "no" | "receiptNo">): string {
+  return sale.receiptNo || String(sale.no);
+}
+
 export function receiptDate(iso: string): string {
   return formatDateTime(iso);
 }
@@ -91,7 +97,7 @@ export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) 
       </div>
 
       <div className={`mt-3 flex justify-between pt-2 ${line}`}>
-        <span>{t("receipt.no", { no: sale.no })}</span>
+        <span>{t("receipt.no", { no: receiptLabel(sale) })}</span>
         <span dir="ltr">{receiptDate(sale.at)}</span>
       </div>
 
@@ -175,7 +181,7 @@ export function ReceiptActions({
 
   async function share() {
     const text = receiptText(sale, settings);
-    const title = `${settings.shopName} — ${translate(settings.lang, "receipt.no", { no: sale.no })}`;
+    const title = `${settings.shopName} — ${translate(settings.lang, "receipt.no", { no: receiptLabel(sale) })}`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title, text });
@@ -188,7 +194,7 @@ export function ReceiptActions({
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `receipt-${sale.no}.txt`;
+    link.download = `receipt-${receiptLabel(sale)}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   }

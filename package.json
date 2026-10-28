@@ -17,7 +17,9 @@
     "clean": "rm -rf dist server.cjs",
     "lint": "tsc --noEmit",
     "build:ceo": "vite build --config vite.ceo.config.ts && node scripts/build-portable-pos.mjs dist-ceo ceo-portable.html CoreCashier_Owner_Console.html",
-    "build:app": "vite build --config vite.app.config.ts && node scripts/build-app.mjs"
+    "build:app": "vite build --config vite.app.config.ts && node scripts/build-app.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@netlify/blobs": "^11.0.1",
@@ -39,10 +41,12 @@
     "@types/react-dom": "^19.2.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "fake-indexeddb": "^6.2.6",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
+    "vitest": "^2.1.9",
     "wrangler": "^4.123.0"
   }
 }

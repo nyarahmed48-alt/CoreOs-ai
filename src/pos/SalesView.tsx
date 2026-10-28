@@ -16,10 +16,12 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePos, voidSale } from "./store";
 import { ApprovalPrompt } from "./ApprovalPrompt";
+import { CloseDayModal } from "./CloseDay";
+import { closeFor, today } from "./store";
 import { useT } from "./useT";
 import { formatDay, formatTime, type Lang } from "./i18n";
 import { Button, Empty, Modal } from "./ui";
-import { Receipt, ReceiptActions } from "./Receipt";
+import { Receipt, ReceiptActions, receiptLabel } from "./Receipt";
 import type { Sale } from "./types";
 
 /** Local calendar day, not UTC: a sale rung at 9pm belongs to that evening's
@@ -52,6 +54,7 @@ export function SalesView() {
   const { t, m, lang } = useT();
   const [day, setDay] = useState(todayKey());
   const [open, setOpen] = useState<Sale | null>(null);
+  const [closing, setClosing] = useState(false);
 
   const sales = useMemo(
     () => data.sales.filter((sale) => dayKey(sale.at) === day),
@@ -179,7 +182,7 @@ export function SalesView() {
                       <p
                         className={`text-[14.5px] font-medium ${sale.voidedAt ? "text-[#6b7490] line-through" : "text-[#e7eaf6]"}`}
                       >
-                        {t("receipt.no", { no: sale.no })}
+                        {t("receipt.no", { no: receiptLabel(sale) })}
                       </p>
                       <p className="mt-0.5 text-[12.5px] text-[#6b7490]">
                         {t(sale.voidedAt ? "sales.lineVoided" : "sales.line", {
@@ -207,6 +210,18 @@ export function SalesView() {
           )}
         </div>
 
+        {day === today() ? (
+          <Button
+            variant="ghost"
+            className="mt-4 h-[46px] w-full"
+            onClick={() => setClosing(true)}
+          >
+            {closeFor(data, day)
+              ? `${t("close.title")} · ${t("close.saved")}`
+              : t("close.title")}
+          </Button>
+        ) : null}
+
         {report.voided > 0 ? (
           <p className="mt-3 text-[12.5px] text-[#6b7490]">
             {report.voided === 1
@@ -219,6 +234,8 @@ export function SalesView() {
       {open ? (
         <SaleModal sale={open} onClose={() => setOpen(null)} />
       ) : null}
+
+      {closing ? <CloseDayModal onClose={() => setClosing(false)} /> : null}
     </div>
   );
 }
@@ -256,7 +273,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   const current = data.sales.find((s) => s.id === sale.id) ?? sale;
 
   return (
-    <Modal title={t("receipt.no", { no: current.no })} onClose={onClose}>
+    <Modal title={t("receipt.no", { no: receiptLabel(current) })} onClose={onClose}>
       <Receipt sale={current} settings={data.settings} />
       <ReceiptActions sale={current} settings={data.settings} className="mt-4" />
 
@@ -273,7 +290,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
                   setApproving(true);
                 }}
               >
-                {t("sales.voidButton", { no: current.no })}
+                {t("sales.voidButton", { no: receiptLabel(current) })}
               </Button>
               <Button variant="quiet" onClick={() => setConfirming(false)}>
                 {t("sales.keep")}
@@ -293,7 +310,7 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
 
       {approving ? (
         <ApprovalPrompt
-          title={t("sales.voidButton", { no: current.no })}
+          title={t("sales.voidButton", { no: receiptLabel(current) })}
           onClose={() => setApproving(false)}
           onApproved={(approvedBy, reason) => {
             voidSale(current.id, reason, approvedBy);

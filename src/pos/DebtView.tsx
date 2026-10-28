@@ -258,7 +258,7 @@ function CustomerPage({
               <div className="min-w-0 flex-1">
                 <p className="text-[13.5px] text-[#e7eaf6]">
                   {entry.kind === "owed"
-                    ? t("debt.owedLine", { no: entry.saleNo ?? "" })
+                    ? t("debt.owedLine", { no: entry.receiptNo ?? entry.saleNo ?? "" })
                     : t("debt.paidLine")}
                 </p>
                 <p dir="ltr" className="mt-0.5 text-[12px] text-[#6b7490]">

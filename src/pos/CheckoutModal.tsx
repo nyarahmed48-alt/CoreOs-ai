@@ -21,7 +21,7 @@ import { IQD_NOTES, amount, parseAmount } from "./money";
 import { Button, Modal } from "./ui";
 import { useT } from "./useT";
 import { useWedgeScanner } from "./wedge";
-import { Receipt, ReceiptActions } from "./Receipt";
+import { Receipt, ReceiptActions, receiptLabel } from "./Receipt";
 import type { PaymentMethod, Sale } from "./types";
 
 export function CheckoutModal({
@@ -83,7 +83,7 @@ export function CheckoutModal({
 
   if (sale) {
     return (
-      <Modal title={t("receipt.no", { no: sale.no })} onClose={onDone}>
+      <Modal title={t("receipt.no", { no: receiptLabel(sale) })} onClose={onDone}>
         {sale.method === "cash" && sale.change > 0 ? (
           <p className="pos-noprint mb-4 rounded-xl border border-[#1f4034] bg-[#0d2119] px-4 py-3 text-center">
             <span className="block text-[12px] uppercase tracking-[0.08em] text-[#78c9a3]">
