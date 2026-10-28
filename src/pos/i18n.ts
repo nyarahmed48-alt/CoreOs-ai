@@ -283,10 +283,13 @@ const EN = {
   "licence.title": "Licence",
   "licence.hint":
     "This tablet works until the date below. Send the code to CoreOs before then and they will send back a new one.",
+  "licence.lifetimeHint":
+    "This tablet is on the lifetime offline plan. It does not expire, and it never has to reach CoreOs.",
   "licence.code": "Licence code",
   "licence.codeHint": "The first two parts are the till number. The whole code is what a new licence is made from.",
   "licence.expires": "Works until",
   "licence.never": "No expiry",
+  "licence.lifetime": "Offline plan: lifetime",
   "licence.daysLeft": "{n} days left",
   "licence.lastDay": "Last day",
   "licence.renew": "Ask for a renewal on WhatsApp",
@@ -294,6 +297,8 @@ const EN = {
   "licence.apply": "Use the code",
   "licence.applied": "Done — this tablet works until {date}.",
   "licence.appliedNever": "Done — this tablet has no expiry now.",
+  "licence.appliedLifetime":
+    "Done — this tablet is on the lifetime offline plan. It will not expire.",
   "licence.wrong": "That code does not match this tablet.",
   "licence.renewMessage": "Please renew this till:",
   "licence.warning": "This tablet stops working in {n} days. Ask CoreOs for a new code.",
@@ -310,6 +315,16 @@ const EN = {
   "activate.dataSafe":
     "Nothing has been lost. Sales and products on this tablet are kept, and come back as soon as it is unlocked.",
   "activate.expired": "This till's licence has run out.",
+  "activate.scan": "Scan the square",
+  "activate.paste": "Paste it",
+  "activate.scanTitle": "Point at the licence square",
+  "activate.scanned": "Got it — checking…",
+  "activate.codeHelp":
+    "A licence is long, so you should not have to type it: scan the square on CoreOs's screen, or paste the message they sent. Spaces and line breaks do not matter.",
+  "activate.pasteBlocked":
+    "Nothing could be pasted. Hold your finger on the box and choose Paste.",
+  "activate.noCrypto":
+    "This tablet cannot check licence codes, so no code will work on it. It is missing the security the check needs — usually because the app was opened over a plain http link instead of being installed. Call CoreOs.",
   "wipe.word": "Type DELETE to confirm",
   "wipe.wordValue": "DELETE",
   "wipe.wrongWord": "Type DELETE exactly, in capitals.",
@@ -634,10 +649,13 @@ const AR: Record<Key, string> = {
   "licence.title": "الاشتراك",
   "licence.hint":
     "هذا الجهاز يعمل حتى التاريخ أدناه. أرسل الرمز إلى CoreOs قبل ذلك ليرسلوا لك رمزاً جديداً.",
+  "licence.lifetimeHint":
+    "هذا الجهاز على خطة أوفلاين مدى الحياة. لا تنتهي صلاحيته ولا يحتاج للاتصال بـ CoreOs أبداً.",
   "licence.code": "رمز الاشتراك",
   "licence.codeHint": "الجزءان الأولان هما رقم الصندوق. الرمز كاملاً هو ما يُصنع منه اشتراك جديد.",
   "licence.expires": "يعمل حتى",
   "licence.never": "بلا انتهاء",
+  "licence.lifetime": "خطة أوفلاين: مدى الحياة",
   "licence.daysLeft": "باقي {n} يوم",
   "licence.lastDay": "آخر يوم",
   "licence.renew": "طلب التجديد على واتساب",
@@ -645,6 +663,8 @@ const AR: Record<Key, string> = {
   "licence.apply": "استخدام الرمز",
   "licence.applied": "تم — هذا الجهاز يعمل حتى {date}.",
   "licence.appliedNever": "تم — هذا الجهاز بلا تاريخ انتهاء الآن.",
+  "licence.appliedLifetime":
+    "تم — هذا الجهاز على خطة أوفلاين مدى الحياة. لن تنتهي صلاحيته.",
   "licence.wrong": "هذا الرمز لا يطابق هذا الجهاز.",
   "licence.renewMessage": "يرجى تجديد هذا الصندوق:",
   "licence.warning": "هذا الجهاز سيتوقف خلال {n} يوم. اطلب رمزاً جديداً من CoreOs.",
@@ -661,6 +681,16 @@ const AR: Record<Key, string> = {
   "activate.dataSafe":
     "لم يُفقد شيء. المبيعات والمواد على هذا الجهاز محفوظة وتعود فور فتحه.",
   "activate.expired": "انتهت صلاحية هذا الصندوق.",
+  "activate.scan": "مسح المربع",
+  "activate.paste": "لصق الرمز",
+  "activate.scanTitle": "وجّه الكاميرا إلى مربع الاشتراك",
+  "activate.scanned": "تم — جارٍ التحقق…",
+  "activate.codeHelp":
+    "رمز الاشتراك طويل، ولا حاجة لكتابته: امسح المربع الظاهر على شاشة CoreOs، أو الصق الرسالة التي أرسلوها. المسافات وفواصل الأسطر لا تهم.",
+  "activate.pasteBlocked":
+    "لم يُلصق شيء. اضغط مطولاً على الحقل واختر «لصق».",
+  "activate.noCrypto":
+    "هذا الجهاز لا يستطيع التحقق من رموز الاشتراك، لذا لن ينفع معه أي رمز. تنقصه الحماية التي يحتاجها التحقق — غالباً لأن البرنامج فُتح عبر رابط http غير آمن بدل تثبيته. اتصل بـ CoreOs.",
   "wipe.word": "اكتب DELETE للتأكيد",
   "wipe.wordValue": "DELETE",
   "wipe.wrongWord": "اكتب DELETE بالضبط وبالأحرف الكبيرة.",
@@ -983,10 +1013,13 @@ const CKB: Record<Key, string> = {
   "licence.title": "بەشداری",
   "licence.hint":
     "ئەم ئامێرە تا ئەو بەروارەی خوارەوە کار دەکات. پێش ئەو کاتە کۆدەکە بۆ CoreOs بنێرە و کۆدێکی نوێت بۆ دەنێرنەوە.",
+  "licence.lifetimeHint":
+    "ئەم تابلێتە لەسەر پلانی ئۆفلاینی هەتاهەتاییە. کۆتایی نایەت و هەرگیز پێویستی بە پەیوەندی بە CoreOs نییە.",
   "licence.code": "کۆدی بەشداری",
   "licence.codeHint": "دوو بەشی یەکەم ژمارەی سندوقە. هەموو کۆدەکە ئەوەیە کە بەشداری نوێی لێ دروست دەکرێت.",
   "licence.expires": "کار دەکات تا",
   "licence.never": "بێ کۆتایی",
+  "licence.lifetime": "پلانی ئۆفلاین: هەتاهەتایی",
   "licence.daysLeft": "{n} ڕۆژ ماوە",
   "licence.lastDay": "دوا ڕۆژ",
   "licence.renew": "داوای نوێکردنەوە بە واتسئاپ",
@@ -994,6 +1027,8 @@ const CKB: Record<Key, string> = {
   "licence.apply": "کۆدەکە بەکاربهێنە",
   "licence.applied": "تەواو — ئەم ئامێرە تا {date} کار دەکات.",
   "licence.appliedNever": "تەواو — ئێستا ئەم ئامێرە کۆتایی نییە.",
+  "licence.appliedLifetime":
+    "تەواو — ئەم تابلێتە لەسەر پلانی ئۆفلاینی هەتاهەتاییە. کۆتایی نایەت.",
   "licence.wrong": "ئەم کۆدە لەگەڵ ئەم ئامێرەدا ناگونجێت.",
   "licence.renewMessage": "تکایە ئەم سندوقە نوێ بکەرەوە:",
   "licence.warning": "ئەم ئامێرە لە {n} ڕۆژدا دەوەستێت. کۆدێکی نوێ لە CoreOs داوا بکە.",
@@ -1010,6 +1045,16 @@ const CKB: Record<Key, string> = {
   "activate.dataSafe":
     "هیچ شتێک لەدەست نەچووە. فرۆشتن و کاڵاکانی ئەم ئامێرە پارێزراون و هەر کە کرایەوە دەگەڕێنەوە.",
   "activate.expired": "ماوەی ئەم سندوقە تەواو بووە.",
+  "activate.scan": "سکانی چوارگۆشە",
+  "activate.paste": "لکاندنی کۆد",
+  "activate.scanTitle": "کامێرا بەرەو چوارگۆشەی مۆڵەت ڕابگرە",
+  "activate.scanned": "وەرگیرا — پشکنین…",
+  "activate.codeHelp":
+    "کۆدی مۆڵەت درێژە، بۆیە پێویست نییە بنووسرێت: چوارگۆشەی سەر شاشەی CoreOs سکان بکە، یان ئەو نامەیەی ناردوویانە بلکێنە. بۆشایی و دێڕی نوێ گرنگ نین.",
+  "activate.pasteBlocked":
+    "هیچ نەلکێندرا. دەستت لەسەر خانەکە ڕابگرە و «لکاندن» هەڵبژێرە.",
+  "activate.noCrypto":
+    "ئەم تابلێتە ناتوانێت کۆدی مۆڵەت بپشکنێت، بۆیە هیچ کۆدێک لەسەری کار ناکات. ئەو پاراستنەی پشکنین پێویستی پێیەتی نییە — زۆربەی جار لەبەر ئەوەی بەرنامەکە بە بەستەری http ی سادە کراوەتەوە لە جیاتی دامەزراندن. پەیوەندی بە CoreOs بکە.",
   "wipe.word": "بۆ دڵنیابوون DELETE بنووسە",
   "wipe.wordValue": "DELETE",
   "wipe.wrongWord": "بە تەواوی DELETE بنووسە، بە پیتی گەورە.",

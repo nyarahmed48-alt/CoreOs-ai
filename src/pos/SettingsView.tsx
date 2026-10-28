@@ -27,7 +27,7 @@ import { Button, Field, Modal } from "./ui";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
 import { useWriteError, saveStaff, setStaffActive, useSession, signOut } from "./store";
 import { buildReport, errorCount, whatsappNumber } from "./report";
-import { LicencePanel } from "./ActivationGate";
+import { LicencePanel, isLifetime, useActivation } from "./ActivationGate";
 import { ApprovalPrompt } from "./ApprovalPrompt";
 import { flushed } from "./store";
 import { formatDateTime } from "./i18n";
@@ -36,6 +36,7 @@ import type { Staff } from "./types";
 export function SettingsView() {
   const data = usePos();
   const { t, lang } = useT();
+  const activation = useActivation();
   const { settings } = data;
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
@@ -277,7 +278,16 @@ export function SettingsView() {
           <AuditList />
         </Section>
 
-        <Section title={t("licence.title")} hint={t("licence.hint")}>
+        <Section
+          title={t("licence.title")}
+          hint={
+            /* A shop that bought the till outright should not be told to ask
+               for a new code before a date that does not exist. */
+            isLifetime(activation.state)
+              ? t("licence.lifetimeHint")
+              : t("licence.hint")
+          }
+        >
           <LicencePanel />
         </Section>
 

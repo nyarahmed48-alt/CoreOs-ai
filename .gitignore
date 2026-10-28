@@ -4,6 +4,7 @@ dist/
 dist-pos/
 dist-ceo/
 dist-app/
+dist-gen/
 coverage/
 .DS_Store
 *.log
@@ -13,3 +14,8 @@ coverage/
 # Runtime state written by the server (seeded on first run)
 data/chats.json
 data/owners.json
+
+# Licence signing keys. The private key never belongs in the repository: the
+# whole point of signing licences is that only the owner's own machine can.
+*private-key*.json
+corecashier-key*.json

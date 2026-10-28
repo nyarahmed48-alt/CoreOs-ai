@@ -34,6 +34,12 @@ import { translate } from "./i18n";
     detection faster and cuts false reads off packaging noise. */
 const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
 
+/** What the camera is being pointed at. Goods carry the barcodes above; a
+    licence arrives as a QR code on the owner's screen, which is a different
+    decoder and worth asking for on its own — looking for both at once is
+    slower and reads packaging noise as licences. */
+export type Symbols = "goods" | "qr";
+
 type Support = "checking" | "ready" | "unsupported";
 
 interface NativeDetector {
@@ -73,9 +79,11 @@ interface Reader {
  * with the camera never pays for the decoder — on the site it is a separate
  * download, and in the portable file it simply sits unused.
  */
-async function openReader(): Promise<Reader> {
+async function openReader(symbols: Symbols): Promise<Reader> {
   if (window.BarcodeDetector) {
-    const native = new window.BarcodeDetector({ formats: FORMATS });
+    const native = new window.BarcodeDetector({
+      formats: symbols === "qr" ? ["qr_code"] : FORMATS,
+    });
     return {
       read: async (source) => (await native.detect(source))[0]?.rawValue ?? null,
       stop: () => undefined,
@@ -92,15 +100,20 @@ async function openReader(): Promise<Reader> {
   } = await import("@zxing/library");
 
   const hints = new Map();
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-    BarcodeFormat.CODE_128,
-    BarcodeFormat.CODE_39,
-    BarcodeFormat.ITF,
-  ]);
+  hints.set(
+    DecodeHintType.POSSIBLE_FORMATS,
+    symbols === "qr"
+      ? [BarcodeFormat.QR_CODE]
+      : [
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.ITF,
+        ],
+  );
   // Shop lighting is bad and packets are curved; spend the extra milliseconds.
   hints.set(DecodeHintType.TRY_HARDER, true);
 
@@ -142,10 +155,13 @@ async function openReader(): Promise<Reader> {
 export function CameraScanner({
   title,
   mode,
+  symbols = "goods",
   onCode,
   onClose,
 }: {
   title: string;
+  /** Goods by default; `qr` to read a licence off the owner's screen. */
+  symbols?: Symbols;
   /** `once` closes on the first read — capturing a barcode onto a product.
       `continuous` keeps the camera open so a whole basket goes through in one
       pass, which is how a shop actually works. */
@@ -216,7 +232,7 @@ export function CameraScanner({
 
     async function start() {
       try {
-        reader = await openReader();
+        reader = await openReader(symbols);
         readerRef.current = reader;
 
         /* A phone asked for the camera by a page it opened from a file often
@@ -308,7 +324,7 @@ export function CameraScanner({
       for (const track of streamRef.current?.getTracks() ?? []) track.stop();
       streamRef.current = null;
     };
-  }, [handle]);
+  }, [handle, symbols]);
 
   /**
    * The way in when the live camera is refused.
@@ -325,7 +341,7 @@ export function CameraScanner({
       const image = new Image();
       image.src = url;
       await image.decode();
-      const reader = readerRef.current ?? (await openReader());
+      const reader = readerRef.current ?? (await openReader(symbols));
       readerRef.current = reader;
       const code = await reader.read(image);
       if (code) {

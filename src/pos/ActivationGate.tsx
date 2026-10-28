@@ -18,13 +18,20 @@
  */
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { KeyRound, Send } from "lucide-react";
-import { checkCode, randomPart, requestCode } from "../activation";
+import { ClipboardPaste, KeyRound, ScanLine, Send } from "lucide-react";
+import {
+  canVerify,
+  checkCode,
+  randomPart,
+  requestCode,
+  type Verdict,
+} from "../activation";
+import { CameraScanner } from "./CameraScanner";
 import { cached, standing, watchLicence, type Known } from "./licenceServer";
 import { usePos } from "./store";
 import { useT } from "./useT";
 import { buildStamp, whatsappNumber } from "./report";
-import { Button, Field } from "./ui";
+import { Button } from "./ui";
 
 const STATE_KEY = "coreos.pos.activation.v1";
 
@@ -37,6 +44,10 @@ interface Activation {
   /** Set when the office froze this tablet, so the locked screen can say so
       rather than letting the shop think the till has broken. */
   frozen?: boolean;
+  /** The offline plan, bought outright. No expiry, and nothing to do with
+      checking in with anybody: a shop that paid once is not a shop to lock
+      because a server somewhere cannot be reached. */
+  lifetime?: boolean;
 }
 
 /** A lapsed licence has to ask with a *different* request code, or the shop
@@ -44,7 +55,7 @@ interface Activation {
     — which would make the expiry date decorative. Rotating the request is what
     actually spends a code. */
 function lapse(): Activation {
-  return { nonce: randomPart(4), until: null, activated: false };
+  return { nonce: randomPart(4), until: null, activated: false, lifetime: false };
 }
 
 function load(): Activation {
@@ -84,6 +95,11 @@ function save(state: Activation) {
 export function isActive(state: Activation): boolean {
   if (!state.activated) return false;
   return state.until === null || state.until > Date.now();
+}
+
+/** True for a till on the lifetime offline plan, which never lapses. */
+export function isLifetime(state: Activation): boolean {
+  return state.activated && state.lifetime === true && state.until === null;
 }
 
 /* One copy of this for the whole app, not one per component. The licence
@@ -148,8 +164,8 @@ export function useActivation() {
   return {
     state,
     active: isActive(state),
-    grant: (until: number | null) => {
-      publish({ ...current, until, activated: true, frozen: false });
+    grant: (until: number | null, lifetime = false) => {
+      publish({ ...current, until, activated: true, frozen: false, lifetime });
     },
     /** The office pulled this tablet. The request rotates with it, so the code
         that froze it cannot be run backwards and nothing but a new code from
@@ -160,13 +176,153 @@ export function useActivation() {
         until: null,
         activated: false,
         frozen: true,
+        lifetime: false,
       });
     },
     /** A fresh request, so the next code is a different one. */
     reset: () => {
-      publish({ nonce: randomPart(4), until: null, activated: false });
+      publish(lapse());
     },
   };
+}
+
+
+/**
+ * Taking a licence code in, however it arrives.
+ *
+ * A licence is a signature, so it is a hundred-odd characters long — there is
+ * no public-key scheme that fits one into something a shop can read down a
+ * phone line, and this is the honest consequence of not having a password
+ * hidden in the app. So the shop almost never types it:
+ *
+ *  - **Scan** the square on the owner's screen. One tap, nothing typed, and
+ *    the camera is already in the till for barcodes.
+ *  - **Paste** it out of WhatsApp, which is how the message arrived.
+ *  - **Type** it, which works, and is the last resort.
+ *
+ * Dashes, spaces, line breaks and the letters people get wrong off a screen
+ * are all forgiven by the checker, so a code that has been through three apps
+ * and a notepad still goes in.
+ */
+function CodeEntry({
+  request,
+  label,
+  onVerdict,
+}: {
+  request: string;
+  label: string;
+  onVerdict: (verdict: Verdict) => void;
+}) {
+  const { t } = useT();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const secure = canVerify();
+
+  async function submit(text: string) {
+    setBusy(true);
+    const verdict = await checkCode(request, text);
+    setBusy(false);
+    if (verdict.kind === "noCrypto") {
+      setError(t("activate.noCrypto"));
+      return;
+    }
+    if (verdict.kind === "bad") {
+      setError(t("activate.wrong"));
+      return;
+    }
+    setError("");
+    setCode("");
+    onVerdict(verdict);
+  }
+
+  async function paste() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) return;
+      setCode(text.trim());
+      await submit(text);
+    } catch {
+      /* Clipboard read refused — common on a page opened from a file. The
+         box is right there to paste into by hand. */
+      setError(t("activate.pasteBlocked"));
+    }
+  }
+
+  /* Said up front, not after a code has been typed in and rejected. A till
+     that cannot check a signature will never accept any code, and the shop
+     needs to know that before they start reading one out. */
+  if (!secure) {
+    return (
+      <p className="rounded-xl border border-[#5d3346] bg-[#180f16] px-4 py-3 text-[13.5px] leading-relaxed text-[#f0a3b5]">
+        {t("activate.noCrypto")}
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <Button className="h-[46px]" onClick={() => setScanning(true)}>
+          <ScanLine size={16} /> {t("activate.scan")}
+        </Button>
+        <Button className="h-[46px]" onClick={() => void paste()}>
+          <ClipboardPaste size={16} /> {t("activate.paste")}
+        </Button>
+      </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-medium text-[#98a0bb]">
+          {label}
+        </span>
+        <textarea
+          dir="ltr"
+          rows={3}
+          spellCheck={false}
+          autoCapitalize="characters"
+          value={code}
+          placeholder="30-XXXXXX-XXXXXX-…"
+          onChange={(event) => {
+            setCode(event.target.value);
+            setError("");
+          }}
+          className="w-full resize-none rounded-xl border border-[#232b40] bg-[#0a0f1c] px-3 py-2.5 font-mono text-[13px] leading-relaxed tracking-[0.04em] text-white outline-none placeholder:text-[#3a4460] focus:border-[#6c7bf0]"
+        />
+        <span className="mt-1.5 block text-[12px] leading-relaxed text-[#6b7490]">
+          {t("activate.codeHelp")}
+        </span>
+      </label>
+
+      {error ? (
+        <p className="text-[13.5px] leading-relaxed text-[#f0879d]">{error}</p>
+      ) : null}
+
+      <Button
+        variant="primary"
+        className="h-[50px] w-full"
+        disabled={busy || code.trim().length < 20}
+        onClick={() => void submit(code)}
+      >
+        {t("activate.unlock")}
+      </Button>
+
+      {scanning ? (
+        <CameraScanner
+          title={t("activate.scanTitle")}
+          mode="once"
+          symbols="qr"
+          onCode={(scanned) => {
+            setCode(scanned);
+            setScanning(false);
+            void submit(scanned);
+            return t("activate.scanned");
+          }}
+          onClose={() => setScanning(false)}
+        />
+      ) : null}
+    </>
+  );
 }
 
 export function ActivationGate({
@@ -180,31 +336,13 @@ export function ActivationGate({
   frozen?: boolean;
   /** Why the office locked it, where the office said. */
   officeMessage?: string;
-  onGranted: (until: number | null) => void;
+  onGranted: (until: number | null, lifetime: boolean) => void;
   onFrozen: () => void;
 }) {
   const data = usePos();
   const { t, dir } = useT();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
 
   const request = requestCode(data.settings.tillId, nonce);
-
-  async function submit() {
-    setBusy(true);
-    const verdict = await checkCode(request, code);
-    setBusy(false);
-    if (!verdict) {
-      setError(t("activate.wrong"));
-      return;
-    }
-    if (verdict.kind === "freeze") {
-      onFrozen();
-      return;
-    }
-    onGranted(verdict.until);
-  }
 
   function ask() {
     const message = `${t("activate.message")}\n\n${request}\n\n${data.settings.shopName}`;
@@ -250,35 +388,19 @@ export function ActivationGate({
           <Send size={16} /> {t("activate.send")}
         </Button>
 
-        <div className="mt-6">
-          <Field
+        <div className="mt-6 grid gap-3">
+          <CodeEntry
+            request={request}
             label={t("activate.enterCode")}
-            dir="ltr"
-            autoCapitalize="characters"
-            value={code}
-            placeholder="30-XXXX-XXXX"
-            onChange={(event) => {
-              setCode(event.target.value.toUpperCase());
-              setError("");
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void submit();
+            onVerdict={(verdict) => {
+              if (verdict.kind === "freeze") {
+                onFrozen();
+                return;
+              }
+              onGranted(verdict.until, verdict.lifetime);
             }}
           />
         </div>
-
-        {error ? (
-          <p className="mt-3 text-center text-[13.5px] text-[#f0879d]">{error}</p>
-        ) : null}
-
-        <Button
-          variant="primary"
-          className="mt-3 h-[50px] w-full"
-          disabled={busy || code.length < 6}
-          onClick={() => void submit()}
-        >
-          {t("activate.unlock")}
-        </Button>
 
         <p className="mt-6 text-center text-[12.5px] leading-relaxed text-[#6b7490]">
           {t("activate.dataSafe")}
@@ -301,37 +423,11 @@ export function LicencePanel() {
   const data = usePos();
   const { t, lang } = useT();
   const activation = useActivation();
-  const [code, setCode] = useState("");
   const [note, setNote] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
 
   const request = requestCode(data.settings.tillId, activation.state.nonce);
   const until = activation.state.until;
-
-  async function apply() {
-    setBusy(true);
-    const verdict = await checkCode(request, code);
-    setBusy(false);
-    if (!verdict) {
-      setError(t("licence.wrong"));
-      return;
-    }
-    setError("");
-    setCode("");
-    if (verdict.kind === "freeze") {
-      activation.freeze();
-      return;
-    }
-    activation.grant(verdict.until);
-    setNote(
-      verdict.until === null
-        ? t("licence.appliedNever")
-        : t("licence.applied", {
-            date: new Date(verdict.until).toLocaleDateString("en-GB"),
-          }),
-    );
-  }
+  const lifetime = isLifetime(activation.state);
 
   function askRenewal() {
     const message = `${t("licence.renewMessage")}\n\n${request}\n\n${data.settings.shopName}`;
@@ -363,9 +459,11 @@ export function LicencePanel() {
         <p className="mt-2 text-[13px] text-[#98a0bb]">
           {t("licence.expires")}:{" "}
           <span dir="ltr">
-            {until === null
-              ? t("licence.never")
-              : new Date(until).toLocaleDateString(lang === "en" ? "en-GB" : "en-GB")}
+            {lifetime
+              ? t("licence.lifetime")
+              : until === null
+                ? t("licence.never")
+                : new Date(until).toLocaleDateString(lang === "en" ? "en-GB" : "en-GB")}
           </span>
           {until === null ? null : ` · ${daysLeftLabel(until, t)}`}
         </p>
@@ -375,26 +473,28 @@ export function LicencePanel() {
         <Send size={16} /> {t("licence.renew")}
       </Button>
 
-      <Field
+      <CodeEntry
+        request={request}
         label={t("licence.enterCode")}
-        dir="ltr"
-        value={code}
-        placeholder="30-XXXX-XXXX"
-        onChange={(event) => {
-          setCode(event.target.value.toUpperCase());
-          setError("");
+        onVerdict={(verdict) => {
           setNote("");
+          if (verdict.kind === "freeze") {
+            activation.freeze();
+            return;
+          }
+          activation.grant(verdict.until, verdict.lifetime);
+          setNote(
+            verdict.lifetime
+              ? t("licence.appliedLifetime")
+              : verdict.until === null
+                ? t("licence.appliedNever")
+                : t("licence.applied", {
+                    date: new Date(verdict.until).toLocaleDateString("en-GB"),
+                  }),
+          );
         }}
       />
       {note ? <p className="text-[13px] text-[#8ee7bb]">{note}</p> : null}
-      {error ? <p className="text-[13px] text-[#f0879d]">{error}</p> : null}
-      <Button
-        variant="primary"
-        disabled={busy || code.length < 6}
-        onClick={() => void apply()}
-      >
-        {t("licence.apply")}
-      </Button>
     </>
   );
 }
