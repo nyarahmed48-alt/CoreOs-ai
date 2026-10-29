@@ -12,7 +12,14 @@
  */
 
 import { useRef, useState } from "react";
-import { Download, LifeBuoy, ScanLine, Send, Upload } from "lucide-react";
+import { Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
+import {
+  PrintError,
+  bluetoothStanding,
+  forgetPrinter,
+  printTestPage,
+  rememberedPrinter,
+} from "./printer";
 import {
   exportData,
   importData,
@@ -272,6 +279,10 @@ export function SettingsView() {
           </p>
         </Section>
 
+        <Section hidden={readOnly} title={t("printer.title")} hint={t("printer.hint")}>
+          <PrinterPanel />
+        </Section>
+
         <Section hidden={readOnly} title={t("staff.title")} hint={t("staff.hint")}>
           <StaffList />
         </Section>
@@ -471,6 +482,161 @@ export function SettingsView() {
         </Modal>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Choosing how receipts come out.
+ *
+ * The browser dialogue is the default and stays the default: it works with
+ * whatever the tablet already prints to, and a shop that has never thought
+ * about printers is not asked to. Bluetooth is faster and skips the dialogue
+ * — when the printer is one a browser can reach, which is the sentence this
+ * whole panel is really about. The test button exists so that is settled on a
+ * quiet afternoon rather than discovered with a customer waiting.
+ */
+function PrinterPanel() {
+  const data = usePos();
+  const { t } = useT();
+  const [paired, setPaired] = useState(rememberedPrinter());
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [problem, setProblem] = useState("");
+  const standing = bluetoothStanding();
+  const chosen = data.settings.printer;
+
+  async function test() {
+    setBusy(true);
+    setNote("");
+    setProblem("");
+    try {
+      await printTestPage(data.settings, data.settings.paperWidth);
+      setPaired(rememberedPrinter());
+      setNote(t("printer.testOk"));
+    } catch (failure) {
+      const fault = failure instanceof PrintError ? failure.fault : "lost";
+      if (fault !== "cancelled") setProblem(t(`print.${fault}` as "print.lost"));
+      setPaired(rememberedPrinter());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="grid gap-2">
+        <Choice
+          active={chosen === "browser"}
+          title={t("printer.browser")}
+          hint={t("printer.browserHint")}
+          onClick={() => updateSettings({ printer: "browser" })}
+        />
+        <Choice
+          active={chosen === "bluetooth"}
+          title={t("printer.bluetooth")}
+          hint={t("printer.bluetoothHint")}
+          onClick={() => updateSettings({ printer: "bluetooth" })}
+        />
+      </div>
+
+      {chosen === "bluetooth" ? (
+        <>
+          {standing === "ready" ? null : (
+            <p className="rounded-xl border border-[#3a2c12] bg-[#1d1608] px-3 py-2.5 text-[13px] leading-relaxed text-[#f0c078]">
+              {t(`print.${standing}` as "print.lost")}
+            </p>
+          )}
+
+          <div>
+            <p className="mb-1.5 text-[13px] font-medium text-[#98a0bb]">
+              {t("printer.width")}
+            </p>
+            <div className="flex gap-2">
+              {[58, 80].map((width) => (
+                <button
+                  key={width}
+                  type="button"
+                  onClick={() => updateSettings({ paperWidth: width as 58 | 80 })}
+                  className={`h-[44px] flex-1 rounded-xl border text-[14px] font-semibold transition-colors ${
+                    data.settings.paperWidth === width
+                      ? "border-[#6c7bf0] bg-[#6c7bf0]/15 text-white"
+                      : "border-[#232b40] text-[#98a0bb] hover:border-[#3a4460]"
+                  }`}
+                >
+                  {/* Latin either way round, so it is not reordered into
+                      "mm 58" by the Arabic text around it. */}
+                  <span dir="ltr">{width} mm</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {paired ? (
+            <p className="text-[13px] text-[#98a0bb]">
+              {t("printer.paired", { name: paired.name || t("printer.unnamed") })}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy || standing !== "ready"} onClick={() => void test()}>
+              <Printer size={16} />{" "}
+              {busy ? t("print.sending") : paired ? t("printer.test") : t("printer.pair")}
+            </Button>
+            {paired ? (
+              <Button
+                variant="quiet"
+                onClick={() => {
+                  forgetPrinter();
+                  setPaired(null);
+                  setNote("");
+                  setProblem("");
+                }}
+              >
+                {t("printer.forget")}
+              </Button>
+            ) : null}
+          </div>
+
+          {note ? <p className="text-[13px] text-[#8ee7bb]">{note}</p> : null}
+          {problem ? (
+            <p className="text-[13px] leading-relaxed text-[#f0879d]">{problem}</p>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function Choice({
+  active,
+  title,
+  hint,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border px-4 py-3 text-start transition-colors ${
+        active
+          ? "border-[#6c7bf0] bg-[#6c7bf0]/10"
+          : "border-[#232b40] hover:border-[#3a4460]"
+      }`}
+    >
+      <span
+        className={`block text-[14.5px] font-semibold ${active ? "text-white" : "text-[#98a0bb]"}`}
+      >
+        {title}
+      </span>
+      <span className="mt-1 block text-[12.5px] leading-relaxed text-[#6b7490]">
+        {hint}
+      </span>
+    </button>
   );
 }
 

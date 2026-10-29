@@ -62,6 +62,14 @@ export function receiptNumber(prefix: string, no: number): string {
   return `${prefix}-${String(no).padStart(6, "0")}`;
 }
 
+/** What gets printed and read down the phone: the full number on anything
+    rung up since tills got their own prefix, and the bare count on a sale
+    from before that. Lives here, beside the rule that makes the numbers,
+    because the screen, the receipt and the printer all have to agree. */
+export function receiptLabel(sale: Pick<Sale, "no" | "receiptNo">): string {
+  return sale.receiptNo || String(sale.no);
+}
+
 /** Older sales predate both the till prefix and the device stamp; they get
     them now so every sale in the book reads the same way. */
 function bringSaleForward(sale: Sale, prefix: string, deviceId: string): Sale {

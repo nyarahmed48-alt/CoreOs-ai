@@ -60,6 +60,8 @@ export function defaultSettings(lang: Lang): Settings {
     tillPrefix: "T1",
     staffLogin: false,
     auditKeep: 500,
+    printer: "browser",
+    paperWidth: 58,
     sampleShop: true,
   };
 }

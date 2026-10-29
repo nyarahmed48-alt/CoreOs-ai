@@ -240,6 +240,15 @@ export interface Settings {
   /** How much of the log to keep. Tablets are small and a busy counter writes
       a lot of it. */
   auditKeep: number;
+  /** How a receipt leaves the till. `browser` is the print dialogue the shop
+      has always had, and is the default: it works with whatever the tablet is
+      already set up to print to. `bluetooth` talks ESC/POS straight to a roll
+      printer, which is faster and needs no dialogue — but only reaches
+      Bluetooth Low Energy printers. See printer.ts. */
+  printer: "browser" | "bluetooth";
+  /** The roll in the printer, in millimetres. 58 is the pocket printer most
+      of these shops own; 80 is the counter-top one. */
+  paperWidth: 58 | 80;
   /** True while the shelf is still the sample one we shipped. It lets the
       sample products follow the language setting, and goes false for good the
       moment the shop sells something or edits anything — after that the names

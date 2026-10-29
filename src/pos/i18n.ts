@@ -148,6 +148,33 @@ const EN = {
   "receipt.voided": "*** VOIDED ***",
   "receipt.print": "Print",
   "receipt.share": "Share",
+  "print.sending": "Sending to the printer…",
+  "print.useBrowser": "Use the tablet's print dialogue instead",
+  "print.cancelled": "No printer chosen.",
+  "print.unsupported":
+    "This browser cannot talk to a Bluetooth printer. Chrome on Android can; Safari and iPhones cannot.",
+  "print.insecure":
+    "Bluetooth printing is not available the way this app was opened. Install it, or ask CoreOs.",
+  "print.noChannel":
+    "That device was found, but it will not take a receipt. Most cheap roll printers use the older kind of Bluetooth, which no browser can reach — use the print dialogue instead.",
+  "print.lost":
+    "The printer did not answer. Check that it is switched on, has paper, and is close to the tablet.",
+  "print.nocanvas": "This tablet could not draw the receipt.",
+  "printer.title": "Printer",
+  "printer.hint": "How a receipt leaves this till.",
+  "printer.browser": "The tablet's print dialogue",
+  "printer.browserHint":
+    "Works with whatever the tablet is already set up to print to. One extra tap per receipt.",
+  "printer.bluetooth": "Bluetooth roll printer",
+  "printer.bluetoothHint":
+    "Paper straight away, no dialogue. Only reaches the newer 'Low Energy' printers: if yours pairs in Android's settings but never appears in the list here, it is the older kind and the print dialogue is the way.",
+  "printer.width": "Paper width",
+  "printer.pair": "Choose the printer",
+  "printer.paired": "Printing to {name}",
+  "printer.unnamed": "the paired printer",
+  "printer.forget": "Forget this printer",
+  "printer.test": "Print a test",
+  "printer.testOk": "Sent. Paper should be coming out now.",
 
   "products.search": "Search products",
   "products.categories": "Categories",
@@ -526,6 +553,33 @@ const AR: Record<Key, string> = {
   "receipt.voided": "*** ملغي ***",
   "receipt.print": "طباعة",
   "receipt.share": "مشاركة",
+  "print.sending": "جارٍ الإرسال إلى الطابعة…",
+  "print.useBrowser": "استخدم نافذة الطباعة في الجهاز بدلاً من ذلك",
+  "print.cancelled": "لم تُختَر أي طابعة.",
+  "print.unsupported":
+    "هذا المتصفح لا يستطيع التحدث مع طابعة بلوتوث. كروم على أندرويد يستطيع؛ سفاري والآيفون لا.",
+  "print.insecure":
+    "طباعة البلوتوث غير متاحة بالطريقة التي فُتح بها البرنامج. ثبّته، أو اتصل بـ CoreOs.",
+  "print.noChannel":
+    "تم العثور على الجهاز لكنه لا يستقبل الفاتورة. أغلب الطابعات الحرارية الرخيصة تستخدم النوع القديم من البلوتوث الذي لا يصل إليه أي متصفح — استخدم نافذة الطباعة.",
+  "print.lost":
+    "الطابعة لم تستجب. تأكد أنها مشغّلة وفيها ورق وقريبة من الجهاز.",
+  "print.nocanvas": "لم يستطع هذا الجهاز رسم الفاتورة.",
+  "printer.title": "الطابعة",
+  "printer.hint": "كيف تخرج الفاتورة من هذا الصندوق.",
+  "printer.browser": "نافذة الطباعة في الجهاز",
+  "printer.browserHint":
+    "تعمل مع أي طابعة مهيّأة على الجهاز أصلاً. لمسة إضافية مع كل فاتورة.",
+  "printer.bluetooth": "طابعة بلوتوث حرارية",
+  "printer.bluetoothHint":
+    "ورق فوراً وبلا نافذة. تصل فقط إلى الطابعات الحديثة من نوع «Low Energy»: إذا كانت طابعتك تقترن من إعدادات أندرويد ولا تظهر في القائمة هنا فهي من النوع القديم، ونافذة الطباعة هي الحل.",
+  "printer.width": "عرض الورق",
+  "printer.pair": "اختيار الطابعة",
+  "printer.paired": "الطباعة إلى {name}",
+  "printer.unnamed": "الطابعة المقترنة",
+  "printer.forget": "نسيان هذه الطابعة",
+  "printer.test": "طباعة تجربة",
+  "printer.testOk": "تم الإرسال. يفترض أن يخرج الورق الآن.",
 
   "products.search": "البحث في المواد",
   "products.categories": "المجموعات",
@@ -897,6 +951,33 @@ const CKB: Record<Key, string> = {
   "receipt.voided": "*** هەڵوەشێنراوە ***",
   "receipt.print": "چاپ",
   "receipt.share": "هاوبەشکردن",
+  "print.sending": "ناردن بۆ چاپکەر…",
+  "print.useBrowser": "لە جیاتی ئەوە پەنجەرەی چاپی ئامێرەکە بەکاربهێنە",
+  "print.cancelled": "هیچ چاپکەرێک هەڵنەبژێردرا.",
+  "print.unsupported":
+    "ئەم وێبگەڕە ناتوانێت لەگەڵ چاپکەری بلوتوس بدوێت. کرۆم لەسەر ئەندرۆید دەتوانێت؛ سافاری و ئایفۆن ناتوانن.",
+  "print.insecure":
+    "چاپی بلوتوس بەردەست نییە بەو شێوەیەی بەرنامەکە کراوەتەوە. دایبمەزرێنە، یان پەیوەندی بە CoreOs بکە.",
+  "print.noChannel":
+    "ئامێرەکە دۆزرایەوە، بەڵام وەسڵ وەرناگرێت. زۆربەی چاپکەرە گەرمییە هەرزانەکان جۆری کۆنی بلوتوس بەکاردەهێنن کە هیچ وێبگەڕێک ناگاتێ — پەنجەرەی چاپ بەکاربهێنە.",
+  "print.lost":
+    "چاپکەرەکە وەڵامی نەدایەوە. دڵنیابە کە کارایە، کاغەزی تێدایە و لە ئامێرەکە نزیکە.",
+  "print.nocanvas": "ئەم تابلێتە نەیتوانی وەسڵەکە بکێشێت.",
+  "printer.title": "چاپکەر",
+  "printer.hint": "وەسڵ چۆن لەم سندوقەوە دەردەچێت.",
+  "printer.browser": "پەنجەرەی چاپی ئامێرەکە",
+  "printer.browserHint":
+    "لەگەڵ هەر چاپکەرێک کاردەکات کە پێشتر لەسەر ئامێرەکە ڕێکخراوە. یەک پەنجەلێدانی زیاد بۆ هەر وەسڵێک.",
+  "printer.bluetooth": "چاپکەری بلوتوسی گەرمی",
+  "printer.bluetoothHint":
+    "کاغەز دەستبەجێ، بەبێ پەنجەرە. تەنها دەگاتە چاپکەرە نوێیەکانی جۆری «Low Energy»: ئەگەر چاپکەرەکەت لە ڕێکخستنەکانی ئەندرۆید جووت دەبێت بەڵام لێرە دەرناکەوێت، جۆری کۆنە و پەنجەرەی چاپ ڕێگاکەیە.",
+  "printer.width": "پانی کاغەز",
+  "printer.pair": "هەڵبژاردنی چاپکەر",
+  "printer.paired": "چاپکردن بۆ {name}",
+  "printer.unnamed": "چاپکەرە جووتکراوەکە",
+  "printer.forget": "ئەم چاپکەرە لەبیر بکە",
+  "printer.test": "چاپی تاقیکردنەوە",
+  "printer.testOk": "نێردرا. دەبێت کاغەز دەربچێت.",
 
   "products.search": "گەڕان لە کاڵاکان",
   "products.categories": "پۆلەکان",

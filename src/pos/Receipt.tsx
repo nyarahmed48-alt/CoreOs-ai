@@ -13,23 +13,24 @@
  * knows more about it than we do.
  */
 
+import { useState } from "react";
 import { Printer, Share2 } from "lucide-react";
 import type { Sale, Settings } from "./types";
 import { money } from "./money";
 import { Button } from "./ui";
 import { useT } from "./useT";
 import { formatDateTime, translate, type Lang } from "./i18n";
+import { PrintError, printOverBluetooth } from "./printer";
 
 /** The shop's name is theirs and sits at the top; this is ours, small, at the
     bottom. A receipt in a customer's pocket is the only advertising a till
     does. */
 const POWERED_BY = "Powered by CoreCashier";
 
-/** `T1-001300` on anything rung up since tills got their own prefix, and the
-    bare number on a sale from before that. */
-export function receiptLabel(sale: Pick<Sale, "no" | "receiptNo">): string {
-  return sale.receiptNo || String(sale.no);
-}
+import { receiptLabel } from "./migrate";
+
+/* Re-exported because the screens have always reached for it here. */
+export { receiptLabel };
 
 export function receiptDate(iso: string): string {
   return formatDateTime(iso);
@@ -178,6 +179,34 @@ export function ReceiptActions({
   className?: string;
 }) {
   const { t } = useT();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  /**
+   * Print, by whichever road this till is set up for.
+   *
+   * A shop that has not set up a Bluetooth printer gets the browser dialogue
+   * it has always had. One that has gets the paper straight away — and if the
+   * printer is off, flat or out of range, it says so and offers the dialogue
+   * rather than leaving the cashier pressing a button that does nothing.
+   */
+  async function print() {
+    if (settings.printer !== "bluetooth") {
+      window.print();
+      return;
+    }
+    setBusy(true);
+    setProblem("");
+    try {
+      await printOverBluetooth(sale, settings, settings.paperWidth);
+    } catch (failure) {
+      const fault = failure instanceof PrintError ? failure.fault : "lost";
+      /* Cancelling the chooser is a decision, not a fault worth a red line. */
+      if (fault !== "cancelled") setProblem(t(`print.${fault}` as "print.lost"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function share() {
     const text = receiptText(sale, settings);
@@ -200,13 +229,35 @@ export function ReceiptActions({
   }
 
   return (
-    <div className={`pos-noprint flex gap-2 ${className}`}>
-      <Button variant="ghost" className="flex-1" onClick={() => window.print()}>
-        <Printer size={16} /> {t("receipt.print")}
-      </Button>
-      <Button variant="ghost" className="flex-1" onClick={share}>
-        <Share2 size={16} /> {t("receipt.share")}
-      </Button>
+    <div className={`pos-noprint ${className}`}>
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          className="flex-1"
+          disabled={busy}
+          onClick={() => void print()}
+        >
+          <Printer size={16} /> {busy ? t("print.sending") : t("receipt.print")}
+        </Button>
+        <Button variant="ghost" className="flex-1" onClick={share}>
+          <Share2 size={16} /> {t("receipt.share")}
+        </Button>
+      </div>
+      {problem ? (
+        <div className="mt-2 rounded-xl border border-[#3a2c12] bg-[#1d1608] px-3 py-2.5">
+          <p className="text-[13px] leading-relaxed text-[#f0c078]">{problem}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setProblem("");
+              window.print();
+            }}
+            className="mt-1.5 text-[13px] font-semibold text-[#8b96ff] underline"
+          >
+            {t("print.useBrowser")}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
