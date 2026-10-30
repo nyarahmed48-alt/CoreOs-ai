@@ -287,6 +287,7 @@ const EN = {
 
   "camera.basket": "Scan into the basket",
   "camera.starting": "Starting the camera…",
+  "camera.light": "Light",
   "camera.hold": "Hold the barcode inside the box.",
   "camera.done": "Done scanning",
   "camera.close": "Close",
@@ -728,6 +729,7 @@ const AR: Record<Key, string> = {
 
   "camera.basket": "المسح إلى السلة",
   "camera.starting": "جارٍ تشغيل الكاميرا…",
+  "camera.light": "الإضاءة",
   "camera.hold": "ضع الباركود داخل الإطار.",
   "camera.done": "انتهيت",
   "camera.close": "إغلاق",
@@ -1167,6 +1169,7 @@ const CKB: Record<Key, string> = {
 
   "camera.basket": "سکان بۆ ناو سەبەتە",
   "camera.starting": "کامێرا دەکرێتەوە…",
+  "camera.light": "ڕووناکی",
   "camera.hold": "بارکۆد لە ناو چوارچێوەکە ڕابگرە.",
   "camera.done": "تەواوبوو",
   "camera.close": "داخستن",

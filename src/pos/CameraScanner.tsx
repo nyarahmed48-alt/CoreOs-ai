@@ -24,15 +24,20 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2 } from "lucide-react";
+import { Camera, CheckCircle2, Zap, ZapOff } from "lucide-react";
 import { Button, Modal } from "./ui";
 import { beep } from "./beep";
 import { useT } from "./useT";
 import { translate } from "./i18n";
 
-/** The symbologies actually printed on shop goods. Narrowing the list makes
-    detection faster and cuts false reads off packaging noise. */
-const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
+/** The symbologies actually printed on shop goods.
+ *
+ * Every format on this list is one the decoder tries on every frame, so the
+ * list is the scanner's speed. Code 39 and ITF came off it: ITF in
+ * particular is a plain run of bars that packaging noise imitates, and the
+ * goods on these shelves carry EAN or UPC. If a shop turns up with cartons
+ * marked in ITF-14, adding it back is this line. */
+const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"];
 
 /** What the camera is being pointed at. Goods carry the barcodes above; a
     licence arrives as a QR code on the owner's screen, which is a different
@@ -40,7 +45,21 @@ const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "it
     slower and reads packaging noise as licences. */
 export type Symbols = "goods" | "qr";
 
+/** How long the same code is ignored for after it has been rung up — on top
+    of having to leave the box. See `handle` below. */
+const SAME_CODE_MS = 1500;
+
 type Support = "checking" | "ready" | "unsupported";
+
+/** The torch is still not in the standard track types, though every Android
+    Chrome has had it for years. Narrow and declared here rather than cast at
+    the call site. */
+interface TorchTrack {
+  getCapabilities?: () => MediaTrackCapabilities & { torch?: boolean };
+  applyConstraints: (constraints: {
+    advanced?: { torch?: boolean }[];
+  }) => Promise<void>;
+}
 
 interface NativeDetector {
   detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]>;
@@ -59,6 +78,35 @@ declare global {
     somewhere in them. */
 type Frame = HTMLVideoElement | HTMLImageElement;
 
+/**
+ * The slice of the picture worth looking at, as fractions of the whole.
+ *
+ * Decoding the whole frame means decoding the shelf behind the packet, the
+ * cashier's sleeve and the counter — several times a second, on a tablet with
+ * no power to spare. A barcode held where the guide box tells the cashier to
+ * hold it lands in a fifth of the frame, so that is the fifth that gets
+ * decoded. It is the single biggest thing that makes this faster, and it only
+ * works because the box on screen and the rectangle below are the same
+ * rectangle.
+ */
+export const BOX: Record<Symbols, { width: number; height: number }> = {
+  goods: { width: 0.86, height: 0.36 },
+  qr: { width: 0.72, height: 0.54 },
+};
+
+function cropOf(source: Frame, symbols: Symbols) {
+  const { width, height } = sizeOf(source);
+  const box = BOX[symbols];
+  const w = Math.round(width * box.width);
+  const h = Math.round(height * box.height);
+  return {
+    sx: Math.round((width - w) / 2),
+    sy: Math.round((height - h) / 2),
+    sw: w,
+    sh: h,
+  };
+}
+
 function sizeOf(source: Frame): { width: number; height: number } {
   return source instanceof HTMLVideoElement
     ? { width: source.videoWidth, height: source.videoHeight }
@@ -67,8 +115,12 @@ function sizeOf(source: Frame): { width: number; height: number } {
 
 interface Reader {
   /** The code in this picture, or null. Never throws: a frame with nothing in
-      it is the normal case, five times a second. */
-  read: (source: Frame) => Promise<string | null>;
+      it is the normal case, several times a second.
+
+      `symbols` picks the crop; pass null to read the whole picture, which is
+      what the photo route does — a photograph was aimed by a person and has
+      no guide box to have been held inside. */
+  read: (source: Frame, symbols: Symbols | null) => Promise<string | null>;
   stop: () => void;
 }
 
@@ -80,13 +132,40 @@ interface Reader {
  * download, and in the portable file it simply sits unused.
  */
 async function openReader(symbols: Symbols): Promise<Reader> {
+  /* One canvas, reused. Both decoders read from it, so the crop is done once
+     per frame instead of once per decoder, and nothing allocates in the loop. */
+  let canvas: HTMLCanvasElement | null = document.createElement("canvas");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+
+  /** The picture, cropped to the guide box, ready to decode. */
+  function framed(source: Frame, within: Symbols | null): HTMLCanvasElement | null {
+    if (!canvas || !context) return null;
+    const whole = sizeOf(source);
+    if (!whole.width) return null;
+    const { sx, sy, sw, sh } = within
+      ? cropOf(source, within)
+      : { sx: 0, sy: 0, sw: whole.width, sh: whole.height };
+    if (canvas.width !== sw || canvas.height !== sh) {
+      canvas.width = sw;
+      canvas.height = sh;
+    }
+    context.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+    return canvas;
+  }
+
   if (window.BarcodeDetector) {
     const native = new window.BarcodeDetector({
       formats: symbols === "qr" ? ["qr_code"] : FORMATS,
     });
     return {
-      read: async (source) => (await native.detect(source))[0]?.rawValue ?? null,
-      stop: () => undefined,
+      read: async (source, within) => {
+        const picture = framed(source, within);
+        if (!picture) return null;
+        return (await native.detect(picture))[0]?.rawValue ?? null;
+      },
+      stop: () => {
+        canvas = null;
+      },
     };
   }
 
@@ -110,8 +189,6 @@ async function openReader(symbols: Symbols): Promise<Reader> {
           BarcodeFormat.UPC_A,
           BarcodeFormat.UPC_E,
           BarcodeFormat.CODE_128,
-          BarcodeFormat.CODE_39,
-          BarcodeFormat.ITF,
         ],
   );
   // Shop lighting is bad and packets are curved; spend the extra milliseconds.
@@ -120,27 +197,19 @@ async function openReader(symbols: Symbols): Promise<Reader> {
   const reader = new MultiFormatReader();
   reader.setHints(hints);
 
-  // Our own frame buffer. The library's convenience wrappers own a canvas of
-  // their own and expect to drive the video themselves; the till already owns
-  // both, so it hands over a still frame and nothing else.
-  let canvas: HTMLCanvasElement | null = document.createElement("canvas");
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-
+  // The library's convenience wrappers own a canvas of their own and expect
+  // to drive the video themselves; the till already owns both, so it hands
+  // over one cropped still and nothing else.
   return {
-    read: async (source) => {
-      const { width, height } = sizeOf(source);
-      if (!canvas || !context || !width) return null;
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-      context.drawImage(source, 0, 0, width, height);
+    read: async (source, within) => {
+      const picture = framed(source, within);
+      if (!picture) return null;
       try {
-        const source = new HTMLCanvasElementLuminanceSource(canvas);
-        const bitmap = new BinaryBitmap(new HybridBinarizer(source));
+        const luminance = new HTMLCanvasElementLuminanceSource(picture);
+        const bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
         return reader.decode(bitmap).getText();
       } catch {
-        // No code in this frame — the normal case, five times a second.
+        // No code in this frame — the normal case, several times a second.
         return null;
       } finally {
         reader.reset();
@@ -186,6 +255,7 @@ export function CameraScanner({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const readerRef = useRef<Reader | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
@@ -193,6 +263,8 @@ export function CameraScanner({
       been taken away rather than still sitting in front of the lens. */
   const goneRef = useRef(0);
   const [support, setSupport] = useState<Support>("checking");
+  const [hasTorch, setHasTorch] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const [error, setError] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [photoNote, setPhotoNote] = useState("");
@@ -202,20 +274,37 @@ export function CameraScanner({
       const now = Date.now();
       /* The same packet stays in front of the lens for as long as the cashier
          holds it there, and a shopper buying two of something scans it twice
-         on purpose. Time alone cannot tell those apart — hold a tin still for
-         four seconds and a timer rings up four tins. What separates them is
-         the packet leaving the view, so a repeat of the same code counts only
-         once the camera has seen nothing for a moment.
+         on purpose. The two look identical to the decoder, so a repeat of the
+         same code has to clear *both* of these:
 
-         A timer as a second escape was tried and removed: it rang up an extra
-         tin whenever a cashier held one still while reaching for the next.
-         Erring towards missing a duplicate is the right way round — a short
-         basket is visible on the screen and fixed with one tap, while an extra
-         line quietly overcharges the customer. */
-      if (lastRef.current.code === code && goneRef.current < 3) return;
+           - it has to have left the box, and
+           - a second and a half has to have passed.
+
+         Either on its own has a hole. A timer alone was tried and taken out:
+         hold a tin still for four seconds and it rings up four tins. Leaving
+         the box alone lets a packet that wobbles out of frame and back in
+         count twice. Together neither happens, and the cost is that a cashier
+         deliberately scanning two identical tins waits a moment between them
+         — which they spend moving the first one anyway.
+
+         Erring towards missing a duplicate is the right way round: a short
+         basket is on screen and fixed with one tap, while an extra line
+         quietly overcharges the customer. */
+      const sameAsLast = lastRef.current.code === code;
+      if (sameAsLast && (goneRef.current < 3 || now - lastRef.current.at < SAME_CODE_MS)) {
+        return;
+      }
       lastRef.current = { code, at: now };
       goneRef.current = 0;
       beep();
+      /* A counter in a market is loud enough to lose a beep in. The buzz is
+         the confirmation that gets through, and a tablet without a motor
+         simply ignores it. */
+      try {
+        navigator.vibrate?.(40);
+      } catch {
+        // Some browsers throw rather than return false. Not worth a word.
+      }
       const line = onCodeRef.current(code);
       setLog((current) => [line, ...current].slice(0, 6));
       if (mode === "once") onCloseRef.current();
@@ -244,8 +333,22 @@ export function CameraScanner({
            works, because that is the phone's own camera app rather than a
            permission this page has to be granted. */
         const asked = navigator.mediaDevices.getUserMedia({
-          // The back camera on a phone; ignored by a laptop with one webcam.
-          video: { facingMode: "environment" },
+          video: {
+            // The back camera on a phone; ignored by a laptop with one webcam.
+            facingMode: { ideal: "environment" },
+            /* 720p, asked for rather than demanded. Enough detail to read a
+               barcode off a curved packet, and small enough that a 4GB
+               tablet can decode it several times a second — the camera's own
+               maximum is often 4K, which looks no better here and costs
+               every frame. `ideal` so a webcam that cannot do it gives what
+               it has instead of refusing outright. */
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            /* Shop goods arrive at arm's length and then at the counter, so
+               the lens has to keep hunting rather than lock once. Ignored by
+               anything that cannot do it. */
+            focusMode: { ideal: "continuous" },
+          } as MediaTrackConstraints,
         });
         // A permission granted after we stopped waiting still opens a camera.
         // Nobody would be looking at it, so shut it off rather than leave the
@@ -279,13 +382,22 @@ export function CameraScanner({
         }
         setSupport("ready");
 
+        /* A torch is a camera capability, not a browser one: most Android
+           phones have it, most laptops do not, and asking a track that has
+           none throws. So the button only appears once the camera itself
+           says it has a light. */
+        const track = stream.getVideoTracks()[0];
+        trackRef.current = track ?? null;
+        const able = (track as unknown as TorchTrack | undefined)?.getCapabilities?.();
+        if (!stopped && able?.torch) setHasTorch(true);
+
         let busy = false;
         timer = window.setInterval(async () => {
           const video = videoRef.current;
           if (busy || !video || video.readyState < 2 || !reader) return;
           busy = true;
           try {
-            const code = await reader.read(video);
+            const code = await reader.read(video, symbols);
             if (code) handle(code);
             else goneRef.current += 1;
           } catch {
@@ -293,7 +405,7 @@ export function CameraScanner({
           } finally {
             busy = false;
           }
-        }, 200);
+        }, 120);
       } catch (cause) {
         const name = (cause as DOMException)?.name;
         gaveUp = true;
@@ -327,6 +439,27 @@ export function CameraScanner({
   }, [handle, symbols]);
 
   /**
+   * The shop light.
+   *
+   * Half these counters are lit by one bulb at the back, and a barcode in
+   * shadow is a barcode that does not read however long it is held there.
+   * The camera's own lamp fixes it outright.
+   */
+  async function toggleTorch() {
+    const track = trackRef.current as unknown as TorchTrack | null;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+    } catch {
+      /* Some cameras advertise a torch and then refuse it while streaming.
+         Nothing to say about it: the scan still works, just darker. */
+      setHasTorch(false);
+    }
+  }
+
+  /**
    * The way in when the live camera is refused.
    *
    * `capture` hands the job to the phone's own camera app, which needs no
@@ -343,7 +476,9 @@ export function CameraScanner({
       await image.decode();
       const reader = readerRef.current ?? (await openReader(symbols));
       readerRef.current = reader;
-      const code = await reader.read(image);
+      /* The whole photograph: a person aimed it, and there was no guide box
+         on screen for them to have held the packet inside. */
+      const code = await reader.read(image, null);
       if (code) {
         setPhotoNote("");
         handle(code);
@@ -367,12 +502,36 @@ export function CameraScanner({
           className="aspect-[4/3] w-full object-cover"
         />
         {support === "ready" ? (
-          /* A window to aim through. Detection uses the whole frame — the box
-             is there to tell the cashier where to hold the packet. */
+          /* This is the part of the picture that actually gets decoded, to
+             the pixel — so "hold it in the box" is true rather than advice.
+             The darkening outside it is the whole point: it tells a cashier
+             where to aim without a word in any language. */
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-[28%] w-[78%] rounded-lg border-2 border-[#6c7bf0]/80 shadow-[0_0_0_9999px_rgba(5,6,10,0.45)]" />
+            <div
+              style={{
+                width: `${BOX[symbols].width * 100}%`,
+                height: `${BOX[symbols].height * 100}%`,
+              }}
+              className="rounded-lg border-2 border-[#6c7bf0]/80 shadow-[0_0_0_9999px_rgba(5,6,10,0.55)]"
+            />
           </div>
         ) : null}
+        {support === "ready" && hasTorch ? (
+          <button
+            type="button"
+            onClick={() => void toggleTorch()}
+            aria-pressed={torchOn}
+            aria-label={t("camera.light")}
+            className={`absolute bottom-3 end-3 flex h-[46px] w-[46px] items-center justify-center rounded-full border transition-colors ${
+              torchOn
+                ? "border-[#f0c078] bg-[#f0c078] text-[#05060a]"
+                : "border-[#ffffff33] bg-[#05060acc] text-white"
+            }`}
+          >
+            {torchOn ? <Zap size={20} /> : <ZapOff size={20} />}
+          </button>
+        ) : null}
+
         {support !== "ready" ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
             <Camera size={22} className="text-[#5b6480]" />
