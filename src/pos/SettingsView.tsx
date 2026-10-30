@@ -13,6 +13,8 @@
 
 import { useRef, useState } from "react";
 import { Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
+import { isCloud, isDemo } from "./edition";
+import { CloudPanel } from "./CloudGate";
 import {
   PrintError,
   bluetoothStanding,
@@ -292,6 +294,24 @@ export function SettingsView() {
         </Section>
 
         <Section
+          hidden={!isCloud}
+          title={t("cloud.account")}
+          hint={t("cloud.accountHint")}
+        >
+          <CloudPanel />
+        </Section>
+
+        <Section hidden={!isDemo} title={t("demo.title")} hint={t("demo.note")}>
+          <p className="text-[13px] leading-relaxed text-[#7e87a5]">
+            {t("demo.restartHint")}
+          </p>
+          <Button variant="primary" onClick={() => resetToSeed()}>
+            {t("demo.restart")}
+          </Button>
+        </Section>
+
+        <Section
+          hidden={isDemo || isCloud}
           title={t("licence.title")}
           hint={
             /* A shop that bought the till outright should not be told to ask

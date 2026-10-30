@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { databaseName } from "./edition";
+
 /**
  * Where a shop's books actually live.
  *
@@ -22,7 +24,7 @@
  * for ever.
  */
 
-const DB_NAME = "corecashier";
+const DB_NAME = databaseName();
 const DB_VERSION = 1;
 
 /** One store per kind of thing, so a sale can be written without touching the

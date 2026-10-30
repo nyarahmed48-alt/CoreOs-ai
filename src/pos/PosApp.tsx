@@ -59,6 +59,14 @@ import {
   useRemote,
 } from "./ActivationGate";
 import { standing, watchLicence } from "./licenceServer";
+import { isCloud, isDemo } from "./edition";
+import {
+  CloudGate,
+  signedIn as cloudSignedIn,
+  useCloud,
+  verdict,
+  watchCloud,
+} from "./CloudGate";
 
 /* Printing a receipt from inside a full-screen application means hiding the
    application, not opening a second window: a second window is a popup, and
@@ -111,6 +119,9 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   const [tab, setTab] = useState<Tab>("register");
   const [closing, setClosing] = useState(false);
   const activation = useActivation();
+  const cloud = useCloud();
+  const [cloudIn, setCloudIn] = useState(cloudSignedIn());
+  const cloudSays = verdict(cloud);
   const remote = useRemote();
   const lifetime = isLifetime(activation.state);
   /* A till bought outright is not answerable to a server it never uses. */
@@ -119,8 +130,16 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
 
   /* Stopped by the office, or by a date that has passed. Either way the shop
      keeps its books; it just cannot add to them. */
-  const stopped = activation.state.frozen || office.state === "frozen";
-  const selling = activation.active && office.state === "fine";
+  const stopped = isCloud
+    ? cloudSays.state === "frozen"
+    : activation.state.frozen || office.state === "frozen";
+  /* The demo has no licence to run out. It is meant to be opened in front of
+     a shopkeeper and work, which an activation screen defeats entirely. */
+  const selling = isDemo
+    ? true
+    : isCloud
+      ? cloudSays.state === "fine"
+      : activation.active && office.state === "fine";
   /* A tablet nobody has ever activated has nothing worth showing, so it gets
      the activation screen. One that has been activated gets its books. */
   const shutOut = !selling && !hasBeenActivated(activation.state);
@@ -135,6 +154,19 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   useEffect(() => {
     return watchLicence(data.settings.tillId, publishRemote);
   }, [data.settings.tillId]);
+
+  /* The Cloud plan's own loop: push the books up, ask where we stand. Only
+     once this till is actually signed in — before that there is nothing to
+     push and nobody to ask. */
+  useEffect(() => {
+    if (!isCloud || !cloudIn) return;
+    return watchCloud();
+  }, [cloudIn]);
+
+  /* Being signed out by the office puts the sign-in screen back. */
+  useEffect(() => {
+    if (isCloud && cloudIn && cloud.shop === null) setCloudIn(false);
+  }, [cloudIn, cloud.shop]);
 
   /* The page shell ships as Arabic, which is what most of these counters open
      in, but a shop that switched to English should not be left with an
@@ -170,6 +202,17 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
 
   /* A tablet out of the box, with nothing in it yet: one screen, nothing
      behind it. Everything else keeps its books — see the banner below. */
+  /* A Cloud till that has never been signed in. There is nothing behind this
+     screen, because without an account there is no shop and no books. */
+  if (isCloud && !cloudIn) {
+    return (
+      <div dir={dir} lang={lang}>
+        <style>{PRINT_CSS}</style>
+        <CloudGate onIn={() => setCloudIn(true)} />
+      </div>
+    );
+  }
+
   if (shutOut) {
     return (
       <div dir={dir} lang={lang}>
@@ -199,6 +242,13 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           <span className="truncate font-display text-[15px] font-semibold text-white">
             {data.settings.shopName}
           </span>
+          {isDemo ? (
+            /* Always on screen. A demo tablet left on a counter is the one
+               way this edition turns into somebody's unpaid till. */
+            <span className="shrink-0 rounded-md bg-[#3a2c12] px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] text-[#f0c078]">
+              {t("demo.badge")}
+            </span>
+          ) : null}
           <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-[#1e2740] p-0.5">
             {LANGS.map((option) => (
               <button
@@ -257,12 +307,18 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
       {readOnly ? (
         <div className="pos-noprint flex shrink-0 flex-wrap items-center justify-between gap-3 bg-[#3a2c12] px-4 py-2.5">
           <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-[#f0c078]">
-            {stopped
-              ? (office.state === "frozen" && office.message) ||
-                t("licence.readOnlyStopped")
-              : t("licence.readOnly")}
+            {isCloud
+              ? cloudSays.state === "frozen"
+                ? cloudSays.message || t("cloud.frozen")
+                : cloudSays.state === "outOfTouch"
+                  ? t("cloud.outOfTouch", { n: cloudSays.days })
+                  : t("cloud.lapsed")
+              : stopped
+                ? (office.state === "frozen" && office.message) ||
+                  t("licence.readOnlyStopped")
+                : t("licence.readOnly")}
           </p>
-          {isOwner ? (
+          {isOwner && !isCloud ? (
             <button
               type="button"
               onClick={() => setTab("settings")}

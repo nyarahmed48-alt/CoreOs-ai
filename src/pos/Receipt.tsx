@@ -21,6 +21,7 @@ import { Button } from "./ui";
 import { useT } from "./useT";
 import { formatDateTime, translate, type Lang } from "./i18n";
 import { PrintError, printOverBluetooth } from "./printer";
+import { isDemo } from "./edition";
 
 /** The shop's name is theirs and sits at the top; this is ours, small, at the
     bottom. A receipt in a customer's pocket is the only advertising a till
@@ -73,6 +74,7 @@ export function receiptText(sale: Sale, settings: Settings): string {
   );
   if (sale.method === "cash") out.push(row(t("receipt.change"), m(sale.change)));
   if (sale.voidedAt) out.push(centre(t("receipt.voided")));
+  if (isDemo) out.push(centre(t("demo.stamp")));
   out.push("");
   if (settings.receiptFooter) out.push(centre(settings.receiptFooter));
   out.push(centre(POWERED_BY));
@@ -139,6 +141,12 @@ export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) 
 
       {sale.voidedAt ? (
         <p className="mt-3 text-center text-[13px] font-bold">{t("receipt.voided")}</p>
+      ) : null}
+
+      {isDemo ? (
+        <p className="mt-3 text-center text-[12px] font-bold tracking-[0.06em]">
+          {t("demo.stamp")}
+        </p>
       ) : null}
 
       {settings.receiptFooter ? (

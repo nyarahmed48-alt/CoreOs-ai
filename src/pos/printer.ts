@@ -31,6 +31,7 @@
 
 import type { Sale, Settings } from "./types";
 import { receiptJob, type PaperWidth } from "./escpos";
+import { scoped } from "./edition";
 
 /**
  * Services worth asking for by name.
@@ -117,7 +118,7 @@ export function bluetoothStanding(): "ready" | PrintFault {
   return radio() ? "ready" : "unsupported";
 }
 
-const REMEMBERED = "coreos.pos.printer.v1";
+const REMEMBERED = scoped("coreos.pos.printer.v1");
 
 function remember(id: string, name: string) {
   try {

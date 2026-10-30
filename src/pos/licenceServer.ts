@@ -27,7 +27,9 @@
  * that answer in its pocket.
  */
 
-const CACHE_KEY = "coreos.pos.licence.v1";
+import { scoped } from "./edition";
+
+const CACHE_KEY = scoped("coreos.pos.licence.v1");
 
 /** Where the tills check in. Empty until the office has somewhere to run it,
     and the till falls back to typed codes alone — which is exactly how it

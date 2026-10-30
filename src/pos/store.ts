@@ -17,6 +17,8 @@
  * and nothing else.
  */
 
+import { isCloud } from "./edition";
+import { markPending } from "./cloud";
 import { useSyncExternalStore } from "react";
 import type {
   AuditEntry,
@@ -394,8 +396,30 @@ function changesBetween(before: PosData, after: PosData): Change[] {
    and the order is preserved because each write waits for the one before. */
 let writing: Promise<void> = Promise.resolve();
 
+/** The stores the office keeps a copy of. Shifts, staff and the audit log
+    stay on the tablet: they are how a shop runs its own counter, not
+    something CoreOs has any business holding. */
+const SYNCED: StoreName[] = ["sales", "products", "debts", "closes"];
+
 function queue(changes: Change[]) {
   if (changes.length === 0) return;
+
+  /* On the Cloud plan, note what changed so it can go up later. Noted here,
+     at the one funnel every write passes through, rather than in each of the
+     fifteen functions that call it — a sale that gets written to the tablet
+     but never noted is a sale the office never sees. */
+  if (isCloud) {
+    const touched: string[] = [];
+    for (const change of changes) {
+      if (!SYNCED.includes(change.store)) continue;
+      for (const row of change.put ?? []) {
+        const id = (row as { id?: string }).id;
+        if (id) touched.push(`${change.store}:${id}`);
+      }
+    }
+    markPending(touched);
+  }
+
   writing = writing
     .then(() => write(changes))
     .catch(() => {
@@ -808,6 +832,13 @@ export function voidSale(id: string, reason = "", approvedBy = "") {
 
 export function exportData(): string {
   return JSON.stringify(data, null, 2);
+}
+
+/** The live book itself, for the cloud push. Not a copy: it is read, mapped
+    into rows and thrown away, and copying a year of sales to do that would
+    stall the counter. */
+export function exportSnapshot(): PosData {
+  return data;
 }
 
 /** Replaces everything. The caller has already warned; this only refuses a

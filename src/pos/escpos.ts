@@ -28,6 +28,7 @@
 import { money } from "./money";
 import { formatDateTime, translate, type Lang } from "./i18n";
 import { receiptLabel } from "./migrate";
+import { isDemo } from "./edition";
 import type { Sale, Settings } from "./types";
 
 /** Printable dots across, by paper width. The paper is wider than this: a
@@ -189,6 +190,11 @@ function pieces(sale: Sale, settings: Settings): Piece[] {
 
   if (sale.voidedAt)
     out.push({ kind: "text", text: t("receipt.voided"), align: "center", size: 26, bold: true });
+
+  /* Printed, not just shown. A demo receipt handed to a customer has to be
+     unmistakable on the paper itself. */
+  if (isDemo)
+    out.push({ kind: "text", text: t("demo.stamp"), align: "center", size: 20, bold: true });
 
   out.push({ kind: "gap", height: 10 });
   if (settings.receiptFooter) {

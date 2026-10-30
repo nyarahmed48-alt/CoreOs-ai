@@ -317,6 +317,47 @@ const EN = {
   "licence.expires": "Works until",
   "licence.never": "No expiry",
   "licence.lifetime": "Offline plan: lifetime",
+  "demo.badge": "DEMO",
+  "cloud.title": "Sign in to CoreCashier",
+  "cloud.body":
+    "This till is on the Cloud plan. Sign in once with the details CoreOs gave you — after that it works without the internet and sends the day up whenever it can.",
+  "cloud.email": "Email",
+  "cloud.password": "Password",
+  "cloud.signIn": "Sign in",
+  "cloud.signingIn": "Signing in…",
+  "cloud.noAccount":
+    "No details? Ask CoreOs. A Cloud till cannot be used without an account.",
+  "cloud.badLogin": "That email and password do not match.",
+  "cloud.offline":
+    "The tablet cannot reach the internet. Check the wifi and try again.",
+  "cloud.noShop":
+    "Signed in, but this account has not been put with a shop yet. Call CoreOs.",
+  "cloud.signedOut": "This till has been signed out. Sign in again.",
+  "cloud.server": "CoreOs could not be reached just now. It will try again.",
+  "cloud.account": "CoreOs account",
+  "cloud.accountHint": "Which shop this till belongs to, and when it last sent its books up.",
+  "cloud.shop": "Shop",
+  "cloud.lastSync": "Last sent up",
+  "cloud.never": "never",
+  "cloud.signOut": "Sign this till out",
+  "cloud.pushAll": "Send everything up now",
+  "cloud.pushing": "Sending…",
+  "cloud.pushed": "Sent: {sales} sales and {products} products.",
+  "cloud.pushAllHint":
+    "Sends the whole book, not just what has changed. Use it when moving a shop from the Offline plan onto Cloud, or if anything looks missing in the office.",
+  "cloud.frozen":
+    "CoreOs has stopped this tablet, so it cannot take new sales for now. Nothing has been lost: everything you recorded is still here and can be exported. Please call CoreOs.",
+  "cloud.lapsed":
+    "This shop's subscription has run out, so the till cannot take new sales for now. Nothing has been lost — you can still look at everything and save a backup. Call CoreOs to start again.",
+  "cloud.outOfTouch":
+    "This tablet has not reached CoreOs for {n} days, so it has stopped taking new sales. Put it on the internet for a moment and it will start again by itself.",
+  "demo.title": "Demonstration",
+  "demo.note":
+    "A demonstration copy. Everything works and nothing is real — the sales and stock here belong to no shop.",
+  "demo.restart": "Start the demo again",
+  "demo.restartHint":
+    "Clears everything this demo has rung up and puts the sample shop back, ready for the next customer.",
+  "demo.stamp": "DEMO — NOT A REAL RECEIPT",
   "licence.readOnlyShort": "The till is read-only until the licence is renewed.",
   "licence.readOnly":
     "This tablet's licence has run out, so it cannot take new sales for now. Nothing has been lost: your sales, products, debt book and day closes are all still here to look at, and you can save a backup from Settings. Send CoreOs your code and selling starts again the moment a new one is put in.",
@@ -717,6 +758,47 @@ const AR: Record<Key, string> = {
   "licence.expires": "يعمل حتى",
   "licence.never": "بلا انتهاء",
   "licence.lifetime": "خطة أوفلاين: مدى الحياة",
+  "demo.badge": "عرض",
+  "cloud.title": "تسجيل الدخول إلى CoreCashier",
+  "cloud.body":
+    "هذا الصندوق على خطة السحابة. سجّل الدخول مرة واحدة بالبيانات التي أعطتك إياها CoreOs — بعدها يعمل بدون إنترنت ويرفع اليوم متى ما استطاع.",
+  "cloud.email": "البريد الإلكتروني",
+  "cloud.password": "كلمة المرور",
+  "cloud.signIn": "تسجيل الدخول",
+  "cloud.signingIn": "جارٍ تسجيل الدخول…",
+  "cloud.noAccount":
+    "ليس لديك بيانات؟ اتصل بـ CoreOs. صندوق السحابة لا يعمل بدون حساب.",
+  "cloud.badLogin": "البريد وكلمة المرور غير متطابقين.",
+  "cloud.offline":
+    "الجهاز لا يصل إلى الإنترنت. تحقق من الواي فاي وحاول مرة أخرى.",
+  "cloud.noShop":
+    "تم تسجيل الدخول، لكن هذا الحساب لم يُربط بمحل بعد. اتصل بـ CoreOs.",
+  "cloud.signedOut": "تم تسجيل خروج هذا الصندوق. سجّل الدخول مرة أخرى.",
+  "cloud.server": "تعذّر الوصول إلى CoreOs الآن. ستُعاد المحاولة.",
+  "cloud.account": "حساب CoreOs",
+  "cloud.accountHint": "لأي محل يتبع هذا الصندوق، ومتى رفع دفاتره آخر مرة.",
+  "cloud.shop": "المحل",
+  "cloud.lastSync": "آخر رفع",
+  "cloud.never": "أبداً",
+  "cloud.signOut": "تسجيل خروج هذا الصندوق",
+  "cloud.pushAll": "رفع كل شيء الآن",
+  "cloud.pushing": "جارٍ الرفع…",
+  "cloud.pushed": "تم الرفع: {sales} مبيعة و{products} مادة.",
+  "cloud.pushAllHint":
+    "يرفع الدفتر كاملاً لا ما تغيّر فقط. استخدمه عند نقل محل من خطة أوفلاين إلى السحابة، أو إذا بدا أن شيئاً ناقص عند المكتب.",
+  "cloud.frozen":
+    "أوقفت CoreOs هذا الجهاز، لذلك لا يمكنه تسجيل مبيعات جديدة حالياً. لم يُفقد شيء: كل ما سجّلته موجود ويمكن تصديره. يرجى الاتصال بـ CoreOs.",
+  "cloud.lapsed":
+    "انتهى اشتراك هذا المحل، لذلك لا يمكن للصندوق تسجيل مبيعات جديدة حالياً. لم يُفقد شيء — يمكنك الاطلاع على كل شيء وحفظ نسخة احتياطية. اتصل بـ CoreOs للمتابعة.",
+  "cloud.outOfTouch":
+    "لم يصل هذا الجهاز إلى CoreOs منذ {n} يوماً، لذلك توقف عن تسجيل مبيعات جديدة. وصّله بالإنترنت للحظة وسيعود للعمل وحده.",
+  "demo.title": "العرض التجريبي",
+  "demo.note":
+    "نسخة للعرض. كل شيء يعمل ولا شيء حقيقي — المبيعات والمواد هنا لا تخص أي محل.",
+  "demo.restart": "إعادة العرض من البداية",
+  "demo.restartHint":
+    "يمسح كل ما سُجّل في هذا العرض ويعيد المحل التجريبي، جاهزاً للزبون التالي.",
+  "demo.stamp": "عرض — ليست فاتورة حقيقية",
   "licence.readOnlyShort": "الصندوق للقراءة فقط حتى يُجدَّد الاشتراك.",
   "licence.readOnly":
     "انتهى اشتراك هذا الجهاز، لذلك لا يمكنه تسجيل مبيعات جديدة حالياً. لم يُفقد شيء: مبيعاتك والمواد ودفتر الديون وإغلاقات اليوم كلها موجودة للاطلاع عليها، ويمكنك حفظ نسخة احتياطية من الإعدادات. أرسل رمزك إلى CoreOs ويعود البيع فور إدخال رمز جديد.",
@@ -1115,6 +1197,47 @@ const CKB: Record<Key, string> = {
   "licence.expires": "کار دەکات تا",
   "licence.never": "بێ کۆتایی",
   "licence.lifetime": "پلانی ئۆفلاین: هەتاهەتایی",
+  "demo.badge": "نمایش",
+  "cloud.title": "چوونەژوورەوە بۆ CoreCashier",
+  "cloud.body":
+    "ئەم سندوقە لەسەر پلانی هەوریە. یەک جار بە زانیارییەکانی CoreOs بچۆ ژوورەوە — دوای ئەوە بەبێ ئینتەرنێت کاردەکات و ڕۆژەکە دەنێرێت هەر کاتێک بتوانێت.",
+  "cloud.email": "ئیمەیل",
+  "cloud.password": "وشەی نهێنی",
+  "cloud.signIn": "چوونەژوورەوە",
+  "cloud.signingIn": "چوونەژوورەوە…",
+  "cloud.noAccount":
+    "زانیاریت نییە؟ پەیوەندی بە CoreOs بکە. سندوقی هەوری بەبێ هەژمار کار ناکات.",
+  "cloud.badLogin": "ئیمەیل و وشەی نهێنی یەک ناگرنەوە.",
+  "cloud.offline":
+    "تابلێتەکە ناگاتە ئینتەرنێت. وایفایەکە بپشکنە و دووبارە هەوڵ بدە.",
+  "cloud.noShop":
+    "چوویتە ژوورەوە، بەڵام ئەم هەژمارە هێشتا بە دوکانێکەوە نەبەستراوە. پەیوەندی بە CoreOs بکە.",
+  "cloud.signedOut": "ئەم سندوقە دەرچووە. دووبارە بچۆ ژوورەوە.",
+  "cloud.server": "ئێستا نەگەیشترا بە CoreOs. دووبارە هەوڵ دەدرێتەوە.",
+  "cloud.account": "هەژماری CoreOs",
+  "cloud.accountHint": "ئەم سندوقە هی کام دوکانە، و کەی دوایین جار دەفتەرەکانی ناردووە.",
+  "cloud.shop": "دوکان",
+  "cloud.lastSync": "دوایین ناردن",
+  "cloud.never": "هەرگیز",
+  "cloud.signOut": "دەرچوونی ئەم سندوقە",
+  "cloud.pushAll": "ئێستا هەموو شتێک بنێرە",
+  "cloud.pushing": "ناردن…",
+  "cloud.pushed": "نێردرا: {sales} فرۆشتن و {products} کاڵا.",
+  "cloud.pushAllHint":
+    "تەواوی دەفتەرەکە دەنێرێت نەک تەنها ئەوەی گۆڕاوە. بەکاریبهێنە کاتێک دوکانێک لە پلانی ئۆفلاینەوە دەبەیتە سەر هەوری، یان ئەگەر شتێک لە نووسینگە کەم دیار بوو.",
+  "cloud.frozen":
+    "CoreOs ئەم تابلێتەی ڕاگرتووە، بۆیە ئێستا ناتوانێت فرۆشتنی نوێ تۆمار بکات. هیچ شتێک لەدەست نەچووە: هەموو ئەوەی تۆمارت کردووە لێرەیە و دەتوانرێت بنێردرێت. تکایە پەیوەندی بە CoreOs بکە.",
+  "cloud.lapsed":
+    "بەشداری ئەم دوکانە کۆتایی هاتووە، بۆیە ئێستا سندوقەکە ناتوانێت فرۆشتنی نوێ تۆمار بکات. هیچ لەدەست نەچووە — دەتوانیت هەموو شتێک ببینیت و پاڵپشتێک پاشەکەوت بکەیت. بۆ دەستپێکردنەوە پەیوەندی بە CoreOs بکە.",
+  "cloud.outOfTouch":
+    "ئەم تابلێتە {n} ڕۆژە نەگەیشتووەتە CoreOs، بۆیە وازی لە تۆمارکردنی فرۆشتنی نوێ هێناوە. بۆ ساتێک بیخەرە سەر ئینتەرنێت و خۆی دەست پێدەکاتەوە.",
+  "demo.title": "نمایش",
+  "demo.note":
+    "کۆپییەکی نمایشە. هەموو شتێک کاردەکات و هیچی ڕاستەقینە نییە — ئەم فرۆشتن و کاڵایانە هی هیچ دوکانێک نین.",
+  "demo.restart": "دەستپێکردنەوەی نمایش",
+  "demo.restartHint":
+    "هەموو ئەوەی لەم نمایشەدا تۆمارکراوە دەسڕێتەوە و دوکانە نموونەییەکە دەگەڕێنێتەوە، ئامادە بۆ کڕیاری داهاتوو.",
+  "demo.stamp": "نمایش — وەسڵی ڕاستەقینە نییە",
   "licence.readOnlyShort": "سندوقەکە تەنها بۆ خوێندنەوەیە تا مۆڵەت نوێ دەکرێتەوە.",
   "licence.readOnly":
     "مۆڵەتی ئەم تابلێتە کۆتایی هاتووە، بۆیە ئێستا ناتوانێت فرۆشتنی نوێ تۆمار بکات. هیچ شتێک لەدەست نەچووە: فرۆشتنەکان، کاڵاکان، دەفتەری قەرز و داخستنی ڕۆژەکان هەمووی لێرەن بۆ بینین، و دەتوانیت لە ڕێکخستنەکانەوە پاڵپشتێک پاشەکەوت بکەیت. کۆدەکەت بۆ CoreOs بنێرە و هەر کە کۆدێکی نوێ دانرا فرۆشتن دەگەڕێتەوە.",

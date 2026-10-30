@@ -27,13 +27,14 @@ import {
   type Verdict,
 } from "../activation";
 import { CameraScanner } from "./CameraScanner";
+import { scoped } from "./edition";
 import { cached, standing, watchLicence, type Known } from "./licenceServer";
 import { usePos } from "./store";
 import { useT } from "./useT";
 import { buildStamp, whatsappNumber } from "./report";
 import { Button } from "./ui";
 
-const STATE_KEY = "coreos.pos.activation.v1";
+const STATE_KEY = scoped("coreos.pos.activation.v1");
 
 interface Activation {
   /** The random part of the current request. Changes each time the till has to

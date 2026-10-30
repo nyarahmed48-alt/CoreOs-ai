@@ -18,6 +18,8 @@
     "lint": "tsc --noEmit",
     "build:ceo": "vite build --config vite.ceo.config.ts && node scripts/build-portable-pos.mjs dist-ceo ceo-portable.html CoreCashier_Owner_Console.html",
     "build:app": "vite build --config vite.app.config.ts && node scripts/build-app.mjs",
+    "build:demo": "vite build --config vite.demo.config.ts && node scripts/build-portable-pos.mjs dist-demo demo-portable.html CoreCashier_Demo.html",
+    "build:cloud": "vite build --config vite.cloud.config.ts && node scripts/build-portable-pos.mjs dist-cloud cloud-portable.html CoreCashier_Cloud.html",
     "build:gen": "vite build --config vite.generator.config.ts && node scripts/build-portable-pos.mjs dist-gen generator-portable.html CoreCashier_Code_Generator.html",
     "test": "vitest run",
     "test:watch": "vitest"

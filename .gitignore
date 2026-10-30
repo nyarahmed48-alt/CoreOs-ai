@@ -5,6 +5,8 @@ dist-pos/
 dist-ceo/
 dist-app/
 dist-gen/
+dist-demo/
+dist-cloud/
 coverage/
 .DS_Store
 *.log
