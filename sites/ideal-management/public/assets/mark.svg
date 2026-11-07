@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 126" role="img" aria-label="Ideal Management">
+  <!--
+    The Ideal Management mark: a figure formed from a navy crescent with a
+    yellow dot for the head. Drawn as vectors rather than shipped as a raster
+    so it stays sharp at every size and inherits the brand tokens.
+  -->
+  <circle cx="22.5" cy="13" r="12.8" fill="#f5c518" />
+  <path
+    fill="#1c2566"
+    d="M40 25C21 34 6 54 3.4 74 0.9 93 12 112 45 126 27 107 14.5 90 15.5 70 16.6 52 29 34 40 25Z"
+  />
+</svg>

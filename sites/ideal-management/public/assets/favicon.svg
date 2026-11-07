@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The mark on a navy tile: at 16px a thin crescent on white disappears. -->
+  <rect width="100" height="100" rx="22" fill="#1c2566" />
+  <g transform="translate(27 8) scale(0.67)">
+    <circle cx="22.5" cy="13" r="12.8" fill="#f5c518" />
+    <path
+      fill="#ffffff"
+      d="M40 25C21 34 6 54 3.4 74 0.9 93 12 112 45 126 27 107 14.5 90 15.5 70 16.6 52 29 34 40 25Z"
+    />
+  </g>
+</svg>
