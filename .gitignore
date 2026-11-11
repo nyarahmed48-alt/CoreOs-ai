@@ -7,6 +7,7 @@ dist-app/
 dist-gen/
 dist-demo/
 dist-cloud/
+dist-keys/
 coverage/
 .DS_Store
 *.log
@@ -21,3 +22,4 @@ data/owners.json
 # whole point of signing licences is that only the owner's own machine can.
 *private-key*.json
 corecashier-key*.json
+coreos-technician-private-key*.json

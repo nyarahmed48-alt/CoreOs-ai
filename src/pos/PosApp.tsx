@@ -59,6 +59,7 @@ import {
   useRemote,
 } from "./ActivationGate";
 import { standing, watchLicence } from "./licenceServer";
+import { watchSession } from "./technician";
 import { isCloud, isDemo } from "./edition";
 import {
   CloudGate,
@@ -154,6 +155,11 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
   useEffect(() => {
     return watchLicence(data.settings.tillId, publishRemote);
   }, [data.settings.tillId]);
+
+  /* A technician session closes itself after its idle time wherever the
+     technician happens to have left the till — not only while the Settings
+     screen that opened it is still on top. */
+  useEffect(() => watchSession(), []);
 
   /* The Cloud plan's own loop: push the books up, ask where we stand. Only
      once this till is actually signed in — before that there is nothing to

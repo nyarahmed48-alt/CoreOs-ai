@@ -76,6 +76,11 @@ export function errorCount(): number {
   return readErrors().length;
 }
 
+/** The log itself. Read by the error-log screen, and by the tests. */
+export function recordedErrors(): LoggedError[] {
+  return readErrors();
+}
+
 /** Catches what the shop would otherwise have to describe: a crash, or a
     promise that failed with nobody watching. */
 export function watchForErrors() {

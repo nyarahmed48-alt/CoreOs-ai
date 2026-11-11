@@ -14,6 +14,7 @@
 import { useRef, useState } from "react";
 import { Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
 import { isCloud, isDemo } from "./edition";
+import { TechnicianPanel } from "./TechnicianPanel";
 import { CloudPanel } from "./CloudGate";
 import {
   PrintError,
@@ -375,6 +376,10 @@ export function SettingsView() {
               {buildReport(data, writeError)}
             </pre>
           ) : null}
+        </Section>
+
+        <Section title={t("tech.title")} hint="">
+          <TechnicianPanel />
         </Section>
 
         <Section

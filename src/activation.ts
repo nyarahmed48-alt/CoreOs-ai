@@ -133,7 +133,7 @@ export function toBase32(bytes: Uint8Array): string {
   return out;
 }
 
-function fromBase32(text: string): Uint8Array | null {
+export function fromBase32(text: string): Uint8Array | null {
   let bits = 0;
   let value = 0;
   const out: number[] = [];
@@ -158,7 +158,7 @@ function fromBase32(text: string): Uint8Array | null {
  * 0. A shop reading a long code off a screen gets those wrong every time, and
  * there is no ambiguity to preserve — the real characters cannot occur.
  */
-function tidyBody(text: string): string {
+export function tidyBody(text: string): string {
   return text
     .toUpperCase()
     .replace(/[IL]/g, "1")
