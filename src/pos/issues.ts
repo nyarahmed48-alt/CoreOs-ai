@@ -32,7 +32,8 @@ export type IssueCode =
   | "SW-06" | "SW-07" | "SW-08" | "SW-09"
   | "DT-01" | "DT-02" | "DT-03" | "DT-04" | "DT-05" | "DT-09"
   | "AC-01" | "AC-02" | "AC-03" | "AC-04" | "AC-05" | "AC-09"
-  | "TB-02" | "TB-04" | "TB-05" | "TB-09";
+  | "TB-01" | "TB-02" | "TB-03" | "TB-04"
+  | "TB-05" | "TB-06" | "TB-07" | "TB-08" | "TB-09";
 
 interface Words {
   title: string;
@@ -503,6 +504,28 @@ export const ISSUES: Record<IssueCode, Issue> = {
     },
   },
 
+  "TB-01": {
+    priority: "P1",
+    manual: true,
+    note: "Tablet will not turn on, or switches itself off. Nothing a page can detect — the page is gone with it. Raised by the shop or by Device Check's questions.",
+    text: {
+      en: {
+        title: "The tablet turns itself off",
+        body: "This tablet will not turn on, or switches off on its own while it is being used.",
+        steps: ["Charge it for an hour with the shop's charger and try again.", "Hold the power button for ten seconds.", "Call CoreOS with this code — the tablet probably needs replacing."],
+      },
+      ar: {
+        title: "الجهاز يطفئ نفسه",
+        body: "هذا الجهاز لا يعمل، أو ينطفئ من تلقاء نفسه أثناء الاستخدام.",
+        steps: ["اشحنه ساعة بشاحن المحل وأعد المحاولة.", "اضغط زر التشغيل عشر ثوانٍ.", "اتصل بـ CoreOs بهذا الرمز — غالباً يحتاج الجهاز إلى تبديل."],
+      },
+      ckb: {
+        title: "ئامێرەکە خۆی دەکوژێتەوە",
+        body: "ئەم ئامێرە ناکرێتەوە، یان لە کاتی بەکارهێناندا خۆی دەکوژێتەوە.",
+        steps: ["کاتژمێرێک بە شارژەری دوکانەکە شارژی بکە و دووبارە هەوڵ بدە.", "دوگمەی کارەبا دە چرکە ڕابگرە.", "بە ئەم کۆدە پەیوەندی بکە — لەوانەیە پێویستی بە گۆڕین بێت."],
+      },
+    },
+  },
   "TB-02": {
     priority: "P2",
     note: "Battery below 15% and not charging, read through navigator.getBattery. Absent on many Android browsers.",
@@ -521,6 +544,27 @@ export const ISSUES: Record<IssueCode, Issue> = {
         title: "باتری کەمە",
         body: "شارژی ئەم ئامێرە کەمە و بە کارەبا نەبەستراوە.",
         steps: ["ئێستا ئامێرەکە بخەرە سەر شارژ.", "یەکەم ئەم فرۆشتنە تەواو بکە — ئەگەر کوژایەوە هیچ لەدەست ناچێت."],
+      },
+    },
+  },
+  "TB-03": {
+    priority: "P2",
+    note: "Screen cracked, or part of the touch surface is dead. Device Check's touch grid finds dead areas; a crack is reported by eye.",
+    text: {
+      en: {
+        title: "The screen is damaged",
+        body: "The screen is cracked, or part of it does not answer when it is touched.",
+        steps: ["Try the counter in a part of the screen that still works.", "Call CoreOS with this code to arrange a replacement."],
+      },
+      ar: {
+        title: "الشاشة متضررة",
+        body: "الشاشة مكسورة، أو جزء منها لا يستجيب للمس.",
+        steps: ["استخدم جزءاً من الشاشة لا يزال يعمل مؤقتاً.", "اتصل بـ CoreOs بهذا الرمز لترتيب التبديل."],
+      },
+      ckb: {
+        title: "شاشەکە زیانی پێگەیشتووە",
+        body: "شاشەکە شکاوە، یان بەشێکی وەڵام نادات کاتێک دەستی لێ دەدرێت.",
+        steps: ["بۆ کاتێک ئەو بەشەی شاشە بەکاربهێنە کە کار دەکات.", "بۆ گۆڕینەوە بە ئەم کۆدە پەیوەندی بکە."],
       },
     },
   },
@@ -563,6 +607,72 @@ export const ISSUES: Record<IssueCode, Issue> = {
         title: "پەیوەندی نییە",
         body: "ئامێرەکە لەسەر ئینتەرنێت نییە. سندوقەکە بەبێ ئەویش بەردەوام دەفرۆشێت.",
         steps: ["بەردەوام بە لە فرۆشتن، هیچ لەدەست ناچێت.", "کاتێک دوکان هێمن بوو وایفایەکە بپشکنە."],
+      },
+    },
+  },
+  "TB-06": {
+    priority: "P2",
+    manual: true,
+    note: "Overheating. No browser can read a temperature — this is always the shop's own answer.",
+    text: {
+      en: {
+        title: "The tablet gets very hot",
+        body: "This tablet becomes hot enough to be uncomfortable to hold while it is being used.",
+        steps: ["Take it out of any case and off direct sun.", "Let it cool before charging it again.", "Call CoreOS with this code."],
+      },
+      ar: {
+        title: "الجهاز يسخن كثيراً",
+        body: "يسخن هذا الجهاز أثناء الاستخدام حتى يصعب الإمساك به.",
+        steps: ["أخرجه من الغلاف وأبعده عن الشمس.", "دعه يبرد قبل إعادة شحنه.", "اتصل بـ CoreOs بهذا الرمز."],
+      },
+      ckb: {
+        title: "ئامێرەکە زۆر گەرم دەبێت",
+        body: "ئەم ئامێرە لە کاتی بەکارهێناندا ئەوەندە گەرم دەبێت کە بە ئەستەم دەگیرێت.",
+        steps: ["لە قاپەکەی دەریبهێنە و لە تیشکی خۆر دووری بخەرەوە.", "پێش شارژکردنەوە لێی گەڕێ سارد ببێتەوە.", "بە ئەم کۆدە پەیوەندی بکە."],
+      },
+    },
+  },
+  "TB-07": {
+    priority: "P2",
+    manual: true,
+    note: "Dropped, or got wet. Invisible to any API; it explains faults that otherwise look unrelated, so it is worth asking.",
+    text: {
+      en: {
+        title: "The tablet was dropped or got wet",
+        body: "Something happened to this tablet that may be behind the other problems.",
+        steps: ["Stop charging it until it is completely dry.", "Save a backup from CoreCashier now.", "Call CoreOS with this code."],
+      },
+      ar: {
+        title: "سقط الجهاز أو ابتلّ",
+        body: "حدث شيء لهذا الجهاز قد يكون سبب بقية المشاكل.",
+        steps: ["لا تشحنه حتى يجف تماماً.", "احفظ نسخة احتياطية من CoreCashier الآن.", "اتصل بـ CoreOs بهذا الرمز."],
+      },
+      ckb: {
+        title: "ئامێرەکە کەوتووە یان تەڕ بووە",
+        body: "شتێک بەسەر ئەم ئامێرەدا هاتووە کە لەوانەیە هۆکاری کێشەکانی تر بێت.",
+        steps: ["هەتا بە تەواوی وشک نەبێتەوە شارژی مەکە.", "ئێستا لە CoreCashier پاڵپشتێک پاشەکەوت بکە.", "بە ئەم کۆدە پەیوەندی بکە."],
+      },
+    },
+  },
+  "TB-08": {
+    priority: "P1",
+    manual: true,
+    note: "Lost or stolen. Raised by the shop. The till on it should be stopped from the office and its licence not renewed.",
+    text: {
+      en: {
+        title: "The tablet is lost or stolen",
+        body: "This tablet is no longer with the shop.",
+        steps: ["Call CoreOS with this code straight away so the till on it can be stopped.", "Your records are on that tablet only — tell CoreOS when the last backup was."],
+      },
+      ar: {
+        title: "الجهاز مفقود أو مسروق",
+        body: "لم يعد هذا الجهاز لدى المحل.",
+        steps: ["اتصل بـ CoreOs بهذا الرمز فوراً لإيقاف الصندوق عليه.", "سجلاتك على ذلك الجهاز وحده — أخبر CoreOs بموعد آخر نسخة احتياطية."],
+      },
+      ckb: {
+        title: "ئامێرەکە ون بووە یان دزراوە",
+        body: "ئەم ئامێرە چیتر لای دوکانەکە نییە.",
+        steps: ["یەکسەر بە ئەم کۆدە پەیوەندی بکە تا سندوقەکەی لەسەر ڕابگیرێت.", "تۆمارەکانت تەنها لەسەر ئەو ئامێرەن — بە CoreOs بڵێ دوایین پاڵپشت کەی بوو."],
       },
     },
   },

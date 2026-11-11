@@ -12,7 +12,7 @@
  */
 
 import { useRef, useState } from "react";
-import { Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
+import { Activity, Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
 import { isCloud, isDemo } from "./edition";
 import { reportError } from "./reportIssue";
 import { TechnicianPanel } from "./TechnicianPanel";
@@ -395,6 +395,16 @@ export function SettingsView() {
 
         <Section title={t("log.title")} hint="">
           <ErrorLogPanel />
+          {/* Opens the separate Device Check app. Relative, so it finds
+              /check/ next to an installed till; from the portable file there
+              is no folder to go to, and the line below says where to look
+              instead. */}
+          <Button onClick={() => window.open("../check/", "_blank", "noopener")}>
+            <Activity size={16} /> {t("check.open")}
+          </Button>
+          <p className="text-[12.5px] leading-relaxed text-[#6b7490]">
+            {t("check.hint")}
+          </p>
         </Section>
 
         <Section title={t("tech.title")} hint="">

@@ -1,0 +1,20 @@
+{
+  "name": "CoreOS Device Check",
+  "short_name": "Device Check",
+  "description": "Tests a tablet and gives the CoreOS code for anything wrong. Works with no internet.",
+  "id": "/check/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "dir": "auto",
+  "lang": "ar",
+  "categories": ["business", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

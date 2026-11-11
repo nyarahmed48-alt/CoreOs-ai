@@ -21,7 +21,8 @@ describe("the issue registry", () => {
       "SW-06", "SW-07", "SW-08", "SW-09",
       "DT-01", "DT-02", "DT-03", "DT-04", "DT-05", "DT-09",
       "AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-09",
-      "TB-02", "TB-04", "TB-05", "TB-09",
+      "TB-01", "TB-02", "TB-03", "TB-04",
+      "TB-05", "TB-06", "TB-07", "TB-08", "TB-09",
     ]);
   });
 
@@ -65,7 +66,10 @@ describe("the issue registry", () => {
 
   it("marks the codes no browser can detect", () => {
     const manual = ALL_CODES.filter((code) => ISSUES[code].manual);
-    expect(manual).toEqual(["DT-04", "AC-03", "AC-05", "AC-09"]);
+    expect(manual).toEqual([
+      "DT-04", "AC-03", "AC-05", "AC-09",
+      "TB-01", "TB-06", "TB-07", "TB-08",
+    ]);
   });
 });
 

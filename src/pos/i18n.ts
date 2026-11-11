@@ -323,6 +323,9 @@ const EN = {
   "issue.call": "Call CoreOS support and read this code",
   "issue.close": "Close",
   "log.title": "Error log",
+  "check.open": "Device check",
+  "check.hint":
+    "Opens CoreOS Device Check, which tests this tablet itself — battery, screen, scanner, printer — and gives you a code for anything wrong. It is a separate app, so it still opens if this one will not.",
   "log.hint": "What has gone wrong on this tablet, newest first. No customer names, phone numbers or payment details are kept here.",
   "log.empty": "Nothing has gone wrong on this tablet.",
   "log.share": "Copy a report for WhatsApp",
@@ -800,6 +803,9 @@ const AR: Record<Key, string> = {
   "issue.call": "اتصل بدعم CoreOs واقرأ هذا الرمز",
   "issue.close": "إغلاق",
   "log.title": "سجل الأخطاء",
+  "check.open": "فحص الجهاز",
+  "check.hint":
+    "يفتح «فحص الجهاز» من CoreOs، الذي يفحص هذا الجهاز نفسه — البطارية والشاشة والقارئ والطابعة — ويعطيك رمزاً لأي خلل. وهو برنامج منفصل، لذلك يفتح حتى لو لم يفتح هذا.",
   "log.hint": "ما حدث من أخطاء على هذا الجهاز، الأحدث أولاً. لا تُحفظ هنا أسماء زبائن ولا أرقام هواتف ولا تفاصيل دفع.",
   "log.empty": "لم يحدث أي خطأ على هذا الجهاز.",
   "log.share": "نسخ تقرير للواتساب",
@@ -1275,6 +1281,9 @@ const CKB: Record<Key, string> = {
   "issue.call": "پەیوەندی بە پشتگیری CoreOs بکە و ئەم کۆدە بخوێنەوە",
   "issue.close": "داخستن",
   "log.title": "تۆماری هەڵەکان",
+  "check.open": "پشکنینی ئامێر",
+  "check.hint":
+    "«پشکنینی ئامێر»ی CoreOs دەکاتەوە، کە خودی ئەم ئامێرە تاقی دەکاتەوە — باتری، شاشە، سکانەر، چاپکەر — و کۆدێکت بۆ هەر کێشەیەک دەداتێ. بەرنامەیەکی جیاوازە، بۆیە دەکرێتەوە تەنانەت ئەگەر ئەمەش نەکرایەوە.",
   "log.hint": "ئەوەی لەسەر ئەم ئامێرە هەڵە ڕوویداوە، نوێترین لە سەرەوە. هیچ ناوی کڕیار و ژمارەی تەلەفۆن و وردەکاری پارەدان لێرە پاشەکەوت ناکرێت.",
   "log.empty": "هیچ هەڵەیەک لەسەر ئەم ئامێرە ڕووینەداوە.",
   "log.share": "کۆپیکردنی ڕاپۆرت بۆ واتساپ",

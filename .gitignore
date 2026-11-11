@@ -8,6 +8,8 @@ dist-gen/
 dist-demo/
 dist-cloud/
 dist-keys/
+dist-check/
+dist-check-app/
 coverage/
 .DS_Store
 *.log
