@@ -46,6 +46,14 @@ import { flushed } from "./store";
 import { formatDateTime } from "./i18n";
 import type { Staff } from "./types";
 
+/** Where Device Check lives, from wherever this till is running. */
+function deviceCheckHref(): string {
+  if (typeof location === "undefined") return "../check/";
+  return location.protocol === "file:"
+    ? "./CoreOS_Device_Check.html"
+    : "../check/";
+}
+
 export function SettingsView() {
   const data = usePos();
   const { t, lang } = useT();
@@ -395,11 +403,13 @@ export function SettingsView() {
 
         <Section title={t("log.title")} hint="">
           <ErrorLogPanel />
-          {/* Opens the separate Device Check app. Relative, so it finds
-              /check/ next to an installed till; from the portable file there
-              is no folder to go to, and the line below says where to look
-              instead. */}
-          <Button onClick={() => window.open("../check/", "_blank", "noopener")}>
+          {/* Two ways the companion app can be sitting there, and the till
+              has to try the right one. An installed till is served from a
+              folder, so Device Check is the folder beside it. A portable
+              till is a file in Downloads, and Device Check is the file
+              beside *it* — which is how a tablet that was set up by copying
+              two files over WhatsApp finds its own diagnostic app. */}
+          <Button onClick={() => window.open(deviceCheckHref(), "_blank", "noopener")}>
             <Activity size={16} /> {t("check.open")}
           </Button>
           <p className="text-[12.5px] leading-relaxed text-[#6b7490]">
