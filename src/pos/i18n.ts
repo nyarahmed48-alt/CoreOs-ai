@@ -319,6 +319,18 @@ const EN = {
   "licence.never": "No expiry",
   "licence.lifetime": "Offline plan: lifetime",
   "demo.badge": "DEMO",
+  "issue.tryThis": "What you can try",
+  "issue.call": "Call CoreOS support and read this code",
+  "issue.close": "Close",
+  "log.title": "Error log",
+  "log.hint": "What has gone wrong on this tablet, newest first. No customer names, phone numbers or payment details are kept here.",
+  "log.empty": "Nothing has gone wrong on this tablet.",
+  "log.share": "Copy a report for WhatsApp",
+  "log.shared": "Copied — paste it into WhatsApp.",
+  "log.clear": "Clear the log",
+  "log.simulate": "Simulate an error",
+  "log.details": "Details",
+  "log.raise": "Report a problem by hand",
   "tech.title": "Technician",
   "tech.hint":
     "CoreOS can open a repair session on this tablet with a one-time key. Everything done in that session is written into your error log, where you can read it.",
@@ -784,6 +796,18 @@ const AR: Record<Key, string> = {
   "licence.never": "بلا انتهاء",
   "licence.lifetime": "خطة أوفلاين: مدى الحياة",
   "demo.badge": "عرض",
+  "issue.tryThis": "ما يمكنك تجربته",
+  "issue.call": "اتصل بدعم CoreOs واقرأ هذا الرمز",
+  "issue.close": "إغلاق",
+  "log.title": "سجل الأخطاء",
+  "log.hint": "ما حدث من أخطاء على هذا الجهاز، الأحدث أولاً. لا تُحفظ هنا أسماء زبائن ولا أرقام هواتف ولا تفاصيل دفع.",
+  "log.empty": "لم يحدث أي خطأ على هذا الجهاز.",
+  "log.share": "نسخ تقرير للواتساب",
+  "log.shared": "تم النسخ — الصقه في واتساب.",
+  "log.clear": "مسح السجل",
+  "log.simulate": "خطأ تجريبي",
+  "log.details": "التفاصيل",
+  "log.raise": "تسجيل مشكلة يدوياً",
   "tech.title": "الفني",
   "tech.hint":
     "تستطيع CoreOs فتح جلسة صيانة على هذا الجهاز بمفتاح يُستخدم مرة واحدة. كل ما يجري في تلك الجلسة يُسجَّل في سجل الأخطاء عندك، ويمكنك قراءته.",
@@ -1247,6 +1271,18 @@ const CKB: Record<Key, string> = {
   "licence.never": "بێ کۆتایی",
   "licence.lifetime": "پلانی ئۆفلاین: هەتاهەتایی",
   "demo.badge": "نمایش",
+  "issue.tryThis": "ئەوەی دەتوانیت تاقی بکەیتەوە",
+  "issue.call": "پەیوەندی بە پشتگیری CoreOs بکە و ئەم کۆدە بخوێنەوە",
+  "issue.close": "داخستن",
+  "log.title": "تۆماری هەڵەکان",
+  "log.hint": "ئەوەی لەسەر ئەم ئامێرە هەڵە ڕوویداوە، نوێترین لە سەرەوە. هیچ ناوی کڕیار و ژمارەی تەلەفۆن و وردەکاری پارەدان لێرە پاشەکەوت ناکرێت.",
+  "log.empty": "هیچ هەڵەیەک لەسەر ئەم ئامێرە ڕووینەداوە.",
+  "log.share": "کۆپیکردنی ڕاپۆرت بۆ واتساپ",
+  "log.shared": "کۆپی کرا — بیلکێنە لە واتساپ.",
+  "log.clear": "سڕینەوەی تۆمار",
+  "log.simulate": "هەڵەی تاقیکردنەوە",
+  "log.details": "وردەکاری",
+  "log.raise": "تۆمارکردنی کێشە بە دەست",
   "tech.title": "تەکنیسیەن",
   "tech.hint":
     "CoreOs دەتوانێت بە کلیلێکی یەک جارەیی دانیشتنی چاککردنەوە لەسەر ئەم ئامێرە بکاتەوە. هەموو ئەوەی لەو دانیشتنەدا دەکرێت لە تۆماری هەڵەکانی تۆدا دەنووسرێت و دەتوانیت بیخوێنیتەوە.",
@@ -1481,8 +1517,37 @@ const DICTS: Record<Lang, Record<Key, string>> = { en: EN, ar: AR, ckb: CKB };
 
 /** Fills {name} style holes. Missing keys fall back to English rather than
     showing a cashier a dotted identifier. */
+/**
+ * Reports a gap in a dictionary, once.
+ *
+ * Loaded late and on demand: i18n is imported by everything, including the
+ * reporter, and importing the reporter from here at the top would be a
+ * circle. A missing word is also never urgent.
+ */
+function missingKey(lang: Lang, key: Key) {
+  void import("./reportIssue")
+    .then(({ reportError }) =>
+      reportError("SW-04", `missing ${lang} translation for ${key}`, {
+        quiet: true,
+        once: `${lang}:${key}`,
+      }),
+    )
+    .catch(() => undefined);
+}
+
 export function translate(lang: Lang, key: Key, vars?: Vars): string {
-  const text = DICTS[lang]?.[key] ?? EN[key] ?? key;
+  const own = DICTS[lang]?.[key];
+  if (own === undefined) {
+    /* The dictionaries are typed so a missing key cannot normally reach a
+       build — this catches the case the types cannot: a key that exists in
+       English and not in the other two, reached at runtime on a tablet
+       working in Arabic or Kurdish. English is a far better answer than the
+       raw key, and the shop is told nothing: a word in the wrong language is
+       not worth a card over a counter. It is logged once, so CoreOS can fix
+       the dictionary rather than hear about it from fifty shops. */
+    void missingKey(lang, key);
+  }
+  const text = own ?? EN[key] ?? key;
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
     name in vars ? String(vars[name]) : whole,

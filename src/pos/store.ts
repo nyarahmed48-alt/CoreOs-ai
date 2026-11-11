@@ -17,6 +17,7 @@
  * and nothing else.
  */
 
+import { reportError } from "./reportIssue";
 import { isCloud } from "./edition";
 import { markPending } from "./cloud";
 import { useSyncExternalStore } from "react";
@@ -151,6 +152,9 @@ function read(key: string): string | null {
   } catch {
     // Touching localStorage at all can throw. Say so once, and carry on.
     writeError = storageMessage("store.noStorage");
+    reportError("DT-01", `localStorage read refused for ${key}`, {
+      once: "read",
+    });
     return null;
   }
 }
@@ -279,6 +283,10 @@ async function boot(): Promise<void> {
     void askToPersist();
   } catch (cause) {
     storageMode = "localStorage";
+    reportError(
+      "DT-01",
+      `IndexedDB unavailable, fell back to localStorage: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
     data = parseData(blob);
     messageLang = data.settings.lang;
     if (!blob) persist(DATA_KEY, data);
@@ -310,6 +318,10 @@ function persist(key: string, value: unknown) {
       (cause.name === "QuotaExceededError" ||
         cause.name === "NS_ERROR_DOM_QUOTA_REACHED");
     writeError = storageMessage(full ? "store.full" : "store.noStorage");
+    /* Out of room is the tablet's problem and has its own answer — delete
+       photos — so it gets the tablet code rather than the data one. */
+    if (full) reportError("TB-09", "low storage: a write was refused for room");
+    else reportError("DT-01", "localStorage write refused");
   }
 }
 
@@ -422,10 +434,14 @@ function queue(changes: Change[]) {
 
   writing = writing
     .then(() => write(changes))
-    .catch(() => {
+    .catch((cause: unknown) => {
       // A failed write is the one thing a shop must be told about, since what
       // is on screen is no longer what is on the tablet.
       writeError = storageMessage("store.noStorage");
+      reportError(
+        "DT-01",
+        `write failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
       notify();
     });
 }
@@ -716,6 +732,15 @@ export function priceCart(
 /** Closes the sale: writes the receipt, takes the stock off the shelf, moves
     the receipt number on and empties the basket. One commit, so a crash
     mid-way cannot leave a sale recorded but the stock untouched. */
+/** Thrown when the total does not match the lines it came from. Caught at
+    the checkout, which keeps the basket on screen. */
+export class TotalsError extends Error {
+  constructor() {
+    super("The total does not match the items.");
+    this.name = "TotalsError";
+  }
+}
+
 export function completeSale(input: {
   totals: CartTotals;
   discount: number;
@@ -727,6 +752,26 @@ export function completeSale(input: {
 }): Sale {
   if (readOnly) throw new ReadOnlyError();
   const { totals, discount, method, tendered, customer } = input;
+
+  /* The arithmetic, done a second time, from the lines that are about to be
+     written down rather than from the figures the screen is holding.
+     Charging the wrong money is the one failure a shop cannot discover later
+     and cannot undo, so it is worth doing twice and refusing on a
+     disagreement — a sale not taken is recoverable, a wrong one is not. */
+  const fromLines = totals.lines.reduce((sum, line) => sum + line.price * line.qty, 0);
+  const expected = roundTotal(Math.max(0, fromLines - discount), data.settings.roundTo);
+  if (
+    fromLines !== totals.subtotal ||
+    expected !== totals.total ||
+    !Number.isFinite(totals.total) ||
+    totals.total < 0
+  ) {
+    reportError(
+      "SW-02",
+      `lines ${fromLines} vs subtotal ${totals.subtotal}; computed ${expected} vs total ${totals.total}; discount ${discount}, roundTo ${data.settings.roundTo}`,
+    );
+    throw new TotalsError();
+  }
   const who = actor();
   const sale: Sale = {
     id: newId("s"),

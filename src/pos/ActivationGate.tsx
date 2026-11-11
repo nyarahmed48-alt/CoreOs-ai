@@ -28,6 +28,7 @@ import {
 } from "../activation";
 import { CameraScanner } from "./CameraScanner";
 import { scoped } from "./edition";
+import { reportError } from "./reportIssue";
 import { cached, standing, watchLicence, type Known } from "./licenceServer";
 import { usePos } from "./store";
 import { useT } from "./useT";
@@ -266,10 +267,15 @@ function CodeEntry({
     setBusy(false);
     if (verdict.kind === "noCrypto") {
       setError(t("activate.noCrypto"));
+      reportError("SW-06", "this browser cannot verify a licence signature");
       return;
     }
     if (verdict.kind === "bad") {
       setError(t("activate.wrong"));
+      /* Quiet: mistyping a hundred-character code is ordinary, and a card on
+         top of the message already on screen would only be in the way. It is
+         still logged, so a shop that cannot get in has a trail. */
+      reportError("SW-06", "licence code refused", { quiet: true });
       return;
     }
     setError("");

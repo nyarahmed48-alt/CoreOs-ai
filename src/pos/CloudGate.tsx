@@ -36,6 +36,7 @@ import {
 } from "./cloud";
 import { CHECK_IN_MS } from "./cloudConfig";
 import { scoped } from "./edition";
+import { reportError } from "./reportIssue";
 import { exportSnapshot, flushed, usePos } from "./store";
 import { useT } from "./useT";
 import { buildStamp } from "./report";
@@ -144,6 +145,14 @@ export async function syncNow(everything = false): Promise<void> {
   } catch (problem) {
     const fault = problem instanceof CloudError ? problem.fault : "server";
     if (fault === "signedOut") signOut();
+    /* Being offline is the normal state in these shops, not a fault — it is
+       logged so a gap in the office's books can be explained, and never put
+       in front of the shop. */
+    reportError(
+      fault === "signedOut" ? "SW-06" : "DT-02",
+      `cloud sync: ${fault}`,
+      { quiet: fault !== "signedOut", once: fault === "offline" ? "offline" : undefined },
+    );
     publish({
       trouble: fault,
       busy: false,
@@ -194,6 +203,11 @@ export function CloudGate({ onIn }: { onIn: () => void }) {
     } catch (problem) {
       const fault = problem instanceof CloudError ? problem.fault : "server";
       setError(t(`cloud.${fault}` as "cloud.server"));
+      reportError(
+        fault === "badLogin" || fault === "noShop" ? "SW-06" : "DT-02",
+        `cloud sign-in: ${fault}`,
+        { quiet: true },
+      );
     } finally {
       setBusy(false);
     }

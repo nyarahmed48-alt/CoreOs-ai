@@ -14,7 +14,9 @@
 import { useRef, useState } from "react";
 import { Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
 import { isCloud, isDemo } from "./edition";
+import { reportError } from "./reportIssue";
 import { TechnicianPanel } from "./TechnicianPanel";
+import { ErrorLogPanel } from "./ErrorLogView";
 import { CloudPanel } from "./CloudGate";
 import {
   PrintError,
@@ -123,6 +125,7 @@ export function SettingsView() {
     // Wait for anything still being written. A backup taken a millisecond
     // before the last sale reaches the disk is a backup missing a sale.
     await flushed();
+    try {
     const url = URL.createObjectURL(
       new Blob([exportData()], { type: "application/json" }),
     );
@@ -131,8 +134,19 @@ export function SettingsView() {
     link.download = `corecashier-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setNotice(t("settings.downloaded"));
-    setError("");
+      setNotice(t("settings.downloaded"));
+      setError("");
+      /* Logged either way: a shop ringing to ask where its backup went can
+         be told whether the tablet ever made one. */
+      reportError("DT-05", `backup written: ${data.sales.length} sales`, {
+        quiet: true,
+      });
+    } catch (cause) {
+      reportError(
+        "DT-03",
+        `backup failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
+    }
   }
 
   async function upload(file: File) {
@@ -140,6 +154,7 @@ export function SettingsView() {
     if (problem) {
       setError(problem);
       setNotice("");
+      reportError("DT-03", "restore refused: not a till backup");
       return;
     }
     setNotice(t("settings.restored"));
@@ -378,6 +393,10 @@ export function SettingsView() {
           ) : null}
         </Section>
 
+        <Section title={t("log.title")} hint="">
+          <ErrorLogPanel />
+        </Section>
+
         <Section title={t("tech.title")} hint="">
           <TechnicianPanel />
         </Section>
@@ -540,7 +559,14 @@ function PrinterPanel() {
       setNote(t("printer.testOk"));
     } catch (failure) {
       const fault = failure instanceof PrintError ? failure.fault : "lost";
-      if (fault !== "cancelled") setProblem(t(`print.${fault}` as "print.lost"));
+      if (fault !== "cancelled") {
+        setProblem(t(`print.${fault}` as "print.lost"));
+        reportError(
+          fault === "noChannel" ? "AC-04" : fault === "nocanvas" ? "SW-05" : "AC-02",
+          `printer test: ${fault}`,
+          { quiet: true },
+        );
+      }
       setPaired(rememberedPrinter());
     } finally {
       setBusy(false);

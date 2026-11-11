@@ -24,6 +24,7 @@ import {
   useReadOnly,
 } from "./store";
 import { useT } from "./useT";
+import { reportError } from "./reportIssue";
 import { Button, Empty, Modal } from "./ui";
 import { CheckoutModal } from "./CheckoutModal";
 import { CameraScanner } from "./CameraScanner";
@@ -108,6 +109,7 @@ export function RegisterView() {
     }
     beep("unknown");
     setUnknownCode(code);
+    reportError("SW-03", `barcode not on the shelf: ${code}`, { quiet: true, once: code });
     return t("camera.unknown", { code });
   }
 
@@ -361,7 +363,13 @@ export function RegisterView() {
           }}
           onCode={(code) => {
             const found = shelf.find((product) => product.barcode === code);
-            if (!found) return t("camera.unknown", { code });
+            if (!found) {
+              reportError("SW-03", `barcode not on the shelf: ${code}`, {
+                quiet: true,
+                once: code,
+              });
+              return t("camera.unknown", { code });
+            }
             addToCart(found.id);
             return `${found.name} · ${m(found.price)}`;
           }}

@@ -16,6 +16,7 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ReadOnlyError,
+  TotalsError,
   completeSale,
   exportData,
   isReadOnly,
@@ -88,5 +89,52 @@ describe("checking in with an office that does not exist yet", () => {
       lastSeen: Date.now() - 400 * 86_400_000,
     };
     expect(standing(ancient)).toEqual({ state: "fine" });
+  });
+});
+
+describe("the sale total, checked a second time", () => {
+  it("refuses a sale whose total does not match its lines", async () => {
+    /* The screen's figures and the lines about to be written down are
+       computed at different moments. If they ever disagree, the customer is
+       about to be charged the wrong money — the one mistake a shop cannot
+       find later and cannot undo. */
+    const data = readBook();
+    const honest = priceCart(data, [{ productId: data.products[0].id, qty: 2 }], 0);
+    const tampered = { ...honest, total: honest.total + 1000 };
+    expect(() =>
+      completeSale({
+        totals: tampered,
+        discount: 0,
+        method: "cash",
+        tendered: tampered.total,
+      }),
+    ).toThrow(TotalsError);
+    expect(readBook().sales).toHaveLength(0);
+  });
+
+  it("refuses one whose subtotal does not match either", () => {
+    const data = readBook();
+    const honest = priceCart(data, [{ productId: data.products[0].id, qty: 1 }], 0);
+    expect(() =>
+      completeSale({
+        totals: { ...honest, subtotal: honest.subtotal - 50 },
+        discount: 0,
+        method: "cash",
+        tendered: honest.total,
+      }),
+    ).toThrow(TotalsError);
+  });
+
+  it("lets an honest sale through", () => {
+    const data = readBook();
+    const honest = priceCart(data, [{ productId: data.products[0].id, qty: 3 }], 0);
+    const sale = completeSale({
+      totals: honest,
+      discount: 0,
+      method: "cash",
+      tendered: honest.total,
+    });
+    expect(sale.total).toBe(honest.total);
+    expect(readBook().sales).toHaveLength(1);
   });
 });

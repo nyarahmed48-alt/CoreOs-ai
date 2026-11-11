@@ -22,6 +22,7 @@ import { useT } from "./useT";
 import { formatDateTime, translate, type Lang } from "./i18n";
 import { PrintError, printOverBluetooth } from "./printer";
 import { isDemo } from "./edition";
+import { reportError } from "./reportIssue";
 
 /** The shop's name is theirs and sits at the top; this is ours, small, at the
     bottom. A receipt in a customer's pocket is the only advertising a till
@@ -80,6 +81,19 @@ export function receiptText(sale: Sale, settings: Settings): string {
   out.push(centre(POWERED_BY));
   return out.join("\n");
 }
+
+/** Which CoreOS code a printing fault belongs to. `noChannel` is the odd
+    one: it is not a fault at all but the wrong kind of printer — Bluetooth
+    Classic, which no browser can reach — so it reads as a pairing problem,
+    which is what the shop should act on. */
+const PRINT_CODE = {
+  lost: "AC-02",
+  unsupported: "AC-02",
+  insecure: "AC-02",
+  noChannel: "AC-04",
+  nocanvas: "SW-05",
+  cancelled: "AC-09",
+} as const;
 
 export function Receipt({ sale, settings }: { sale: Sale; settings: Settings }) {
   const { t, m, lang, dir } = useT();
@@ -210,7 +224,13 @@ export function ReceiptActions({
     } catch (failure) {
       const fault = failure instanceof PrintError ? failure.fault : "lost";
       /* Cancelling the chooser is a decision, not a fault worth a red line. */
-      if (fault !== "cancelled") setProblem(t(`print.${fault}` as "print.lost"));
+      if (fault !== "cancelled") {
+        setProblem(t(`print.${fault}` as "print.lost"));
+        /* Logged, not carded: the line under the button already says what
+           happened and offers the print dialogue instead, which is more use
+           at a counter than a card to dismiss. */
+        reportError(PRINT_CODE[fault], `printing: ${fault}`, { quiet: true });
+      }
     } finally {
       setBusy(false);
     }

@@ -19,19 +19,30 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import PosApp from "./PosApp";
+import { Boundary } from "./Boundary";
+import { reportError } from "./reportIssue";
 import "./standalone.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <PosApp standalone />
+    <Boundary>
+      <PosApp standalone />
+    </Boundary>
   </StrictMode>,
 );
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
+    navigator.serviceWorker.register("./sw.js").catch((cause: unknown) => {
       /* No worker means no offline cache, but the till still runs from
-         whatever the browser has. Nothing here is worth a broken screen. */
+         whatever the browser has — so this is logged, not put in front of
+         the shop. It matters later: a tablet that never installed a worker
+         is a tablet that will be blank the first time the wifi is out. */
+      reportError(
+        "SW-08",
+        `service worker did not install: ${cause instanceof Error ? cause.message : String(cause)}`,
+        { quiet: true },
+      );
     });
   });
 }

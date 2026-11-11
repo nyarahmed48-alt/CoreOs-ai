@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Banknote, BookUser, CreditCard } from "lucide-react";
 import {
   ReadOnlyError,
+  TotalsError,
   balanceOf,
   completeSale,
   usePos,
@@ -26,6 +27,8 @@ import type { Customer } from "./types";
 import { IQD_NOTES, amount, parseAmount } from "./money";
 import { Button, Modal } from "./ui";
 import { useT } from "./useT";
+import { reportError } from "./reportIssue";
+import { measureSale } from "./tablet";
 import { useWedgeScanner } from "./wedge";
 import { Receipt, ReceiptActions, receiptLabel } from "./Receipt";
 import type { PaymentMethod, Sale } from "./types";
@@ -83,21 +86,38 @@ export function CheckoutModal({
   });
 
   function charge() {
+    const started = performance.now();
     try {
       setSale(
         completeSale({ totals, discount, method, tendered, customer: customer ?? undefined }),
       );
+      /* The wait a person at the counter sees, which is the only honest
+         measure of "this tablet is slow". */
+      measureSale(performance.now() - started);
     } catch (problem) {
-      /* The till went read-only between opening this modal and pressing the
-         button — a licence that ran out at the counter, or a stop code typed
-         in on another screen. The charge button is disabled for it, so this
-         is the race rather than the ordinary path, and a caught refusal
-         beats a crash mid-queue. */
+      /* Whatever went wrong, the basket stays on screen. A cashier mid-queue
+         can close the card, see the same items still there and either try
+         again or take the money another way — losing the basket would mean
+         re-scanning a trolley in front of a customer.
+
+         Nothing is rethrown: a throw from here reaches the boundary and
+         takes the whole till down, basket and all, which is the opposite of
+         what this catch is for. */
       if (problem instanceof ReadOnlyError) {
+        reportError("SW-07", "charge attempted while read-only");
         setRefused(t("licence.readOnlyShort"));
         return;
       }
-      throw problem;
+      if (problem instanceof TotalsError) {
+        /* completeSale has already reported SW-02 with both figures. */
+        setRefused(t("licence.readOnlyShort"));
+        return;
+      }
+      reportError(
+        "SW-09",
+        `charge failed: ${problem instanceof Error ? problem.message : String(problem)}`,
+      );
+      setRefused("");
     }
   }
 

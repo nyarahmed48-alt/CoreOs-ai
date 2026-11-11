@@ -25,12 +25,39 @@
 
 import type { PosData } from "./types";
 
-const ERROR_KEY = "coreos.pos.errors.v1";
-const KEEP = 8;
+const ERROR_KEY = "coreos.pos.errors.v2";
+/** Two hundred, which on a busy counter is a few weeks of occasional
+    trouble — long enough that a shop ringing about "last Tuesday" is still
+    describing something the tablet remembers. */
+const KEEP = 200;
 
 export interface LoggedError {
   at: string;
+  /** A CoreOS issue code, where the thing that happened had one. Session
+      notes and other plain entries have none. */
+  code?: string;
   what: string;
+  /** Which build, which tablet. A support desk holding fifty tablets cannot
+      work out either from the shop's description. */
+  build?: string;
+  till?: string;
+  device?: string;
+}
+
+/**
+ * Takes the trade out of a line before it is written down.
+ *
+ * The log is shared on WhatsApp by shopkeepers who are not thinking about
+ * what is in it, so nothing about a customer may reach it. Call sites are
+ * written not to pass names, phones or payment details; this is the net
+ * under that, not a substitute for it — anything that looks like a phone
+ * number or a long run of digits goes, whatever it really was.
+ */
+export function scrub(text: string): string {
+  return text
+    .replace(/[+0-9][0-9\s-]{6,}[0-9]/g, "[number]")
+    .replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[email]")
+    .slice(0, 300);
 }
 
 /** Build stamp, replaced at build time — see vite.config.ts. Without it a
@@ -63,13 +90,31 @@ function writeErrors(errors: LoggedError[]) {
   }
 }
 
+/** The one way anything reaches the log. Never throws: a log that can break
+    the till is worse than no log. */
+export function pushLog(entry: Omit<LoggedError, "at">) {
+  try {
+    const what = scrub(entry.what);
+    const errors = readErrors();
+    /* The same fault repeating every render would otherwise push out the one
+       that started it. */
+    if (errors[0]?.what === what && errors[0]?.code === entry.code) return;
+    writeErrors([
+      { ...entry, what, at: new Date().toISOString() },
+      ...errors,
+    ]);
+  } catch {
+    // Nothing here is worth breaking a sale for.
+  }
+}
+
+/** A plain note with no issue code — a technician session opening, say. */
 export function recordError(what: string) {
-  const trimmed = what.slice(0, 300);
-  const errors = readErrors();
-  // The same fault repeating every render would otherwise push out the one
-  // that started it.
-  if (errors[0]?.what === trimmed) return;
-  writeErrors([{ at: new Date().toISOString(), what: trimmed }, ...errors]);
+  pushLog({ what });
+}
+
+export function clearLog() {
+  writeErrors([]);
 }
 
 export function errorCount(): number {
@@ -79,21 +124,6 @@ export function errorCount(): number {
 /** The log itself. Read by the error-log screen, and by the tests. */
 export function recordedErrors(): LoggedError[] {
   return readErrors();
-}
-
-/** Catches what the shop would otherwise have to describe: a crash, or a
-    promise that failed with nobody watching. */
-export function watchForErrors() {
-  if (typeof window === "undefined") return;
-  window.addEventListener("error", (event) => {
-    recordError(`${event.message} (${event.filename ?? "?"}:${event.lineno ?? 0})`);
-  });
-  window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason;
-    recordError(
-      `unhandled: ${reason instanceof Error ? reason.message : String(reason)}`,
-    );
-  });
 }
 
 /** Roughly how much the till is holding, in kilobytes. Shops run out of room

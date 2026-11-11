@@ -40,7 +40,9 @@ import {
   useStorageReady,
   useWriteError,
 } from "./store";
-import { watchForErrors } from "./report";
+import { reportError, stampTill, watchForCrashes } from "./reportIssue";
+import { ErrorCard } from "./ErrorCard";
+import { watchTablet } from "./tablet";
 import { useT } from "./useT";
 import { LANGS, formatTime } from "./i18n";
 import { RegisterView } from "./RegisterView";
@@ -93,7 +95,7 @@ const PRINT_CSS = `
 
 /* Started before the first render, so a crash on the way up is still in the
    report the shop sends afterwards. */
-watchForErrors();
+watchForCrashes();
 
 type Tab = "register" | "products" | "debt" | "sales" | "settings";
 
@@ -147,12 +149,26 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
 
   useEffect(() => {
     setReadOnly(!selling);
-  }, [selling]);
+    if (!selling) {
+      /* Quiet: the banner across the top already says this at length, in the
+         shop's own language. The code is here so that a shop ringing to ask
+         why it cannot sell gives the support desk SW-07 rather than a
+         description. */
+      reportError("SW-07", stopped ? "stopped by the office" : "licence lapsed", {
+        quiet: true,
+        once: stopped ? "stopped" : "lapsed",
+      });
+    }
+  }, [selling, stopped]);
+
+  /* Battery, room and connection, where the browser can see them at all. */
+  useEffect(() => watchTablet(), []);
 
   /* Ask the office whether this tablet may still sell, now and every minute
      after. A tablet with no network simply never hears back, and carries on
      until its grace runs out — see licenceServer.ts. */
   useEffect(() => {
+    stampTill(data.settings.tillId);
     return watchLicence(data.settings.tillId, publishRemote);
   }, [data.settings.tillId]);
 
@@ -214,6 +230,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     return (
       <div dir={dir} lang={lang}>
         <style>{PRINT_CSS}</style>
+        <ErrorCard />
         <CloudGate onIn={() => setCloudIn(true)} />
       </div>
     );
@@ -223,6 +240,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     return (
       <div dir={dir} lang={lang}>
         <style>{PRINT_CSS}</style>
+        <ErrorCard />
         <ActivationGate
           nonce={activation.state.nonce}
           frozen={stopped}
@@ -241,6 +259,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
       className="flex h-[100dvh] flex-col overflow-hidden bg-[#05060a] text-[#e7eaf6]"
     >
       <style>{PRINT_CSS}</style>
+      <ErrorCard />
 
       <header className="pos-noprint flex shrink-0 items-center justify-between gap-3 border-b border-[#1b2337] px-3 py-2.5 sm:px-4">
         <div className="flex min-w-0 items-center gap-2.5">

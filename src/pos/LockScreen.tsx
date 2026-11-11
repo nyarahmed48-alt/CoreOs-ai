@@ -16,6 +16,7 @@
  * holds at closing time against what the day says it should.
  */
 
+import { reportError } from "./reportIssue";
 import { useState } from "react";
 import { closeShift, expectedCash, signIn, usePos, useSession } from "./store";
 import { amount, parseAmount } from "./money";
@@ -39,6 +40,10 @@ export function LockScreen() {
     setBusy(false);
     if (!ok) {
       setError(t("lock.wrongPin"));
+      /* Quiet, and deliberately without the PIN or who typed it: a mistyped
+         PIN is the most ordinary thing at a counter. The log is for the case
+         where a cashier genuinely cannot get in. */
+      reportError("SW-06", "staff PIN refused", { quiet: true });
       setPin("");
     }
   }

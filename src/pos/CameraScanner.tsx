@@ -29,6 +29,7 @@ import { Button, Modal } from "./ui";
 import { beep } from "./beep";
 import { useT } from "./useT";
 import { translate } from "./i18n";
+import { reportError } from "./reportIssue";
 
 /** The symbologies actually printed on shop goods.
  *
@@ -410,6 +411,9 @@ export function CameraScanner({
         const name = (cause as DOMException)?.name;
         gaveUp = true;
         setSupport("unsupported");
+        /* Quiet: the screen already says what happened and offers the photo
+           route and the hand scanner, both of which keep the queue moving. */
+        reportError("AC-01", `camera: ${name ?? "no answer"}`, { quiet: true });
         /* Read through the ref: this runs inside an effect that must not be
            torn down and restarted every time the language object changes, or
            opening the camera would restart it mid-scan. */
