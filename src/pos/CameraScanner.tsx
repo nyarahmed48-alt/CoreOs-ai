@@ -222,6 +222,87 @@ async function openReader(symbols: Symbols): Promise<Reader> {
   };
 }
 
+
+/**
+ * Asking for the camera, in descending order of ambition.
+ *
+ * The first ask is the one that gives the best scanning: the back lens, 720p,
+ * and the lens told to keep hunting for focus as goods come to the counter.
+ * But `focusMode` is not in the standard constraint list, and a browser that
+ * does not know it is entitled to refuse the whole request rather than ignore
+ * the part it cannot do. On a cheap Android tablet that refusal is the
+ * difference between scanning a basket in one pass and photographing every
+ * item one at a time — and it looks, from the counter, exactly like a broken
+ * camera.
+ *
+ * So a refusal moves to a plainer ask, down to `{ video: true }`, which every
+ * browser that has a camera at all will honour.
+ *
+ * A *hang* is different from a refusal and is not retried. A request that
+ * never settles means the permission prompt never appeared, which is what
+ * Android does to a page opened from a file; asking again differently
+ * produces another silence, and the shop waits twice as long for the photo
+ * button they were always going to need.
+ */
+const WAYS_IN: { name: string; want: MediaStreamConstraints }[] = [
+  {
+    name: "back camera, 720p, continuous focus",
+    want: {
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        focusMode: { ideal: "continuous" },
+      } as MediaTrackConstraints,
+    },
+  },
+  {
+    name: "back camera, 720p",
+    want: {
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    },
+  },
+  { name: "back camera", want: { video: { facingMode: { ideal: "environment" } } } },
+  { name: "any camera", want: { video: true } },
+];
+
+/** How long one ask may hang before it counts as unanswered. */
+const NO_ANSWER_MS = 6000;
+
+async function openCamera(onOpen: (how: string) => void): Promise<MediaStream> {
+  let lastRefusal: unknown = new DOMException("No camera", "NotFoundError");
+
+  for (const way of WAYS_IN) {
+    let timer: number | undefined;
+    try {
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia(way.want),
+        new Promise<MediaStream>((_, reject) => {
+          timer = window.setTimeout(
+            () => reject(new DOMException("No answer", "TimeoutError")),
+            NO_ANSWER_MS,
+          );
+        }),
+      ]);
+      window.clearTimeout(timer);
+      onOpen(way.name);
+      return stream;
+    } catch (cause) {
+      window.clearTimeout(timer);
+      /* Silence, or a refusal by the person. Neither gets better by asking
+         again in a different shape. */
+      const name = (cause as DOMException)?.name;
+      if (name === "TimeoutError" || name === "NotAllowedError") throw cause;
+      lastRefusal = cause;
+    }
+  }
+  throw lastRefusal;
+}
+
 export function CameraScanner({
   title,
   mode,
@@ -316,9 +397,9 @@ export function CameraScanner({
   useEffect(() => {
     let stopped = false;
     let timer: number | undefined;
-    let watchdog: number | undefined;
     let gaveUp = false;
     let reader: Reader | undefined;
+    let opened = "";
 
     async function start() {
       try {
@@ -333,23 +414,10 @@ export function CameraScanner({
            refusal after seven seconds — and the photo route below still
            works, because that is the phone's own camera app rather than a
            permission this page has to be granted. */
-        const asked = navigator.mediaDevices.getUserMedia({
-          video: {
-            // The back camera on a phone; ignored by a laptop with one webcam.
-            facingMode: { ideal: "environment" },
-            /* 720p, asked for rather than demanded. Enough detail to read a
-               barcode off a curved packet, and small enough that a 4GB
-               tablet can decode it several times a second — the camera's own
-               maximum is often 4K, which looks no better here and costs
-               every frame. `ideal` so a webcam that cannot do it gives what
-               it has instead of refusing outright. */
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            /* Shop goods arrive at arm's length and then at the counter, so
-               the lens has to keep hunting rather than lock once. Ignored by
-               anything that cannot do it. */
-            focusMode: { ideal: "continuous" },
-          } as MediaTrackConstraints,
+        const asked = openCamera((name) => {
+          /* Only useful when somebody is looking at a support report later:
+             which way in worked tells us what this tablet will do. */
+          opened = name;
         });
         // A permission granted after we stopped waiting still opens a camera.
         // Nobody would be looking at it, so shut it off rather than leave the
@@ -362,16 +430,7 @@ export function CameraScanner({
           })
           .catch(() => undefined);
 
-        const stream = await Promise.race([
-          asked,
-          new Promise<MediaStream>((_, reject) => {
-            watchdog = window.setTimeout(
-              () => reject(new DOMException("No answer", "TimeoutError")),
-              7000,
-            );
-          }),
-        ]);
-        window.clearTimeout(watchdog);
+        const stream = await asked;
         if (stopped) {
           for (const track of stream.getTracks()) track.stop();
           return;
@@ -382,6 +441,15 @@ export function CameraScanner({
           await videoRef.current.play().catch(() => undefined);
         }
         setSupport("ready");
+        /* Quiet and once: nothing for the shop, but a report from a tablet
+           that had to fall back to a plainer camera request explains a lot
+           about why its scanning is worse than the one next to it. */
+        if (opened && opened !== WAYS_IN[0].name) {
+          reportError("AC-01", `camera opened only as: ${opened}`, {
+            quiet: true,
+            once: "fallback",
+          });
+        }
 
         /* A torch is a camera capability, not a browser one: most Android
            phones have it, most laptops do not, and asking a track that has
@@ -434,7 +502,6 @@ export function CameraScanner({
 
     return () => {
       stopped = true;
-      window.clearTimeout(watchdog);
       if (timer) window.clearInterval(timer);
       reader?.stop();
       for (const track of streamRef.current?.getTracks() ?? []) track.stop();
