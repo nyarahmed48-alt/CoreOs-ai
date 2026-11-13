@@ -18,7 +18,7 @@ import {
   ReadOnlyError,
   TotalsError,
   completeSale,
-  exportData,
+  exportJson,
   isReadOnly,
   priceCart,
   saveProduct,
@@ -31,9 +31,10 @@ import type { PosData } from "./types";
 /** The store keeps one book for the module, so each test puts it back. */
 afterEach(() => setReadOnly(false));
 
-/** The whole book, read without React: the same snapshot exportData writes. */
+/** The whole book, read without React. exportData now writes a readable page
+    for the shop to look at; exportJson is the same data without the wrapper. */
 function readBook() {
-  return JSON.parse(exportData()) as PosData;
+  return JSON.parse(exportJson()) as PosData;
 }
 
 describe("a till that has gone read-only", () => {

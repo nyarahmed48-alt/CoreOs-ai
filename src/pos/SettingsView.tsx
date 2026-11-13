@@ -136,11 +136,11 @@ export function SettingsView() {
     await flushed();
     try {
     const url = URL.createObjectURL(
-      new Blob([exportData()], { type: "application/json" }),
+      new Blob([exportData()], { type: "text/html;charset=utf-8" }),
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `corecashier-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `corecashier-backup-${settings.tillId}-${new Date().toISOString().slice(0, 10)}.html`;
     link.click();
     URL.revokeObjectURL(url);
       setNotice(t("settings.downloaded"));
@@ -471,7 +471,7 @@ export function SettingsView() {
             <input
               ref={fileRef}
               type="file"
-              accept="application/json"
+              accept=".html,.json,text/html,application/json"
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];

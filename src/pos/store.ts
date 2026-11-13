@@ -18,6 +18,7 @@
  */
 
 import { reportError } from "./reportIssue";
+import { backupPage, dataFromBackup } from "./backupFile";
 import { isCloud } from "./edition";
 import { markPending } from "./cloud";
 import { useSyncExternalStore } from "react";
@@ -875,7 +876,14 @@ export function voidSale(id: string, reason = "", approvedBy = "") {
 
 /* ------------------------------------------------------------------- backup */
 
+/** The backup file a shop keeps: readable on its own, and restorable. */
 export function exportData(): string {
+  return backupPage(data);
+}
+
+/** The books as plain JSON. For the cloud push and the tests, which want the
+    data rather than something to look at. */
+export function exportJson(): string {
   return JSON.stringify(data, null, 2);
 }
 
@@ -888,9 +896,12 @@ export function exportSnapshot(): PosData {
 
 /** Replaces everything. The caller has already warned; this only refuses a
     file that is not a till. */
-export function importData(raw: string): string | null {
+export function importData(file: string): string | null {
   if (readOnly) return translate(data.settings.lang, "licence.readOnlyShort");
   try {
+    /* A backup is a readable page with the till inside it, and was a plain
+       .json file before that. Both come back here. */
+    const raw = dataFromBackup(file);
     const parsed = JSON.parse(raw) as Partial<PosData>;
     if (!Array.isArray(parsed.products) || !Array.isArray(parsed.sales)) {
       return translate(data.settings.lang, "settings.badFile");
