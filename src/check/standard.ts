@@ -60,6 +60,52 @@ export const SPEED = {
   dropped: { warn: 10, fail: 25 },
 };
 
+/**
+ * What the till needs from the software on the tablet.
+ *
+ * These are the versions CoreCashier is actually built against, not a wish
+ * list. An older Chrome does not merely look worse — it is missing the
+ * crypto the licence check is built on, and the till will not activate at
+ * all on it.
+ */
+export const SOFTWARE = {
+  /** Chrome below this has no reliable WebCrypto on Android and no Web
+      Bluetooth. Raise it only when the oldest tablet in the field is past it. */
+  minimumChrome: 90,
+  warnChrome: 110,
+  /** Android below this cannot run a Chrome new enough for the above. */
+  minimumAndroid: 9,
+  /** A tablet whose clock is further out than this cannot be given a
+      technician key, and will argue with its own licence dates. */
+  clockSkewMinutes: 10,
+  /** Writing 200 records to the shop's own database, the way a busy hour
+      does. Slow storage is the most common reason a cheap tablet feels
+      broken while every other number looks fine. */
+  storageWrite: { warn: 500, fail: 1500 },
+};
+
+/**
+ * What the till needs from the screen.
+ *
+ * The till is laid out for a 10-inch tablet held in two hands. Below these
+ * the buttons are too small to hit in a queue, however well the tablet
+ * performs on everything else.
+ */
+export const DISPLAY = {
+  /** CSS pixels across, in landscape. Narrower than this and the basket and
+      the shelf cannot both be on screen. */
+  minimumWidth: 960,
+  minimumHeight: 540,
+  /** Frames per second, measured. A 30Hz panel reads as broken to a thumb. */
+  refresh: { warn: 50, fail: 40 },
+  /** Fingers the digitiser reports. Two is enough for the till; one means a
+      panel that cannot be trusted. */
+  minimumTouchPoints: 2,
+  /** Browser text scaling. A tablet set to large text pushes the till's
+      buttons off screen. 1 is normal. */
+  textScale: { warn: 1.15, fail: 1.3 },
+};
+
 export type Verdict = "pass" | "warn" | "fail" | "untested";
 
 /** Worst wins: a single failure decides the result. */

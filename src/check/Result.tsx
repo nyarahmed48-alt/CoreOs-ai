@@ -50,6 +50,7 @@ export function Result({
   const main = report.main;
   const colour = main ? PRIORITY_COLOUR[ISSUES[main].priority] : PRIORITY_COLOUR.P3;
   const tested = report.lines.filter((line) => line.verdict !== "untested");
+  const passed = tested.filter((line) => line.verdict === "pass").length;
   const untested = report.lines.filter((line) => line.verdict === "untested");
   const alsoFound = report.lines
     .filter((line) => line.code && line.code !== main)
@@ -151,7 +152,10 @@ export function Result({
       </div>
       {note ? <p className="mt-2 text-[13px] text-[#8ee7bb]">{note}</p> : null}
 
-      <ul className="mt-5 divide-y divide-[#141b2d] overflow-hidden rounded-xl border border-[#1e2740]">
+      <p className="mt-5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7e87a5]">
+        {say(lang, "result.score", { pass: passed, total: tested.length })}
+      </p>
+      <ul className="mt-2 divide-y divide-[#141b2d] overflow-hidden rounded-xl border border-[#1e2740]">
         {tested.map((line) => {
           const mark = MARK[line.verdict];
           const Icon = mark.icon;

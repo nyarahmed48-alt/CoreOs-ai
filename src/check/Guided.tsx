@@ -97,24 +97,97 @@ function Choice({
  * count goes in the reading.
  */
 function TouchTest({ lang, done }: { lang: Lang; done: Done }) {
-  const COLUMNS = 5;
-  const ROWS = 8;
+  /* Six by nine, filling the whole box so the outer ring of squares sits on
+     the very edge of the usable screen. Dead edges are the commonest fault
+     on a used tablet and a grid with a margin round it misses them. */
+  const COLUMNS = 6;
+  const ROWS = 9;
   const total = COLUMNS * ROWS;
+  /* Horizontal bands for the drag. A tap grid cannot find a dead *line*: a
+     single bad row of the digitiser is narrower than a square, and a finger
+     tapping centres steps straight over it. Dragging across every band does
+     find it. */
+  const BANDS = 14;
+
+  const [phase, setPhase] = useState<"tap" | "drag">("tap");
   const [hit, setHit] = useState<Set<number>>(new Set());
+  const [bands, setBands] = useState<Set<number>>(new Set());
+  const dead = total - hit.size;
 
   function touch(index: number) {
     setHit((current) => {
       const next = new Set(current);
       next.add(index);
-      if (next.size === total) {
+      if (next.size === total) setPhase("drag");
+      return next;
+    });
+  }
+
+  function drag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.buttons === 0 && event.pointerType === "mouse") return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const band = Math.floor(((event.clientY - box.top) / box.height) * BANDS);
+    if (band < 0 || band >= BANDS) return;
+    setBands((current) => {
+      if (current.has(band)) return current;
+      const next = new Set(current);
+      next.add(band);
+      if (next.size === BANDS) {
         done({
           id: "touch",
           verdict: "pass",
-          reading: `all ${total} squares answered`,
+          reading: `all ${total} squares and all ${BANDS} drag bands answered`,
         });
       }
       return next;
     });
+  }
+
+  function giveUp() {
+    const missedBands = BANDS - bands.size;
+    const anyMissed = dead > 0 || (phase === "drag" && missedBands > 0);
+    done({
+      id: "touch",
+      verdict: hit.size === 0 ? "untested" : anyMissed ? "fail" : "pass",
+      reading:
+        hit.size === 0
+          ? "—"
+          : `${dead} of ${total} squares and ${phase === "drag" ? missedBands : BANDS} of ${BANDS} drag bands did not answer`,
+      because: hit.size === 0 ? "skipped" : undefined,
+      code: anyMissed ? "TB-03" : undefined,
+    });
+  }
+
+  if (phase === "drag") {
+    return (
+      <Shell
+        lang={lang}
+        title={say(lang, "touch.swipe")}
+        hint={say(lang, "touch.swipeHint")}
+        onSkip={giveUp}
+      >
+        <p className="mb-3 text-center text-[14px] font-semibold text-[#f0c078]">
+          {say(lang, "touch.bands", { n: BANDS - bands.size })}
+        </p>
+        <div
+          onPointerMove={drag}
+          onPointerDown={drag}
+          className="relative h-[340px] touch-none overflow-hidden rounded-xl border border-[#232b40] bg-[#0a0f1c]"
+        >
+          {Array.from({ length: BANDS }, (_, band) => (
+            <div
+              key={band}
+              className="absolute inset-x-0 border-b border-[#111830] transition-colors"
+              style={{
+                top: `${(band / BANDS) * 100}%`,
+                height: `${100 / BANDS}%`,
+                backgroundColor: bands.has(band) ? "#2ba36b" : "transparent",
+              }}
+            />
+          ))}
+        </div>
+      </Shell>
+    );
   }
 
   return (
@@ -122,21 +195,13 @@ function TouchTest({ lang, done }: { lang: Lang; done: Done }) {
       lang={lang}
       title={say(lang, "touch.title")}
       hint={say(lang, "touch.hint")}
-      onSkip={() =>
-        done({
-          id: "touch",
-          verdict: hit.size === 0 ? "untested" : "fail",
-          reading: `${total - hit.size} of ${total} squares did not answer`,
-          because: hit.size === 0 ? "skipped" : undefined,
-          code: hit.size === 0 ? undefined : "TB-03",
-        })
-      }
+      onSkip={giveUp}
     >
       <p className="mb-3 text-center text-[14px] font-semibold text-[#f0c078]">
-        {say(lang, "touch.left", { n: total - hit.size })}
+        {say(lang, "touch.left", { n: dead })}
       </p>
       <div
-        className="grid gap-1.5"
+        className="grid touch-none gap-[3px]"
         style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}
       >
         {Array.from({ length: total }, (_, index) => (
@@ -145,7 +210,12 @@ function TouchTest({ lang, done }: { lang: Lang; done: Done }) {
             type="button"
             aria-label={`square ${index + 1}`}
             onPointerDown={() => touch(index)}
-            className={`aspect-square rounded-lg border transition-colors ${
+            onPointerEnter={(event) => {
+              /* Sliding a finger across also counts: a cashier will do that
+                 anyway, and refusing it only makes the test longer. */
+              if (event.buttons > 0 || event.pointerType === "touch") touch(index);
+            }}
+            className={`aspect-square rounded-[5px] border transition-colors ${
               hit.has(index)
                 ? "border-[#1f4034] bg-[#2ba36b]"
                 : "border-[#232b40] bg-[#111830]"
@@ -159,23 +229,77 @@ function TouchTest({ lang, done }: { lang: Lang; done: Done }) {
 
 /* ----------------------------------------------------------- the screen */
 
-const COLOURS = ["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#000000"];
+const COLOURS = [
+  { name: "red", css: "#ff0000" },
+  { name: "green", css: "#00ff00" },
+  { name: "blue", css: "#0000ff" },
+  { name: "white", css: "#ffffff" },
+  { name: "black", css: "#000000" },
+  /* Mid grey last: banding and backlight unevenness show on grey where they
+     hide on both white and black. */
+  { name: "grey", css: "#808080" },
+];
 
+/**
+ * One colour at a time, judged one at a time.
+ *
+ * Asking once at the end tells you a screen is bad. Asking after each tells
+ * you *which* — and a fault on red alone is a dead subpixel channel, while
+ * the same fault on every colour is dirt on the glass. That distinction is
+ * the difference between replacing a tablet and wiping it.
+ */
 function ColourTest({ lang, done }: { lang: Lang; done: Done }) {
-  const [showing, setShowing] = useState(-1);
+  const [at, setAt] = useState(-1);
+  const [bad, setBad] = useState<string[]>([]);
 
-  if (showing >= 0 && showing < COLOURS.length) {
+  function judge(clean: boolean) {
+    const next = clean ? bad : [...bad, COLOURS[at].name];
+    setBad(next);
+    if (at + 1 < COLOURS.length) {
+      setAt(at + 1);
+      return;
+    }
+    done(
+      next.length === 0
+        ? { id: "colour", verdict: "pass", reading: `all ${COLOURS.length} colours clean` }
+        : {
+            id: "colour",
+            verdict: "fail",
+            reading: `spots or lines on: ${next.join(", ")}`,
+            code: "TB-03",
+          },
+    );
+  }
+
+  if (at >= 0 && at < COLOURS.length) {
     return (
-      <button
-        type="button"
-        onClick={() => setShowing(showing + 1)}
-        className="fixed inset-0 z-50 flex items-end justify-center pb-10"
-        style={{ backgroundColor: COLOURS[showing] }}
+      <div
+        className="fixed inset-0 z-50 flex flex-col"
+        style={{ backgroundColor: COLOURS[at].css }}
       >
-        <span className="rounded-lg bg-black/50 px-3 py-1.5 text-[13px] text-white">
-          {say(lang, "colour.tap")}
-        </span>
-      </button>
+        <div className="flex-1" />
+        <div className="bg-black/70 px-5 py-4 backdrop-blur-sm">
+          <p className="text-center text-[14px] font-semibold text-white">
+            {say(lang, "colour.which")} — {at + 1} / {COLOURS.length}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => judge(true)}
+              className="h-[52px] rounded-xl bg-[#2ba36b] text-[15px] font-semibold text-white"
+            >
+              {say(lang, "colour.clean")}
+            </button>
+            <button
+              type="button"
+              onClick={() => judge(false)}
+              className="h-[52px] rounded-xl bg-[#b4425c] text-[15px] font-semibold text-white"
+            >
+              {say(lang, "colour.spots")}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -188,31 +312,9 @@ function ColourTest({ lang, done }: { lang: Lang; done: Done }) {
         done({ id: "colour", verdict: "untested", reading: "—", because: "skipped" })
       }
     >
-      {showing === -1 ? (
-        <Button variant="primary" className="h-[52px] w-full" onClick={() => setShowing(0)}>
-          {say(lang, "colour.start")}
-        </Button>
-      ) : (
-        <>
-          <p className="mb-3 text-[15px] font-semibold text-white">
-            {say(lang, "colour.ask")}
-          </p>
-          <Choice
-            lang={lang}
-            onYes={() =>
-              done({
-                id: "colour",
-                verdict: "fail",
-                reading: "spots or lines on the screen",
-                code: "TB-03",
-              })
-            }
-            onNo={() =>
-              done({ id: "colour", verdict: "pass", reading: "screen looks clean" })
-            }
-          />
-        </>
-      )}
+      <Button variant="primary" className="h-[52px] w-full" onClick={() => setAt(0)}>
+        {say(lang, "colour.start")}
+      </Button>
     </Shell>
   );
 }

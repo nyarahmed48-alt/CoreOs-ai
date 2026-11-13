@@ -35,6 +35,20 @@ import {
   type Result as Probe,
 } from "./probes";
 import { runSpeed } from "./bench";
+import {
+  checkApis,
+  checkBrowser,
+  checkClock,
+  checkPersistence,
+  checkStorageSpeed,
+  checkTill,
+} from "./software";
+import {
+  checkMultiTouch,
+  checkRefresh,
+  checkScreen,
+  checkTextScale,
+} from "./display";
 import { findShopName, findTillId } from "./tillId";
 import { keep, mainCode, saved, type Line, type Report } from "./reports";
 import { GUIDED, GuidedTest, type GuidedId } from "./Guided";
@@ -46,6 +60,16 @@ type Stage = "idle" | "running" | "guided" | "result" | "inspection";
 
 /** The screen's own name for each line of the report. */
 const NAMES: Record<string, Key> = {
+  apis: "check.apis",
+  browser: "check.browser",
+  persist: "check.persist",
+  diskspeed: "check.diskspeed",
+  clock: "check.clock",
+  till: "check.till",
+  refresh: "check.refresh",
+  screen: "check.screen",
+  multitouch: "check.multitouch",
+  textscale: "check.textscale",
   battery: "check.battery",
   network: "check.network",
   bluetooth: "check.bluetooth",
@@ -99,12 +123,26 @@ export default function CheckApp() {
     setLines([]);
     setStep(0);
     const found: Probe[] = [];
+    /* Software first. If the till cannot run on this tablet at all — no
+       secure crypto, a browser three years out of date — that is the answer,
+       and finding it before a two-minute speed test is the difference
+       between a useful tool and a slow one. */
     const steps: (() => Promise<Probe> | Probe)[] = [
+      checkApis,
+      checkBrowser,
+      checkPersistence,
+      checkTill,
+      checkScreen,
+      checkMultiTouch,
+      checkTextScale,
       checkBattery,
       checkNetwork,
+      checkClock,
       checkBluetooth,
       checkStorage,
       checkHardware,
+      checkRefresh,
+      checkStorageSpeed,
       runSpeed,
     ];
     for (const run of steps) {
@@ -258,7 +296,7 @@ export default function CheckApp() {
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#111830]">
             <div
               className="h-full bg-[#6c7bf0] transition-all duration-300"
-              style={{ width: `${(step / 6) * 100}%` }}
+              style={{ width: `${(step / 16) * 100}%` }}
             />
           </div>
           <ul className="mt-5 space-y-1.5 text-start">
