@@ -62,7 +62,8 @@ import {
 } from "./ActivationGate";
 import { standing, watchLicence } from "./licenceServer";
 import { watchSession } from "./technician";
-import { isCloud, isDemo } from "./edition";
+import { isCloud, isDemo, isLoaner, needsNoLicence } from "./edition";
+import { daysOut, overdue } from "./loaner";
 import {
   CloudGate,
   signedIn as cloudSignedIn,
@@ -138,7 +139,7 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
     : activation.state.frozen || office.state === "frozen";
   /* The demo has no licence to run out. It is meant to be opened in front of
      a shopkeeper and work, which an activation screen defeats entirely. */
-  const selling = isDemo
+  const selling = needsNoLicence
     ? true
     : isCloud
       ? cloudSays.state === "fine"
@@ -267,6 +268,13 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           <span className="truncate font-display text-[15px] font-semibold text-white">
             {data.settings.shopName}
           </span>
+          {isLoaner ? (
+            /* A loaner is a real till, so this says whose tablet it is
+               rather than warning anybody off it. */
+            <span className="shrink-0 rounded-md bg-[#16304a] px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] text-[#8fc6f0]">
+              {t("loaner.badge")}
+            </span>
+          ) : null}
           {isDemo ? (
             /* Always on screen. A demo tablet left on a counter is the one
                way this edition turns into somebody's unpaid till. */
@@ -324,6 +332,12 @@ export default function PosApp({ standalone = false }: { standalone?: boolean })
           )}
         </nav>
       </header>
+
+      {isLoaner && overdue() ? (
+        <p className="pos-noprint shrink-0 bg-[#16304a] px-4 py-2 text-[13px] text-[#8fc6f0]">
+          {t("loaner.overdue", { n: daysOut() })}
+        </p>
+      ) : null}
 
       {/* The licence has run out or the office has stopped this tablet.
           Said politely and at length, because the shop has done nothing

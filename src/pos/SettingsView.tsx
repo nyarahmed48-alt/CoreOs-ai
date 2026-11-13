@@ -13,7 +13,8 @@
 
 import { useRef, useState } from "react";
 import { Activity, Download, LifeBuoy, Printer, ScanLine, Send, Upload } from "lucide-react";
-import { isCloud, isDemo } from "./edition";
+import { isCloud, isDemo, isLoaner, needsNoLicence } from "./edition";
+import { daysOut, handedBack, onLoanSince } from "./loaner";
 import { reportError } from "./reportIssue";
 import { TechnicianPanel } from "./TechnicianPanel";
 import { ErrorLogPanel } from "./ErrorLogView";
@@ -325,6 +326,36 @@ export function SettingsView() {
           <CloudPanel />
         </Section>
 
+        <Section hidden={!isLoaner} title={t("loaner.title")} hint={t("loaner.note")}>
+          <div className="rounded-xl border border-[#1e2740] bg-[#0a0f1c] px-4 py-3">
+            <p className="text-[13.5px] text-[#98a0bb]">
+              {t("loaner.since", {
+                n: daysOut(),
+                date: new Date(onLoanSince()).toLocaleDateString("en-GB"),
+              })}
+            </p>
+          </div>
+          <p className="text-[13px] leading-relaxed text-[#7e87a5]">
+            {t("loaner.handBackHint")}
+          </p>
+          <Button
+            variant="danger"
+            onClick={() => {
+              /* The backup goes first and the wipe only happens after it has
+                 been written. A loaner handed back with the shop's year
+                 still on it is a shop's year handed to the next shop. */
+              if (!window.confirm(t("loaner.confirm"))) return;
+              void (async () => {
+                await download();
+                handedBack();
+                resetToSeed();
+              })();
+            }}
+          >
+            {t("loaner.handBack")}
+          </Button>
+        </Section>
+
         <Section hidden={!isDemo} title={t("demo.title")} hint={t("demo.note")}>
           <p className="text-[13px] leading-relaxed text-[#7e87a5]">
             {t("demo.restartHint")}
@@ -335,7 +366,7 @@ export function SettingsView() {
         </Section>
 
         <Section
-          hidden={isDemo || isCloud}
+          hidden={needsNoLicence || isCloud}
           title={t("licence.title")}
           hint={
             /* A shop that bought the till outright should not be told to ask

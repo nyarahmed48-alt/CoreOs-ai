@@ -23,6 +23,15 @@
  * connection does is worse than no till — but it has to have been signed in,
  * and it will not run as a free offline copy.
  *
+ * **loaner** — the tablet handed to a shop while their own is being
+ * repaired. It asks for no licence, because a shop that is already without
+ * its till should not then be made to wait on a code. It is otherwise a
+ * completely real till: real receipts with no stamp on them, real trade,
+ * and a backup that goes home with the shop afterwards. The only thing it
+ * adds is a count of the days it has been out and a way to hand it back
+ * clean, because a loaner nobody remembers is a loaner that never comes
+ * home.
+ *
  * Each edition keeps its own books. Two of these files on one tablet sharing
  * a database would mean a demo showing a shop its real takings, or worse,
  * writing over them.
@@ -30,18 +39,26 @@
 
 declare const __EDITION__: string;
 
-export type Edition = "offline" | "demo" | "cloud";
+export type Edition = "offline" | "demo" | "cloud" | "loaner";
+
+const EDITIONS: Edition[] = ["offline", "demo", "cloud", "loaner"];
 
 function chosen(): Edition {
   const named = typeof __EDITION__ === "string" ? __EDITION__ : "offline";
-  return named === "demo" || named === "cloud" ? named : "offline";
+  return (EDITIONS as string[]).includes(named) ? (named as Edition) : "offline";
 }
 
 export const EDITION: Edition = chosen();
 
 export const isDemo = EDITION === "demo";
 export const isCloud = EDITION === "cloud";
+export const isLoaner = EDITION === "loaner";
 export const isOffline = EDITION === "offline";
+
+/** Editions that sell without being activated first. The demo because
+    nothing on it is real, the loaner because the shop is already without a
+    till and must not be made to wait on a code as well. */
+export const needsNoLicence = isDemo || isLoaner;
 
 /**
  * The IndexedDB this edition reads and writes.

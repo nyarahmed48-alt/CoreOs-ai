@@ -319,6 +319,18 @@ const EN = {
   "licence.never": "No expiry",
   "licence.lifetime": "Offline plan: lifetime",
   "demo.badge": "DEMO",
+  "loaner.badge": "LOANER",
+  "loaner.title": "Loaner tablet",
+  "loaner.note":
+    "This is a CoreOS tablet on loan while your own is being repaired. It is a full till — sell on it exactly as normal, and your records come home with you.",
+  "loaner.since": "On loan for {n} days, since {date}",
+  "loaner.overdue":
+    "This CoreOS loaner tablet has been out for {n} days. Please call CoreOS to arrange handing it back.",
+  "loaner.handBack": "Hand the tablet back",
+  "loaner.handBackHint":
+    "Saves a backup of this shop's records first, then clears the tablet for the next shop. Keep the backup file — it is how your trade goes onto your own till.",
+  "loaner.confirm":
+    "Save a backup and then clear this tablet completely?\n\nThe backup downloads first. Everything on the tablet is erased after it.",
   "issue.tryThis": "What you can try",
   "issue.call": "Call CoreOS support and read this code",
   "issue.close": "Close",
@@ -799,6 +811,18 @@ const AR: Record<Key, string> = {
   "licence.never": "بلا انتهاء",
   "licence.lifetime": "خطة أوفلاين: مدى الحياة",
   "demo.badge": "عرض",
+  "loaner.badge": "إعارة",
+  "loaner.title": "جهاز معار",
+  "loaner.note":
+    "هذا جهاز من CoreOs على سبيل الإعارة ريثما يُصلَّح جهازك. وهو صندوق كامل — بِع عليه كالمعتاد، وسجلاتك تعود معك.",
+  "loaner.since": "معار منذ {n} يوماً، من {date}",
+  "loaner.overdue":
+    "هذا الجهاز المعار من CoreOs خارجاً منذ {n} يوماً. يرجى الاتصال بـ CoreOs لترتيب إعادته.",
+  "loaner.handBack": "إعادة الجهاز",
+  "loaner.handBackHint":
+    "يحفظ نسخة احتياطية من سجلات المحل أولاً، ثم يمسح الجهاز للمحل التالي. احتفظ بملف النسخة — به تنتقل مبيعاتك إلى صندوقك.",
+  "loaner.confirm":
+    "حفظ نسخة احتياطية ثم مسح هذا الجهاز بالكامل؟\n\nتُنزَّل النسخة أولاً. يُمحى كل شيء على الجهاز بعدها.",
   "issue.tryThis": "ما يمكنك تجربته",
   "issue.call": "اتصل بدعم CoreOs واقرأ هذا الرمز",
   "issue.close": "إغلاق",
@@ -1277,6 +1301,18 @@ const CKB: Record<Key, string> = {
   "licence.never": "بێ کۆتایی",
   "licence.lifetime": "پلانی ئۆفلاین: هەتاهەتایی",
   "demo.badge": "نمایش",
+  "loaner.badge": "دەینی",
+  "loaner.title": "ئامێری دەینی",
+  "loaner.note":
+    "ئەمە ئامێرێکی CoreOs ە بە دەین تا ئامێرەکەی خۆت چاک دەکرێتەوە. سندوقێکی تەواوە — وەک هەمیشە لەسەری بفرۆشە، و تۆمارەکانت لەگەڵت دەگەڕێنەوە.",
+  "loaner.since": "{n} ڕۆژە بە دەینە، لە {date} ەوە",
+  "loaner.overdue":
+    "ئەم ئامێرە دەینییەی CoreOs {n} ڕۆژە لە دەرەوەیە. تکایە پەیوەندی بە CoreOs بکە بۆ ڕێکخستنی گەڕاندنەوەی.",
+  "loaner.handBack": "گەڕاندنەوەی ئامێرەکە",
+  "loaner.handBackHint":
+    "سەرەتا پاڵپشتێک لە تۆمارەکانی دوکان پاشەکەوت دەکات، پاشان ئامێرەکە بۆ دوکانی داهاتوو پاک دەکاتەوە. فایلی پاڵپشتەکە بپارێزە — بەوە فرۆشتنەکانت دەچنە سەر سندوقی خۆت.",
+  "loaner.confirm":
+    "پاڵپشتێک پاشەکەوت بکرێت و پاشان ئەم ئامێرە بە تەواوی پاک بکرێتەوە؟\n\nسەرەتا پاڵپشتەکە داگیردەکرێت. دوای ئەوە هەموو شتێکی سەر ئامێرەکە دەسڕێتەوە.",
   "issue.tryThis": "ئەوەی دەتوانیت تاقی بکەیتەوە",
   "issue.call": "پەیوەندی بە پشتگیری CoreOs بکە و ئەم کۆدە بخوێنەوە",
   "issue.close": "داخستن",
