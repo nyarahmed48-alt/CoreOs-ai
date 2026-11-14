@@ -270,10 +270,50 @@ const WAYS_IN: { name: string; want: MediaStreamConstraints }[] = [
   { name: "any camera", want: { video: true } },
 ];
 
-/** How long one ask may hang before it counts as unanswered. */
-const NO_ANSWER_MS = 6000;
+/**
+ * How long to wait for the camera, which depends entirely on whether a
+ * person is being asked something.
+ *
+ * This was a flat six seconds and it was wrong. While Android's permission
+ * prompt is on screen, `getUserMedia` is *correctly* pending — it is waiting
+ * for a thumb. A shopkeeper reading an Arabic dialog and deciding to tap
+ * Allow takes longer than six seconds more often than not, and the timer
+ * fired first, tore the request down and told them their tablet had no live
+ * camera. It was the app giving up on the shop, not the other way round.
+ */
+const ALREADY_ALLOWED_MS = 6000;
+const WAITING_ON_A_PERSON_MS = 60_000;
 
-async function openCamera(onOpen: (how: string) => void): Promise<MediaStream> {
+/** Has this tablet already been asked? Not every browser will say. */
+async function cameraPermission(): Promise<"granted" | "prompt" | "denied" | "unknown"> {
+  try {
+    const status = await navigator.permissions?.query({
+      name: "camera" as PermissionName,
+    });
+    return (status?.state as "granted" | "prompt" | "denied") ?? "unknown";
+  } catch {
+    /* Older Android has no Permissions API, and some browsers refuse the
+       camera name specifically. Unknown means "assume a prompt may appear",
+       which is the forgiving half of the guess. */
+    return "unknown";
+  }
+}
+
+async function openCamera(
+  onOpen: (how: string) => void,
+  onAsking: () => void,
+): Promise<MediaStream> {
+  const permission = await cameraPermission();
+
+  /* Already refused, on purpose, at some point. Asking again produces
+     nothing and the shop waits a minute for it. */
+  if (permission === "denied") {
+    throw new DOMException("Camera refused", "NotAllowedError");
+  }
+  const mayPrompt = permission !== "granted";
+  if (mayPrompt) onAsking();
+  const patience = mayPrompt ? WAITING_ON_A_PERSON_MS : ALREADY_ALLOWED_MS;
+
   let lastRefusal: unknown = new DOMException("No camera", "NotFoundError");
 
   for (const way of WAYS_IN) {
@@ -284,7 +324,7 @@ async function openCamera(onOpen: (how: string) => void): Promise<MediaStream> {
         new Promise<MediaStream>((_, reject) => {
           timer = window.setTimeout(
             () => reject(new DOMException("No answer", "TimeoutError")),
-            NO_ANSWER_MS,
+            patience,
           );
         }),
       ]);
@@ -345,6 +385,7 @@ export function CameraScanner({
       been taken away rather than still sitting in front of the lens. */
   const goneRef = useRef(0);
   const [support, setSupport] = useState<Support>("checking");
+  const [asking, setAsking] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [error, setError] = useState("");
@@ -414,11 +455,19 @@ export function CameraScanner({
            refusal after seven seconds — and the photo route below still
            works, because that is the phone's own camera app rather than a
            permission this page has to be granted. */
-        const asked = openCamera((name) => {
-          /* Only useful when somebody is looking at a support report later:
-             which way in worked tells us what this tablet will do. */
-          opened = name;
-        });
+        const asked = openCamera(
+          (name) => {
+            /* Only useful when somebody is looking at a support report
+               later: which way in worked tells us what this tablet will do. */
+            opened = name;
+          },
+          () => {
+            /* The prompt is about to appear. Say what to do about it —
+               a cashier staring at "Starting the camera…" does not know
+               the dialogue behind it is waiting for them. */
+            if (!stopped) setAsking(true);
+          },
+        );
         // A permission granted after we stopped waiting still opens a camera.
         // Nobody would be looking at it, so shut it off rather than leave the
         // light on above a counter.
@@ -441,6 +490,7 @@ export function CameraScanner({
           await videoRef.current.play().catch(() => undefined);
         }
         setSupport("ready");
+        setAsking(false);
         /* Quiet and once: nothing for the shop, but a report from a tablet
            that had to fall back to a plainer camera request explains a lot
            about why its scanning is worse than the one next to it. */
@@ -607,7 +657,11 @@ export function CameraScanner({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
             <Camera size={22} className="text-[#5b6480]" />
             <p className="text-[13.5px] text-[#98a0bb]">
-              {support === "checking" ? t("camera.starting") : error}
+              {support === "checking"
+                ? asking
+                  ? t("camera.allow")
+                  : t("camera.starting")
+                : error}
             </p>
           </div>
         ) : null}

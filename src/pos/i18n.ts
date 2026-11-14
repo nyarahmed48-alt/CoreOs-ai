@@ -287,6 +287,10 @@ const EN = {
 
   "camera.basket": "Scan into the basket",
   "camera.starting": "Starting the camera…",
+  "camera.allow":
+    "Tap Allow when the tablet asks to use the camera. It only asks once.",
+  "camera.another": "Scan another",
+  "camera.found": "{n} barcodes in that photo",
   "camera.light": "Light",
   "camera.hold": "Hold the barcode inside the box.",
   "camera.done": "Done scanning",
@@ -779,6 +783,10 @@ const AR: Record<Key, string> = {
 
   "camera.basket": "المسح إلى السلة",
   "camera.starting": "جارٍ تشغيل الكاميرا…",
+  "camera.allow":
+    "اضغط «سماح» عندما يطلب الجهاز استخدام الكاميرا. يسأل مرة واحدة فقط.",
+  "camera.another": "مسح مادة أخرى",
+  "camera.found": "{n} باركود في هذه الصورة",
   "camera.light": "الإضاءة",
   "camera.hold": "ضع الباركود داخل الإطار.",
   "camera.done": "انتهيت",
@@ -1269,6 +1277,10 @@ const CKB: Record<Key, string> = {
 
   "camera.basket": "سکان بۆ ناو سەبەتە",
   "camera.starting": "کامێرا دەکرێتەوە…",
+  "camera.allow":
+    "کاتێک ئامێرەکە داوای کامێرا دەکات «ڕێگەدان» لێبدە. تەنها یەک جار دەپرسێت.",
+  "camera.another": "سکانی کاڵایەکی تر",
+  "camera.found": "{n} بارکۆد لەو وێنەیەدا",
   "camera.light": "ڕووناکی",
   "camera.hold": "بارکۆد لە ناو چوارچێوەکە ڕابگرە.",
   "camera.done": "تەواوبوو",
