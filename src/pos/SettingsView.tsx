@@ -37,7 +37,9 @@ import {
 } from "./store";
 import { useT } from "./useT";
 import { LANGS } from "./i18n";
-import { Button, Field, Modal } from "./ui";
+import { Button, Field, Modal, Select } from "./ui";
+import { iraqiNumber, showNumber } from "./whatsapp";
+import type { Settings } from "./types";
 import { useWedgeScanner, type ScanInfo } from "./wedge";
 import { useWriteError, saveStaff, setStaffActive, useSession, signOut } from "./store";
 import { buildReport, errorCount, whatsappNumber } from "./report";
@@ -268,6 +270,25 @@ export function SettingsView() {
               })
             }
           />
+          {/* A time input rather than a text box: the tablet shows its own
+              clock picker, and there is no way to type 25:00 into it. */}
+          <Field
+            label={t("settings.dayStart")}
+            type="time"
+            value={settings.dayStartsAt || "00:00"}
+            hint={t("settings.dayStartHint")}
+            onChange={(event) =>
+              updateSettings({ dayStartsAt: event.target.value || "00:00" })
+            }
+          />
+        </Section>
+
+        <Section
+          hidden={readOnly}
+          title={t("settings.reports")}
+          hint={t("settings.reportsHint")}
+        >
+          <OwnerNumber />
         </Section>
 
         <Section hidden={readOnly}
@@ -739,6 +760,66 @@ function Choice({
         {hint}
       </span>
     </button>
+  );
+}
+
+/**
+ * The owner's own WhatsApp number.
+ *
+ * Typed the way an Iraqi shopkeeper writes it — 0770 123 4567, with or
+ * without spaces — and stored in the one form `wa.me` accepts. Kept as text
+ * while they are typing so the box does not fight them halfway through, and
+ * converted when they leave it.
+ */
+function OwnerNumber() {
+  const { settings } = usePos();
+  const { t } = useT();
+  const [typed, setTyped] = useState(() => showNumber(settings.ownerWhatsApp));
+  const [bad, setBad] = useState(false);
+
+  function settle() {
+    if (typed.trim() === "") {
+      setBad(false);
+      updateSettings({ ownerWhatsApp: "" });
+      return;
+    }
+    const number = iraqiNumber(typed);
+    setBad(number === "");
+    if (number) {
+      updateSettings({ ownerWhatsApp: number });
+      setTyped(showNumber(number));
+    }
+  }
+
+  return (
+    <>
+      <Field
+        label={t("settings.ownerWhatsapp")}
+        inputMode="tel"
+        value={typed}
+        placeholder="0770 123 4567"
+        hint={bad ? t("settings.ownerWhatsappBad") : t("settings.ownerWhatsappHint")}
+        onChange={(event) => {
+          setTyped(event.target.value);
+          setBad(false);
+        }}
+        onBlur={settle}
+      />
+      <Select
+        label={t("settings.reportLang")}
+        value={settings.reportLang}
+        onChange={(value) =>
+          updateSettings({ reportLang: value as Settings["reportLang"] })
+        }
+      >
+        <option value="same">{t("settings.reportLangSame")}</option>
+        {LANGS.map((one) => (
+          <option key={one.id} value={one.id}>
+            {one.name}
+          </option>
+        ))}
+      </Select>
+    </>
   );
 }
 

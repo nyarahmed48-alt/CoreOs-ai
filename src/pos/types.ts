@@ -240,6 +240,36 @@ export interface Settings {
   /** How much of the log to keep. Tablets are small and a busy counter writes
       a lot of it. */
   auditKeep: number;
+  /**
+   * When the shop's day starts, as `HH:MM` on a 24-hour clock.
+   *
+   * "00:00" is midnight and is what most shops want. A café that serves
+   * until two in the morning sets something like "05:00", and everything
+   * rung up before then counts as the night before — which is how the
+   * owner already thinks about it, and how the takings have to add up for
+   * them to trust the figures.
+   *
+   * It moves every total together: the day close, the sales screen and the
+   * end-of-day report. One shop, one definition of today.
+   */
+  dayStartsAt: string;
+  /**
+   * The owner's own WhatsApp number, as `+9647XXXXXXXXX`.
+   *
+   * Kept in full international form because that is the only form `wa.me`
+   * accepts; the shop types the `07XX XXX XXXX` they know and it is converted
+   * on the way in. Empty until they set it, and the end-of-day report then
+   * offers to pick a chat by hand instead of refusing to send.
+   *
+   * This is not `supportPhone`. That one goes to us, with error codes and no
+   * trade in it. This one goes to the shop's own owner and carries takings,
+   * customer names and debts — so it must never be pointed anywhere else.
+   */
+  ownerWhatsApp: string;
+  /** What language the end-of-day report is written in. "same" follows the
+      till, which is what most shops want; an owner who reads English while
+      their cashier works in Arabic sets it to "en". */
+  reportLang: Lang | "same";
   /** How a receipt leaves the till. `browser` is the print dialogue the shop
       has always had, and is the default: it works with whatever the tablet is
       already set up to print to. `bluetooth` talks ESC/POS straight to a roll

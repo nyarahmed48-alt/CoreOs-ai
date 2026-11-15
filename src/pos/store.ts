@@ -1243,12 +1243,29 @@ export interface DayFigures {
   expectedCash: number;
 }
 
-/** The local calendar day, which is the one a shop closes. */
-function dayOf(iso: string): string {
+/**
+ * Which trading day a moment belongs to.
+ *
+ * Not simply the calendar date. A café that closes at two in the morning
+ * rings up its last hour after midnight, and a report that files those
+ * sales under tomorrow is a report the owner stops believing. So the shop
+ * says when its day starts, and anything before that hour counts as the day
+ * before.
+ */
+export function dayOfAt(iso: string, startsAt = data.settings.dayStartsAt): string {
   const at = new Date(iso);
+  const [hour, minute] = (startsAt || "00:00").split(":").map(Number);
+  const start = (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
+  if (start > 0 && at.getHours() * 60 + at.getMinutes() < start) {
+    at.setDate(at.getDate() - 1);
+  }
   return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(
     at.getDate(),
   ).padStart(2, "0")}`;
+}
+
+function dayOf(iso: string): string {
+  return dayOfAt(iso);
 }
 
 export function today(): string {

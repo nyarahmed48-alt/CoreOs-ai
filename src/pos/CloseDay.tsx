@@ -21,6 +21,7 @@ import { closeDay, closeFor, figuresFor, today, usePos } from "./store";
 import { amount, parseAmount } from "./money";
 import { useT } from "./useT";
 import { ApprovalPrompt } from "./ApprovalPrompt";
+import { EndOfDayButton } from "./EndOfDay";
 import { Button, Field, Modal } from "./ui";
 import { formatTime } from "./i18n";
 
@@ -98,7 +99,20 @@ export function CloseDayModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {done ? (
-        <p className="mt-3 text-center text-[13.5px] text-[#8ee7bb]">{t("close.saved")}</p>
+        <>
+          <p className="mt-3 text-center text-[13.5px] text-[#8ee7bb]">
+            {t("close.saved")}
+          </p>
+          {/* The moment the owner is most likely to want the message: they
+              have just counted the drawer and signed it off. Offered, not
+              done for them — nothing leaves the shop unasked. */}
+          <p className="mt-4 text-center text-[13px] text-[#98a0bb]">
+            {t("day.afterClose")}
+          </p>
+          <EndOfDayButton day={day} className="mt-2 h-[50px] w-full">
+            {t("day.send")}
+          </EndOfDayButton>
+        </>
       ) : (
         <Button
           variant="primary"

@@ -15,12 +15,14 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  dayOfAt,
   usePos,
   useReadOnly,
   voidSale,
 } from "./store";
 import { ApprovalPrompt } from "./ApprovalPrompt";
 import { CloseDayModal } from "./CloseDay";
+import { EndOfDayButton } from "./EndOfDay";
 import { closeFor, today } from "./store";
 import { useT } from "./useT";
 import { formatDay, formatTime, type Lang } from "./i18n";
@@ -30,15 +32,15 @@ import type { Sale } from "./types";
 
 /** Local calendar day, not UTC: a sale rung at 9pm belongs to that evening's
     takings wherever the shop is. */
+/* The shop's own definition of a day, not the calendar's — see dayOfAt in
+   the store. Two screens disagreeing about which sales are "today" is worse
+   than either answer. */
 function dayKey(iso: string): string {
-  const at = new Date(iso);
-  const month = `${at.getMonth() + 1}`.padStart(2, "0");
-  const day = `${at.getDate()}`.padStart(2, "0");
-  return `${at.getFullYear()}-${month}-${day}`;
+  return dayOfAt(iso);
 }
 
 function todayKey(): string {
-  return dayKey(new Date().toISOString());
+  return dayOfAt(new Date().toISOString());
 }
 
 function shiftDay(key: string, days: number): string {
@@ -215,17 +217,23 @@ export function SalesView() {
           )}
         </div>
 
-        {day === today() && !readOnly ? (
-          <Button
-            variant="ghost"
-            className="mt-4 h-[46px] w-full"
-            onClick={() => setClosing(true)}
-          >
-            {closeFor(data, day)
-              ? `${t("close.title")} · ${t("close.saved")}`
-              : t("close.title")}
-          </Button>
-        ) : null}
+        <div className="mt-4 flex gap-2">
+          {day === today() && !readOnly ? (
+            <Button
+              variant="ghost"
+              className="h-[46px] flex-1"
+              onClick={() => setClosing(true)}
+            >
+              {closeFor(data, day)
+                ? `${t("close.title")} · ${t("close.saved")}`
+                : t("close.title")}
+            </Button>
+          ) : null}
+          {/* Available on a read-only till on purpose: a shop whose licence
+              has lapsed can still read its own books and still has an owner
+              who wants to know what the week did. */}
+          <EndOfDayButton day={day} className="h-[46px] flex-1" />
+        </div>
 
         {report.voided > 0 ? (
           <p className="mt-3 text-[12.5px] text-[#6b7490]">
