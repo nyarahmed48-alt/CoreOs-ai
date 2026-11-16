@@ -15,8 +15,7 @@
 import { Sparkles, Clock, MapPin, MessageCircle, Quote } from "lucide-react";
 import { NAILS } from "./content";
 import { DemoBar, DemoSection, PhotoTile, PriceRow, useCopy } from "./shared";
-import { whatsapp } from "../contact";
-import { useLang } from "../i18n";
+import { CONTACT_FORM_URL } from "../contact";
 
 const CREAM = "#fbf7f4";
 const INK = "#33262b";
@@ -36,7 +35,6 @@ const TILES: Array<[string, string]> = [
 
 export function NailsDemo() {
   const c = useCopy();
-  const { t } = useLang();
 
   return (
     <div style={{ background: CREAM, color: INK }} className="min-h-[100dvh]">
@@ -62,7 +60,7 @@ export function NailsDemo() {
               {c(NAILS.intro)}
             </p>
             <a
-              href={whatsapp(t("contact.waPrefill"))}
+              href={CONTACT_FORM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-8 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90"
@@ -152,7 +150,7 @@ export function NailsDemo() {
             {c(NAILS.bookBody)}
           </p>
           <a
-            href={whatsapp(t("contact.waPrefill"))}
+            href={CONTACT_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90"

@@ -13,13 +13,27 @@ import {
   HeartHandshake,
   Sparkles,
   Globe,
-  Smartphone,
   Workflow,
   Bot,
   Tag,
+  ScanBarcode,
+  TrendingDown,
+  NotebookPen,
+  WifiOff,
+  FileText,
+  CloudUpload,
+  Tablet,
+  MonitorSmartphone,
+  ClipboardList,
+  MapPin,
+  Store,
+  Megaphone,
+  Plug,
+  ArrowUpRight,
 } from "lucide-react";
 import { CoreOsMark } from "./Logo";
 import { Link } from "./router";
+import { FORM_LINK_PROPS } from "./contact";
 import { OPEN_TESTING, LAB_MODELS, type PublicAgent } from "./catalog";
 import { AgentCard } from "./AgentCard";
 import { Eyebrow } from "./Eyebrow";
@@ -55,29 +69,24 @@ export function HomePage() {
             </h1>
 
             <p className="mt-7 max-w-2xl text-[17px] leading-relaxed text-[#a4abc4] md:text-[18px]">
-              {t("home.lede")}
+              {t("home.oneLine")}
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                to="/testing"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
+              <a
+                href="#services"
+                className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
               >
-                {t("home.ctaTest")}
+                {t("home.ctaServices")}
                 <Arrow />
-              </Link>
-              <Link
-                to="/coreos-ai"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#232b40] bg-[#0a0d16] px-5 py-3 text-[14.5px] font-semibold text-[#c3c9dd] transition-colors hover:border-[#3a4460] hover:text-white"
+              </a>
+              <a
+                {...FORM_LINK_PROPS}
+                className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-[#232b40] bg-[#0a0d16] px-5 text-[14.5px] font-semibold text-[#c3c9dd] transition-colors hover:border-[#3a4460] hover:text-white"
               >
-                {/* One flex child: the parent's gap must not split the word. */}
-                <span>
-                  {t("home.ctaExplore")}{" "}
-                  <span dir="ltr">
-                    CoreOs<span className="text-[#1878dc]">.ai</span>
-                  </span>
-                </span>
-              </Link>
+                {t("nav.talk")}
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
             </div>
 
             <dl className="mt-14 grid max-w-2xl grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
@@ -106,69 +115,158 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------- What we build
 
-          Sits directly under the hero on purpose. The hero leads on AI, but
-          most enquiries are website builds — a visitor should not have to
-          scroll past three AI sections to learn we do the thing they came for.
+      {/* ---------------------------------------------------------- CoreCashier
+
+          The hero product, so it sits immediately under the hero rather than
+          below three sections about the company. Every feature listed is one
+          the system actually has; there are no prices here because they
+          depend on the device, so each card ends at the form instead.
       */}
-      <section className="border-b border-[#12172a]">
-        <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
-          <div className="max-w-2xl">
-            <Eyebrow>{t("build.eyebrow")}</Eyebrow>
-            <h2 className="mt-4 font-display text-[clamp(1.9rem,4vw,2.7rem)] font-bold leading-tight tracking-[-0.02em] text-white">
-              {t("build.h2")}
-            </h2>
-            <p className="mt-5 text-[15.5px] leading-relaxed text-[#a4abc4]">
-              {t("build.lede")}
+      <section id="corecashier" className="border-b border-[#12172a] bg-[#07090f]">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <Eyebrow>{t("cc.eyebrow")}</Eyebrow>
+          <h2 className="mt-5 max-w-3xl font-brand text-[clamp(1.9rem,4.6vw,3rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-white">
+            {t("cc.h2")}
+          </h2>
+          <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-[#a4abc4]">
+            {t("cc.lede")}
+          </p>
+
+          <h3 className="mt-12 text-[12px] font-bold uppercase tracking-[0.16em] text-[#5e677f]">
+            {t("cc.featTitle")}
+          </h3>
+          <ul className="mt-5 grid gap-x-8 gap-y-3.5 sm:grid-cols-2">
+            {(
+              [
+                [ScanBarcode, "cc.f1"],
+                [Gauge, "cc.f2"],
+                [TrendingDown, "cc.f3"],
+                [NotebookPen, "cc.f4"],
+                [WifiOff, "cc.f5"],
+                [FileText, "cc.f6"],
+                [Languages, "cc.f7"],
+                [CloudUpload, "cc.f8"],
+              ] as Array<[typeof Gauge, CopyKey]>
+            ).map(([Icon, key]) => (
+              <li key={key} className="flex items-start gap-3">
+                <Icon className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#6c7bf0]" />
+                <span className="text-[15px] leading-relaxed text-[#c3c9dd]">{t(key)}</span>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="mt-14 text-[12px] font-bold uppercase tracking-[0.16em] text-[#5e677f]">
+            {t("cc.optTitle")}
+          </h3>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {(
+              [
+                [Tablet, "cc.o1t", "cc.o1b"],
+                [MonitorSmartphone, "cc.o2t", "cc.o2b"],
+              ] as Array<[typeof Gauge, CopyKey, CopyKey]>
+            ).map(([Icon, title, body]) => (
+              <div key={title} className="rounded-2xl border border-[#232b40] bg-[#0b1018] p-6">
+                <Icon className="h-5 w-5 text-[#6c7bf0]" />
+                <h4 className="mt-3.5 font-display text-[16.5px] font-bold text-white">{t(title)}</h4>
+                <p className="mt-2 text-[14.5px] leading-relaxed text-[#8c93ac]">{t(body)}</p>
+                <a
+                  {...FORM_LINK_PROPS}
+                  className="mt-5 inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-[#6c7bf0] hover:text-[#8390f4]"
+                >
+                  {t("ct.quote")}
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-[13.5px] text-[#7d859e]">{t("cc.addons")}</p>
+
+          <h3 className="mt-14 text-[12px] font-bold uppercase tracking-[0.16em] text-[#5e677f]">
+            {t("cc.howTitle")}
+          </h3>
+          <ol className="mt-5 grid gap-4 sm:grid-cols-3">
+            {(["cc.h1t", "cc.h2t", "cc.h3t"] as CopyKey[]).map((key, i) => (
+              <li key={key} className="rounded-2xl border border-[#1b2236] bg-[#080b12] p-5">
+                <span
+                  dir="ltr"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#141a2a] font-display text-[13px] font-bold text-[#6c7bf0]"
+                >
+                  {i + 1}
+                </span>
+                <p className="mt-3 text-[14.5px] leading-relaxed text-[#c3c9dd]">{t(key)}</p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <a
+              {...FORM_LINK_PROPS}
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-[#6c7bf0] px-6 text-[15px] font-bold text-[#05060a] transition-colors hover:bg-[#8390f4]"
+            >
+              {t("cc.cta")}
+              <ArrowUpRight className="h-4 w-4" />
+            </a>
+            <p className="inline-flex items-center gap-2 text-[13.5px] text-[#7d859e]">
+              <MapPin className="h-4 w-4 shrink-0 text-[#6c7bf0]" />
+              {t("cc.where")}
             </p>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Craft
-              icon={<Globe className="h-5 w-5" />}
-              title={t("build.c1T")}
-              body={t("build.c1B")}
-            />
-            <Craft
-              icon={<Smartphone className="h-5 w-5" />}
-              title={t("build.c2T")}
-              body={t("build.c2B")}
-            />
-            <Craft
-              icon={<Workflow className="h-5 w-5" />}
-              title={t("build.c3T")}
-              body={t("build.c3B")}
-            />
-            <Craft
-              icon={<Bot className="h-5 w-5" />}
-              title={t("build.c4T")}
-              body={t("build.c4B")}
-            />
+      {/* ------------------------------------------------------------ Services
+
+          Five cards, in the order a visitor is most likely to need them.
+          Marketing is listed last but belongs here rather than in a silo —
+          CoreStudio is part of CoreOs, not a separate company.
+      */}
+      <section id="services" className="border-b border-[#12172a]">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <Eyebrow>{t("sv.eyebrow")}</Eyebrow>
+          <h2 className="mt-5 max-w-3xl font-brand text-[clamp(1.8rem,4.2vw,2.7rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+            {t("sv.h2")}
+          </h2>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                [Workflow, "sv.s1t", "sv.s1b"],
+                [Globe, "sv.s2t", "sv.s2b"],
+                [Plug, "sv.s3t", "sv.s3b"],
+                [Bot, "sv.s4t", "sv.s4b"],
+                [Megaphone, "sv.s5t", "sv.s5b"],
+              ] as Array<[typeof Globe, CopyKey, CopyKey]>
+            ).map(([Icon, title, body]) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-[#1b2236] bg-[#080b12] p-6 transition-colors hover:border-[#2c3550]"
+              >
+                <Icon className="h-5 w-5 text-[#6c7bf0]" />
+                <h3 className="mt-3.5 font-display text-[16.5px] font-bold text-white">{t(title)}</h3>
+                <p className="mt-2 text-[14.5px] leading-relaxed text-[#8c93ac]">{t(body)}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Price sits with the work rather than on its own page: the question
-              lands the moment someone reads what we build, and silence on it
-              makes small businesses assume they cannot afford us. */}
-          <div className="mt-8 rounded-2xl border border-[#1c2337] bg-[#0a0d16] p-6">
-            <div className="flex items-center gap-2 text-[#1878dc]">
-              <Tag className="h-4 w-4" />
-              <h3 className="font-display text-[15px] font-semibold text-white">
-                {t("build.priceT")}
-              </h3>
+          <div className="mt-8 rounded-2xl border border-[#232b40] bg-[#0b1018] p-6">
+            <div className="flex items-start gap-3">
+              <Tag className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#6c7bf0]" />
+              <div>
+                <h3 className="font-display text-[15.5px] font-bold text-white">{t("build.priceT")}</h3>
+                <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-[#8c93ac]">
+                  {t("build.priceB")}
+                </p>
+                <a
+                  {...FORM_LINK_PROPS}
+                  className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-[#6c7bf0] hover:text-[#8390f4]"
+                >
+                  {t("ct.quote")}
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
-            <p className="mt-2 max-w-3xl text-[14.5px] leading-relaxed text-[#a4abc4]">
-              {t("build.priceB")}
-            </p>
           </div>
-
-          <Link
-            to="/contact"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#6c7bf0] px-5 py-3 text-[14.5px] font-semibold text-[#05060a] transition-colors hover:bg-[#8390f4]"
-          >
-            {t("build.cta")}
-            <Arrow />
-          </Link>
         </div>
       </section>
 
@@ -342,6 +440,102 @@ export function HomePage() {
         </div>
       </section>
 
+
+      {/* ---------------------------------------------------------- CoreStudio */}
+      <section id="corestudio" className="border-b border-[#12172a] bg-[#07090f]">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-20">
+          <Eyebrow>{t("cs.eyebrow")}</Eyebrow>
+          <h2 className="mt-5 max-w-2xl font-brand text-[clamp(1.7rem,3.8vw,2.4rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+            {t("cs.h2")}
+          </h2>
+          <p className="mt-5 max-w-2xl text-[15.5px] leading-relaxed text-[#a4abc4]">
+            {t("cs.body")}
+          </p>
+          <a
+            {...FORM_LINK_PROPS}
+            className="mt-7 inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-[#232b40] bg-[#0a0d16] px-5 text-[14.5px] font-semibold text-[#c3c9dd] transition-colors hover:border-[#3a4460] hover:text-white"
+          >
+            {t("ct.quote")}
+            <ArrowUpRight className="h-4 w-4" />
+          </a>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------- Brands strip
+
+          Four names, one company. Stated plainly because the structure is the
+          thing people most often get wrong about us: CoreStudio and CoreOs.ai
+          are branches, not separate businesses.
+      */}
+      <section className="border-b border-[#12172a]">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-20">
+          <Eyebrow>{t("br.eyebrow")}</Eyebrow>
+          <h2 className="mt-5 font-brand text-[clamp(1.7rem,3.8vw,2.4rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+            {t("br.h2")}
+          </h2>
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {(
+              [
+                ["CoreOS", "br.b1", "#services"],
+                ["CoreOS.ai", "br.b2", "/coreos-ai"],
+                ["CoreCashier", "br.b3", "#corecashier"],
+                ["CoreStudio", "br.b4", "#corestudio"],
+              ] as Array<[string, CopyKey, string]>
+            ).map(([name, body, href]) => (
+              <a
+                key={name}
+                href={href}
+                className="rounded-2xl border border-[#1b2236] bg-[#080b12] p-5 transition-colors hover:border-[#2c3550]"
+              >
+                <span dir="ltr" className="font-display text-[15.5px] font-bold text-white">
+                  {name}
+                </span>
+                <p className="mt-2 text-[14px] leading-relaxed text-[#8c93ac]">{t(body)}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* -------------------------------------------------- Who we work with */}
+      <section className="border-b border-[#12172a] bg-[#07090f]">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-20">
+          <Eyebrow>{t("wh.eyebrow")}</Eyebrow>
+          <h2 className="mt-5 font-brand text-[clamp(1.7rem,3.8vw,2.4rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+            {t("wh.h2")}
+          </h2>
+          <p className="mt-5 inline-flex max-w-2xl items-start gap-3 text-[15.5px] leading-relaxed text-[#a4abc4]">
+            <Store className="mt-1 h-4.5 w-4.5 shrink-0 text-[#6c7bf0]" />
+            {t("wh.body")}
+          </p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------ Contact */}
+      <section id="contact">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <div className="rounded-3xl border border-[#232b40] bg-[#0b1018] p-7 text-center md:p-12">
+            <h2 className="font-brand text-[clamp(1.7rem,4vw,2.5rem)] font-extrabold tracking-[-0.03em] text-white">
+              {t("contact.h1")}
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-[15.5px] leading-relaxed text-[#a4abc4]">
+              {t("ct.formNote")}
+            </p>
+            <a
+              {...FORM_LINK_PROPS}
+              className="mt-8 inline-flex min-h-[52px] items-center gap-2 rounded-xl bg-[#6c7bf0] px-7 text-[15.5px] font-bold text-[#05060a] transition-colors hover:bg-[#8390f4]"
+            >
+              {t("nav.talk")}
+              <ArrowUpRight className="h-4 w-4" />
+            </a>
+            <p className="mt-5 inline-flex items-center justify-center gap-2 text-[14px] text-[#8c93ac]">
+              <ClipboardList className="h-4 w-4 shrink-0 text-[#6c7bf0]" />
+              {t("ct.reply")}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ------------------------------------------------------ CoreOs.ai CTA */}
       <section>
         <div className="mx-auto max-w-6xl px-5 py-20 md:py-24">
@@ -362,6 +556,9 @@ export function HomePage() {
                 </h2>
                 <p className="mt-4 text-[15.5px] leading-relaxed text-[#a4abc4]">
                   {t("home.labP")}
+                </p>
+                <p className="mt-3 text-[15.5px] leading-relaxed text-[#a4abc4]">
+                  {t("ai.verano")}
                 </p>
                 <Link
                   to="/coreos-ai"

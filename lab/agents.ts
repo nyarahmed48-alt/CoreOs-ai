@@ -35,8 +35,10 @@
 const MAX_TOKENS = 2048;
 
 /* Kept here rather than imported from src/site/contact.ts: nothing under src/
-   belongs in a server bundle. If the number changes, it changes in both. */
-const CONTACT_WHATSAPP = "+964 770 609 4646";
+   belongs in a server bundle. If the form moves, it moves in both. The public
+   site carries no phone number or email address, so neither does anything an
+   agent says to a visitor. */
+const CONTACT_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSdUwT349lsfBaom8nuhw3fWeJ7TjV0cIrM2Xd49RXhQKJxHFQ/viewform";
 
 /**
  * Where the settings come from.
@@ -445,9 +447,9 @@ export async function handleLabChat({ slug, message, history, lang, settings }: 
       status: 200,
       body: {
         text: say({
-          ar: `[لا يوجد مفتاح ذكاء اصطناعي مُهيَّأ على هذا النشر، لذلك لا يستطيع ${agent.name} الإجابة بعد.]\n\nسؤالك كان: «${message}»\n\nبمجرد ضبط المفتاح، يجيب ${agent.name} مباشرة. لتجربة النسخة الحقيقية، أو لتهيئة وكيل حول مستنداتك وسياساتك، راسلنا على coreosgmail.com@gmail.com.`,
-          ckb: `[هیچ کلیلێکی زیرەکیی دەستکرد لەسەر ئەم بڵاوکردنەوەیە ڕێک نەخراوە، بۆیە ${agent.name} هێشتا ناتوانێت وەڵام بداتەوە.]\n\nپرسیارەکەت ئەمە بوو: «${message}»\n\nهەرکە کلیلەکە دانرا، ${agent.name} ڕاستەوخۆ وەڵام دەداتەوە. بۆ تاقیکردنەوەی ڕاستەقینەکەی، یان بۆ ڕێکخستنی بریکارێک لەسەر بەڵگەنامە و سیاسەتەکانی خۆت، لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.`,
-          en: `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email coreosgmail.com@gmail.com.`,
+          ar: `[لا يوجد مفتاح ذكاء اصطناعي مُهيَّأ على هذا النشر، لذلك لا يستطيع ${agent.name} الإجابة بعد.]\n\nسؤالك كان: «${message}»\n\nبمجرد ضبط المفتاح، يجيب ${agent.name} مباشرة. لتجربة النسخة الحقيقية، أو لتهيئة وكيل حول مستنداتك وسياساتك، راسلنا على ${CONTACT_FORM}.`,
+          ckb: `[هیچ کلیلێکی زیرەکیی دەستکرد لەسەر ئەم بڵاوکردنەوەیە ڕێک نەخراوە، بۆیە ${agent.name} هێشتا ناتوانێت وەڵام بداتەوە.]\n\nپرسیارەکەت ئەمە بوو: «${message}»\n\nهەرکە کلیلەکە دانرا، ${agent.name} ڕاستەوخۆ وەڵام دەداتەوە. بۆ تاقیکردنەوەی ڕاستەقینەکەی، یان بۆ ڕێکخستنی بریکارێک لەسەر بەڵگەنامە و سیاسەتەکانی خۆت، لە ${CONTACT_FORM} نامەمان بۆ بنێرە.`,
+          en: `[This CoreOs deployment has no AI key configured, so ${agent.name} can't answer yet.]\n\nYou asked: "${message}"\n\nOnce a key is set, ${agent.name} answers directly. To try the real thing, or to have an agent configured around your own documents and policies, email ${CONTACT_FORM}.`,
         }),
         fallback: true,
       },
@@ -519,9 +521,9 @@ export async function handleLabChat({ slug, message, history, lang, settings }: 
           error: "SANDBOX_LIMIT",
           reason: kind,
           message: say({
-            ar: `بلغت بيئة الاختبار حدّها المجاني لهذا اليوم، لذلك لا يستطيع ${agent.name} الرد الآن. حاول غدًا، أو راسلنا على واتساب ${CONTACT_WHATSAPP} ونعرض لك الوكيل مباشرة.`,
-            ckb: `ژینگەی تاقیکردنەوە گەیشتووەتە سنووری بەخۆڕایی ئەمڕۆ، بۆیە ${agent.name} ئێستا ناتوانێت وەڵام بداتەوە. سبەینێ هەوڵ بدەرەوە، یان لە واتساپ ${CONTACT_WHATSAPP} نامەمان بۆ بنێرە و ڕاستەوخۆ بریکارەکەت نیشان دەدەین.`,
-            en: `The sandbox has used up today's free calls, so ${agent.name} can't reply right now. Try tomorrow, or message us on WhatsApp ${CONTACT_WHATSAPP} and we'll demo it live.`,
+            ar: `بلغت بيئة الاختبار حدّها المجاني لهذا اليوم، لذلك لا يستطيع ${agent.name} الرد الآن. حاول غدًا، أو تواصل ويانا عبر الاستمارة ${CONTACT_FORM} ونعرض لك الوكيل مباشرة.`,
+            ckb: `ژینگەی تاقیکردنەوە گەیشتووەتە سنووری بەخۆڕایی ئەمڕۆ، بۆیە ${agent.name} ئێستا ناتوانێت وەڵام بداتەوە. سبەینێ هەوڵ بدەرەوە، یان لە ڕێگەی فۆڕمەکەوە ${CONTACT_FORM} نامەمان بۆ بنێرە و ڕاستەوخۆ بریکارەکەت نیشان دەدەین.`,
+            en: `The sandbox has used up today's free calls, so ${agent.name} can't reply right now. Try tomorrow, or get in touch through our form ${CONTACT_FORM} and we'll demo it live.`,
           }),
         },
       };
@@ -534,9 +536,9 @@ export async function handleLabChat({ slug, message, history, lang, settings }: 
           error: "AGENT_TIMEOUT",
           reason: kind,
           message: say({
-            ar: `استغرق ${agent.name} وقتًا أطول من اللازم. جرّب سؤالًا أقصر، أو راسلنا على واتساب ${CONTACT_WHATSAPP}.`,
-            ckb: `${agent.name} زیاتر لە پێویست خایاند. پرسیارێکی کورتتر تاقی بکەرەوە، یان لە واتساپ ${CONTACT_WHATSAPP} نامەمان بۆ بنێرە.`,
-            en: `${agent.name} took too long to answer. Try a shorter question, or message us on WhatsApp ${CONTACT_WHATSAPP}.`,
+            ar: `استغرق ${agent.name} وقتًا أطول من اللازم. جرّب سؤالًا أقصر، أو تواصل ويانا عبر الاستمارة ${CONTACT_FORM}.`,
+            ckb: `${agent.name} زیاتر لە پێویست خایاند. پرسیارێکی کورتتر تاقی بکەرەوە، یان لە ڕێگەی فۆڕمەکەوە ${CONTACT_FORM} نامەمان بۆ بنێرە.`,
+            en: `${agent.name} took too long to answer. Try a shorter question, or get in touch through our form ${CONTACT_FORM}.`,
           }),
         },
       };
@@ -548,9 +550,9 @@ export async function handleLabChat({ slug, message, history, lang, settings }: 
         error: "AGENT_UNAVAILABLE",
         reason: kind,
         message: say({
-          ar: `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على coreosgmail.com@gmail.com إن تكرّر الأمر.`,
-          ckb: `لەم ساتەدا نەتوانرا بگەیت بە ${agent.name}. دوای کەمێک دووبارە هەوڵ بدەرەوە، یان ئەگەر دووبارە بووەوە لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.`,
-          en: `${agent.name} could not be reached just now. Try again in a moment, or email coreosgmail.com@gmail.com if it keeps happening.`,
+          ar: `تعذّر الوصول إلى ${agent.name} في هذه اللحظة. حاول بعد قليل، أو راسلنا على ${CONTACT_FORM} إن تكرّر الأمر.`,
+          ckb: `لەم ساتەدا نەتوانرا بگەیت بە ${agent.name}. دوای کەمێک دووبارە هەوڵ بدەرەوە، یان ئەگەر دووبارە بووەوە لە ${CONTACT_FORM} نامەمان بۆ بنێرە.`,
+          en: `${agent.name} could not be reached just now. Try again in a moment, or email ${CONTACT_FORM} if it keeps happening.`,
         }),
       },
     };

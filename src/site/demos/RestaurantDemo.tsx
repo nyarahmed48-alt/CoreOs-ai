@@ -22,8 +22,7 @@ import {
 } from "lucide-react";
 import { REST } from "./content";
 import { DemoBar, DemoSection, PhotoTile, PriceRow, useCopy } from "./shared";
-import { whatsapp } from "../contact";
-import { useLang } from "../i18n";
+import { CONTACT_FORM_URL } from "../contact";
 
 const INK = "#0f1512";
 const PAPER = "#f0ebe1";
@@ -43,7 +42,6 @@ const TILES: Array<[string, string]> = [
 
 export function RestaurantDemo() {
   const c = useCopy();
-  const { t } = useLang();
 
   return (
     <div style={{ background: INK, color: PAPER }} className="min-h-[100dvh]">
@@ -76,7 +74,7 @@ export function RestaurantDemo() {
 
           <div className="mt-10 flex flex-wrap gap-3">
             <a
-              href={whatsapp(t("contact.waPrefill"))}
+              href={CONTACT_FORM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold transition-opacity hover:opacity-90"
@@ -187,7 +185,7 @@ export function RestaurantDemo() {
               {c(REST.reserveBody)}
             </p>
             <a
-              href={whatsapp(t("contact.waPrefill"))}
+              href={CONTACT_FORM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14.5px] font-bold transition-opacity hover:opacity-90"
