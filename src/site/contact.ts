@@ -3,30 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** Single source of truth for the address every contact link points at. */
-export const CONTACT_EMAIL = "coreosgmail.com@gmail.com";
-
-/** Display form of the WhatsApp number, spaced for readability. */
-export const CONTACT_PHONE_DISPLAY = "+964 770 609 4646";
-
-/** wa.me wants digits only — no plus, no spaces, country code included. */
-const WHATSAPP_DIGITS = "9647706094646";
-
-/** Builds a mailto: URL with a pre-filled subject and body. */
-export function mailto(subject: string, body = ""): string {
-  const params = new URLSearchParams({ subject });
-  if (body) params.set("body", body);
-  return `mailto:${CONTACT_EMAIL}?${params.toString().replace(/\+/g, "%20")}`;
-}
-
 /**
- * Builds a wa.me URL, optionally pre-filling the first message.
+ * The single contact route for the whole site.
  *
- * WhatsApp is the default business channel across the region, and the contact
- * page already tells people we would rather call than trade emails — so it
- * needs to offer a way to start that conversation, not just a mailto.
+ * Everything that invites someone to get in touch points here. There is
+ * deliberately no phone number and no email address anywhere on the public
+ * site: one form means enquiries arrive in one place, in a consistent shape,
+ * and no personal contact details are left sitting on a page for scrapers.
+ *
+ * If this ever changes, it changes here and nowhere else.
  */
-export function whatsapp(message = ""): string {
-  const base = `https://wa.me/${WHATSAPP_DIGITS}`;
-  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
-}
+export const CONTACT_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSdUwT349lsfBaom8nuhw3fWeJ7TjV0cIrM2Xd49RXhQKJxHFQ/viewform";
+
+/** Props every link to the form needs, so none of them forgets `noopener`. */
+export const FORM_LINK_PROPS = {
+  href: CONTACT_FORM_URL,
+  target: "_blank",
+  rel: "noopener noreferrer",
+} as const;
+
+/** Public social accounts. The only other places CoreOs can be reached. */
+export const SOCIALS = {
+  instagram: { handle: "@core.os44", url: "https://instagram.com/core.os44" },
+  tiktok: { handle: "@coreos44", url: "https://tiktok.com/@coreos44" },
+} as const;

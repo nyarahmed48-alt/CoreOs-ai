@@ -4,10 +4,10 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Menu, X, ArrowUpRight, Mail, MessageCircle } from "lucide-react";
+import { Menu, X, ArrowUpRight, MessageSquare, Instagram } from "lucide-react";
 import { CoreOsLockup, CoreOsMark } from "./Logo";
 import { Link, useRouter } from "./router";
-import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, whatsapp } from "./contact";
+import { FORM_LINK_PROPS, SOCIALS } from "./contact";
 import { useLang } from "./i18n";
 import { LangSwitch } from "./LangSwitch";
 import type { CopyKey } from "./strings";
@@ -153,22 +153,32 @@ function Footer() {
           </h4>
           <ul className="mt-4 space-y-2.5 text-[14px]">
             <li>
-              <Link to="/testing" className="text-[#c3c9dd] hover:text-white">
-                {t("footer.agents")}
+              <Link to="/#services" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
+                CoreOS
               </Link>
             </li>
             <li>
-              <Link to="/coreos-ai" className="text-[#c3c9dd] hover:text-white">
+              <Link to="/#corecashier" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
+                CoreCashier
+              </Link>
+            </li>
+            <li>
+              <Link to="/#corestudio" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
+                CoreStudio
+              </Link>
+            </li>
+            <li>
+              <Link to="/coreos-ai" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
                 {t("footer.models")}
               </Link>
             </li>
             <li>
-              <Link to="/mission" className="text-[#c3c9dd] hover:text-white">
+              <Link to="/mission" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
                 {t("footer.mission")}
               </Link>
             </li>
             <li>
-              <a href="/manager" className="text-[#c3c9dd] hover:text-white">
+              <a href="/manager" className="inline-flex min-h-[44px] items-center text-[#c3c9dd] hover:text-white md:min-h-0">
                 {t("nav.console")}
               </a>
             </li>
@@ -180,31 +190,38 @@ function Footer() {
             {t("footer.contact")}
           </h4>
           <ul className="mt-4 space-y-2.5 text-[14px]">
+            {/* The enquiry form is the only contact route: no number, no
+                address. Everything arrives in one place and nothing personal
+                sits on a public page. */}
             <li>
               <a
-                href={whatsapp()}
+                {...FORM_LINK_PROPS}
+                className="inline-flex min-h-[44px] items-center gap-2 text-[#c3c9dd] hover:text-white md:min-h-0"
+              >
+                <MessageSquare className="h-4 w-4 shrink-0 text-[#6c7bf0]" />
+                {t("footer.brief")}
+              </a>
+            </li>
+            <li>
+              <a
+                href={SOCIALS.instagram.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-[#c3c9dd] hover:text-white"
+                className="inline-flex min-h-[44px] items-center gap-2 text-[#c3c9dd] hover:text-white md:min-h-0"
               >
-                <MessageCircle className="h-4 w-4 shrink-0 text-[#25d366]" />
-                <span dir="ltr">{CONTACT_PHONE_DISPLAY}</span>
+                <Instagram className="h-4 w-4 shrink-0 text-[#c3c9dd]" />
+                <span dir="ltr">{SOCIALS.instagram.handle}</span>
               </a>
             </li>
             <li>
               <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                dir="ltr"
-                className="inline-flex items-center gap-2 break-all text-[#c3c9dd] hover:text-white"
+                href={SOCIALS.tiktok.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-2 text-[#c3c9dd] hover:text-white md:min-h-0"
               >
-                <Mail className="h-4 w-4 shrink-0 text-[#6c7bf0]" />
-                {CONTACT_EMAIL}
+                <span dir="ltr">{SOCIALS.tiktok.handle}</span>
               </a>
-            </li>
-            <li>
-              <Link to="/contact" className="text-[#c3c9dd] hover:text-white">
-                {t("footer.brief")}
-              </Link>
             </li>
           </ul>
         </div>
@@ -213,7 +230,7 @@ function Footer() {
       <div className="border-t border-[#12172440] px-5">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 py-6 text-[12.5px] text-[#5e677f] sm:flex-row sm:items-center">
           <span className="inline-flex items-center gap-2">
-            <CoreOsMark size={16} />© {new Date().getFullYear()} CoreOs.{" "}
+            <CoreOsMark size={16} />© {new Date().getFullYear()} CoreOs · {t("footer.baghdad")}.{" "}
             {t("footer.rights")}
           </span>
           <span>{t("footer.line")}</span>

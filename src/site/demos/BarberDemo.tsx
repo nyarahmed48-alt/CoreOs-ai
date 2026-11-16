@@ -15,8 +15,7 @@
 import { Scissors, Clock, MapPin, MessageCircle } from "lucide-react";
 import { BARBER } from "./content";
 import { DemoBar, DemoSection, PhotoTile, PriceRow, useCopy } from "./shared";
-import { whatsapp } from "../contact";
-import { useLang } from "../i18n";
+import { CONTACT_FORM_URL } from "../contact";
 
 const INK = "#12100e";
 const GOLD = "#c9a227";
@@ -25,7 +24,6 @@ const MUTED = "#9a8f7d";
 
 export function BarberDemo() {
   const c = useCopy();
-  const { t } = useLang();
 
   return (
     <div style={{ background: INK, color: CREAM }} className="min-h-[100dvh]">
@@ -67,7 +65,7 @@ export function BarberDemo() {
           </p>
 
           <a
-            href={whatsapp(t("contact.waPrefill"))}
+            href={CONTACT_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-9 inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold transition-opacity hover:opacity-90"

@@ -180,23 +180,6 @@ export const COPY = {
   "demos.back": { ar: "العودة إلى CoreOs", ckb: "گەڕانەوە بۆ CoreOs", en: "Back to CoreOs" },
 
   /* ---------------------------------------------------------- whatsapp */
-  "contact.waH2": { ar: "واتساب", ckb: "واتساپ", en: "WhatsApp" },
-  "contact.waB": {
-    ar: "أسرع طريقة للوصول إلينا. اكتب لنا وسنرد، وغالبًا نتصل بك مباشرة لنفهم ما تحتاجه في دقيقتين بدل عشر رسائل.",
-    ckb: "خێراترین ڕێگا بۆ گەیشتن بە ئێمە. نامەمان بۆ بنێرە و وەڵامت دەدەینەوە — زۆرجار بە پەیوەندییەکەوە، تا لە دوو خولەکدا تێبگەین چیت دەوێت لە جیاتی دە ئیمەیل.",
-    en: "The quickest way to reach us. Message us and we'll reply — usually with a call, so we can understand what you need in two minutes instead of ten emails.",
-  },
-  "contact.waCta": {
-    ar: "راسلنا على واتساب",
-    ckb: "لە واتساپ نامەمان بۆ بنێرە",
-    en: "Message us on WhatsApp",
-  },
-  "contact.waPrefill": {
-    ar: "مرحبًا CoreOs، أود التحدث عن مشروع.",
-    ckb: "سڵاو CoreOs، دەمەوێت دەربارەی پڕۆژەیەک قسە بکەم.",
-    en: "Hi CoreOs, I'd like to talk about a project.",
-  },
-  "footer.whatsapp": { ar: "واتساب", ckb: "واتساپ", en: "WhatsApp" },
 
   "home.missionEyebrow": { ar: "رسالتنا", ckb: "ئامانجمان", en: "Our mission" },
   "home.missionH2": {
@@ -205,9 +188,9 @@ export const COPY = {
     en: "B2B AI, priced so a real business can say yes.",
   },
   "home.missionP1": {
-    ar: "الذكاء الاصطناعي المؤسسي مُسعَّر للمؤسسات الكبرى. شركة شحن من اثني عشر موظفًا، أو تاجر جملة عائلي، أو عيادة محلية — يُعرض عليها رسم المنصة نفسه المعروض على شركة متعددة الجنسيات، ويُطلب منها ترخيص لكل موظف، ثم التوقيع لسنة كاملة قبل أن يعمل أي شيء.",
-    ckb: "زیرەکیی دەستکردی ئینتەرپرایز نرخەکەی بۆ ئینتەرپرایزەکان دانراوە. کۆمپانیایەکی گواستنەوە بە دوانزە کارمەند، یان فرۆشیارێکی کۆیی خێزانی، یان نەخۆشخانەیەکی ناوچەیی — هەمان کرێی پلاتفۆرمیان بۆ دادەنرێت کە بۆ کۆمپانیایەکی نێودەوڵەتی دادەنرێت، پێیان دەوترێت بۆ هەر کارمەندێک مۆڵەتێک بکڕن، پاشان داوایان لێدەکرێت بۆ ساڵێک واژوو بکەن پێش ئەوەی هیچ شتێک کار بکات.",
-    en: "Enterprise AI is priced for enterprises. A twelve-person logistics firm, a family wholesaler, a regional clinic — they get quoted the same platform fee as a multinational, told to buy a seat for every employee, then asked to sign for a year before anything works.",
+    ar: "الذكاء الاصطناعي المؤسسي مُسعَّر للمؤسسات الكبرى. شركة شحن من اثني عشر موظفًا، أو تاجر جملة عائلي، أو محل سوبرماركت — يُعرض عليها رسم المنصة نفسه المعروض على شركة متعددة الجنسيات، ويُطلب منها ترخيص لكل موظف، ثم التوقيع لسنة كاملة قبل أن يعمل أي شيء.",
+    ckb: "زیرەکیی دەستکردی ئینتەرپرایز نرخەکەی بۆ ئینتەرپرایزەکان دانراوە. کۆمپانیایەکی گواستنەوە بە دوانزە کارمەند، یان فرۆشیارێکی کۆیی خێزانی، یان سوپەرمارکێتێک — هەمان کرێی پلاتفۆرمیان بۆ دادەنرێت کە بۆ کۆمپانیایەکی نێودەوڵەتی دادەنرێت، پێیان دەوترێت بۆ هەر کارمەندێک مۆڵەتێک بکڕن، پاشان داوایان لێدەکرێت بۆ ساڵێک واژوو بکەن پێش ئەوەی هیچ شتێک کار بکات.",
+    en: "Enterprise AI is priced for enterprises. A twelve-person logistics firm, a family wholesaler, a corner supermarket — they get quoted the same platform fee as a multinational, told to buy a seat for every employee, then asked to sign for a year before anything works.",
   },
   "home.missionP2": {
     ar: "وُجدت CoreOs لكسر ذلك. نحتسب الاستخدام، لا عدد الموظفين. وأنت من يضع السقف قبل أن تنفق شيئًا.",
@@ -629,14 +612,14 @@ export const COPY = {
     en: "Open testing · conversations are not stored",
   },
   "console.errNoSandbox": {
-    ar: "بيئة الاختبار المباشرة لا تعمل على هذا النشر. راسلنا على coreosgmail.com@gmail.com وسنجهّز لك واحدة.",
-    ckb: "ژینگەی تاقیکردنەوەی ڕاستەوخۆ لەسەر ئەم بڵاوکردنەوەیە کار ناکات. لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە و یەکێکت بۆ ئامادە دەکەین.",
-    en: "The live sandbox isn't running on this deployment. Email coreosgmail.com@gmail.com and we'll set one up for you.",
+    ar: "بيئة الاختبار المباشرة لا تعمل على هذا النشر. تواصل ويانا عبر الاستمارة ونجهزلك وحدة.",
+    ckb: "ژینگەی تاقیکردنەوەی ڕاستەوخۆ لەسەر ئەم بڵاوکردنەوەیە کار ناکات. لە ڕێگەی فۆڕمەکەوە پەیوەندیمان پێوە بکە و یەکێکت بۆ ئامادە دەکەین.",
+    en: "The live sandbox isn't running on this deployment. Get in touch through the form and we'll set one up for you.",
   },
   "console.errSlow": {
-    ar: "استغرق {name} وقتًا أطول من اللازم للإجابة. جرّب سؤالًا أقصر، أو راسلنا على coreosgmail.com@gmail.com.",
-    ckb: "{name} زیاتر لە پێویست خایاند بۆ وەڵامدانەوە. پرسیارێکی کورتتر تاقی بکەرەوە، یان لە coreosgmail.com@gmail.com نامەمان بۆ بنێرە.",
-    en: "{name} took too long to answer. Try a shorter question, or email coreosgmail.com@gmail.com.",
+    ar: "استغرق {name} وقتًا أطول من اللازم للإجابة. جرّب سؤال أقصر، أو تواصل ويانا عبر الاستمارة.",
+    ckb: "{name} زیاتر لە پێویست خایاند بۆ وەڵامدانەوە. پرسیارێکی کورتتر تاقی بکەرەوە، یان لە ڕێگەی فۆڕمەکەوە پەیوەندیمان پێوە بکە.",
+    en: "{name} took too long to answer. Try a shorter question, or get in touch through the form.",
   },
   "console.errGeneric": {
     ar: "تعذّر الوصول إلى نقطة الاختبار.",
@@ -657,14 +640,6 @@ export const COPY = {
     ckb: "یەک ناونیشان، خۆمان دەیخوێنینەوە. ئەو کارە باس بکە کە دەتەوێت بیسپێریت — پرسیارە دووبارەبووەکان، سندووقی نامە، کاغەزبازی — و بە ڕاستگۆیی پێت دەڵێین ئایا CoreOs گونجاوە بۆت و چەندی تێدەچێت.",
     en: "One address, read by us. Describe the job you want handled — the repeated questions, the inbox, the paperwork — and we'll tell you honestly whether CoreOs is the right fit and what it would cost.",
   },
-  "contact.emailH2": { ar: "راسل CoreOs", ckb: "ئیمەیل بۆ CoreOs", en: "Email CoreOs" },
-  "contact.emailB": {
-    ar: "أسرع طريق. نجيب على الاستفسارات بأنفسنا — لا يوجد طابور تذاكر بينك وبين من يبنون هذا.",
-    ckb: "خێراترین ڕێگا. خۆمان وەڵامی پرسیارەکان دەدەینەوە — هیچ ڕیزێکی تیکێت لە نێوان تۆ و ئەو کەسانەدا نییە کە ئەمە دروست دەکەن.",
-    en: "The fastest route. We answer enquiries ourselves — there is no ticket queue between you and the people who build this.",
-  },
-  "contact.copy": { ar: "انسخ العنوان", ckb: "ناونیشانەکە کۆپی بکە", en: "Copy address" },
-  "contact.copied": { ar: "تم نسخ العنوان", ckb: "ناونیشانەکە کۆپی کرا", en: "Address copied" },
   "contact.note1T": {
     ar: "ملاحظاتك على الاختبار مُرحَّب بها",
     ckb: "تێبینیت لەسەر تاقیکردنەوە بەخێربێت",
@@ -686,30 +661,6 @@ export const COPY = {
     en: "You do not need a procurement process or an IT department to work with us. Most of our clients have neither.",
   },
   "contact.briefH2": { ar: "أرسل لنا طلبك", ckb: "داواکارییەکەت بۆمان بنێرە", en: "Send us a brief" },
-  "contact.briefP1": {
-    ar: "املأ هذا وسيفتح رسالة جاهزة إلى",
-    ckb: "ئەمە پڕ بکەرەوە و ئیمەیلێکی پێشنووسراو دەکاتەوە بۆ",
-    en: "Fill this in and it opens a pre-written email to",
-  },
-  "contact.briefP2": {
-    ar: "في تطبيق بريدك. لا شيء يُرسَل إلى خادم، ولا نحفظ شيئًا حتى تضغط إرسال.",
-    ckb: "لە ئەپی ئیمەیلی خۆتدا. هیچ شتێک بۆ سێرڤەر نانێردرێت، و هیچ هەڵناگرین تا کلیکی ناردن دەکەیت.",
-    en: "in your own mail app. Nothing is submitted to a server, and we store nothing until you press send.",
-  },
-  "contact.name": { ar: "اسمك", ckb: "ناوت", en: "Your name" },
-  "contact.namePh": { ar: "جين أوكافور", ckb: "جین ئۆکافۆر", en: "Jane Okafor" },
-  "contact.business": { ar: "الشركة", ckb: "کۆمپانیا", en: "Business" },
-  "contact.businessPh": { ar: "أوكافور للخدمات اللوجستية", ckb: "ئۆکافۆر لۆجستیکس", en: "Okafor Logistics" },
-  "contact.phone": {
-    ar: "رقم الهاتف (مطلوب)",
-    ckb: "ژمارەی مۆبایل (پێویستە)",
-    en: "Phone number (required)",
-  },
-  "contact.phoneHelp": {
-    ar: "نتصل بك بدل تبادل الرسائل — أسرع لكلينا.",
-    ckb: "پەیوەندیت پێوە دەکەین لە جیاتی ئاڵوگۆڕی ئیمەیل — بۆ هەردووکمان خێراترە.",
-    en: "We call rather than trade emails — it is faster for both of us.",
-  },
   "contact.topic": { ar: "ما موضوع الطلب؟", ckb: "ئەمە دەربارەی چییە؟", en: "What's this about?" },
   "contact.topicBuild": {
     ar: "موقع أو تطبيق أو نظام",
@@ -733,43 +684,105 @@ export const COPY = {
     en: "Partnership or reseller enquiry",
   },
   "contact.topic5": { ar: "شيء آخر", ckb: "شتێکی تر", en: "Something else" },
-  "contact.details": { ar: "التفاصيل", ckb: "وردەکارییەکان", en: "Details" },
-  "contact.detailsPh": {
-    ar: "تصلنا نحو 60 سؤالًا متطابقًا عن التوصيل يوميًا، ويقضي موظفان صباحهما في الرد عليها…",
-    ckb: "ڕۆژانە نزیکەی 60 پرسیاری وەک یەک دەربارەی گەیاندن پێمان دەگات و دوو کەس بەیانییەکانیان بە وەڵامدانەوەیان دەبەن…",
-    en: "We get around 60 of the same delivery questions a day and two people spend their mornings answering them…",
+
+
+  /* ================================================== CoreCashier (hero) ===
+     The flagship product. Everything claimed here is something the system
+     actually does — no "works without electricity", no invented numbers. */
+  "cc.eyebrow": { ar: "كور كاشير", ckb: "کۆر کاشیەر", en: "CoreCashier" },
+  "cc.h2": { ar: "تعرف شكد بعت اليوم؟", ckb: "دەزانیت ئەمڕۆ چەندت فرۆشتووە؟", en: "Do you know how much you sold today?" },
+  "cc.lede": {
+    ar: "نظام كاشير على تابلت، للماركتات والمحلات والكافيهات. ننصبه إلك ونعلمك عليه، وتبقى بوجهك شخص حقيقي تكدر تتصل بيه.",
+    ckb: "سیستەمی کاشیەر لەسەر تابلێت، بۆ مارکێت و دوکان و کافێکان. بۆت دایدەنێین و فێرت دەکەین، و کەسێکی ڕاستەقینەش هەیە پەیوەندی پێوە بکەیت.",
+    en: "A cashier system on a tablet, for markets, shops and cafés. We set it up for you and show you how it runs — with a real person you can call.",
   },
-  "contact.send": {
-    ar: "افتح هذا في تطبيق بريدي",
-    ckb: "ئەمە لە ئەپی ئیمەیلەکەمدا بکەرەوە",
-    en: "Open this in my email app",
-  },
-  "contact.needPhone": {
-    ar: "أضف رقم هاتفك للمتابعة",
-    ckb: "ژمارەی مۆبایلەکەت زیاد بکە بۆ بەردەوامبوون",
-    en: "Add your phone number to continue",
-  },
-  "contact.noMail": {
-    ar: "لا يوجد تطبيق بريد؟ انسخ العنوان أعلاه واكتب لنا مباشرة — وأدرج رقمك لنتمكن من الاتصال بك.",
-    ckb: "ئەپی ئیمەیلت نییە؟ ناونیشانەکەی سەرەوە کۆپی بکە و ڕاستەوخۆ بۆمان بنووسە — ژمارەکەشت لەگەڵدا بنێ تا بتوانین پەیوەندیت پێوە بکەین.",
-    en: "No mail app? Copy the address above and write to us directly — include your number so we can call you back.",
-  },
-  "contact.mailSubject": { ar: "استفسار CoreOs — ", ckb: "پرسیاری CoreOs — ", en: "CoreOs enquiry — " },
-  "contact.mailName": { ar: "الاسم", ckb: "ناو", en: "Name" },
-  "contact.mailBusiness": { ar: "الشركة", ckb: "کۆمپانیا", en: "Business" },
-  "contact.mailPhone": { ar: "الهاتف", ckb: "مۆبایل", en: "Phone" },
-  "contact.mailTopic": { ar: "الموضوع", ckb: "بابەت", en: "Topic" },
-  "contact.mailBody": {
-    ar: "(اكتب ما تحتاجه هنا.)",
-    ckb: "(لێرەدا پێمان بڵێ چیت پێویستە.)",
-    en: "(Tell us what you need here.)",
-  },
-  "contact.mailFrom": {
-    ar: "— أُرسلت من coreos.ai",
-    ckb: "— لە coreos.ai نێردراوە",
-    en: "— Sent from coreos.ai",
+  "cc.featTitle": { ar: "شنو يسوي", ckb: "چی دەکات", en: "What it does" },
+  "cc.f1": { ar: "باركود بالماسح أو بالكاميرا", ckb: "بارکۆد بە سکانەر یان کامێرا", en: "Barcode by scanner or camera" },
+  "cc.f2": { ar: "المبيعات تنحسب لوحدها", ckb: "فرۆشتنەکان خۆیان دەژمێردرێن", en: "Sales counted automatically" },
+  "cc.f3": { ar: "البضاعة تنقص لوحدها وتنبهك", ckb: "کاڵاکە خۆی کەم دەبێت و ئاگادارت دەکاتەوە", en: "Stock goes down by itself and warns you" },
+  "cc.f4": { ar: "الديون مكتوبة بالاسم", ckb: "قەرزەکان بە ناوەوە تۆمار دەکرێن", en: "Customer debts recorded by name" },
+  "cc.f5": { ar: "يبيع حتى لو طفى الانترنت، ويزامن لمن يرجع", ckb: "دەفرۆشێت تەنانەت ئەگەر ئینتەرنێت بڕا، و کاتێک گەڕایەوە هاوکات دەبێت", en: "Keeps selling when the internet drops, syncs when it is back" },
+  "cc.f6": { ar: "تقرير آخر اليوم", ckb: "ڕاپۆرتی کۆتایی ڕۆژ", en: "End-of-day report" },
+  "cc.f7": { ar: "عربي، كردي، إنكليزي", ckb: "عەرەبی، کوردی، ئینگلیزی", en: "Arabic, Kurdish and English" },
+  "cc.f8": { ar: "نسخ احتياطي على السحابة ودعم عن بعد (اختياري)", ckb: "پاڵپشتی لەسەر هەور و پشتگیری لە دوورەوە (ئارەزوومەندانە)", en: "Optional cloud backup and remote support" },
+  "cc.optTitle": { ar: "خياراتك", ckb: "هەڵبژاردەکانت", en: "Your options" },
+  "cc.o1t": { ar: "تابلت مع النظام، جاهز", ckb: "تابلێت لەگەڵ سیستەمەکە، ئامادە", en: "Tablet and system, ready to use" },
+  "cc.o1b": { ar: "يوصلك منصوب ومجهز، تشغّله وتبدي تبيع.", ckb: "ڕێکخراو و ئامادە پێت دەگات، دایدەگیرسێنیت و دەست بە فرۆشتن دەکەیت.", en: "Arrives set up and configured. Switch it on and start selling." },
+  "cc.o2t": { ar: "النظام بس، على جهازك", ckb: "تەنها سیستەمەکە، لەسەر ئامێرەکەی خۆت", en: "System only, on your own device" },
+  "cc.o2b": { ar: "عندك تابلت أو جهاز؟ ننصب النظام بيه.", ckb: "تابلێت یان ئامێرت هەیە؟ سیستەمەکەی لەسەر دادەنێین.", en: "Already have a tablet? We install the system on it." },
+  "cc.addons": { ar: "إضافات اختيارية: ماسح باركود، طابعة وصولات، باور بانك.", ckb: "زیادکراوی ئارەزوومەندانە: سکانەری بارکۆد، چاپکەری پسوولە، پاوەربانک.", en: "Optional add-ons: barcode scanner, receipt printer, power bank." },
+  "cc.howTitle": { ar: "شلون تبدي", ckb: "چۆن دەست پێ دەکەیت", en: "How it works" },
+  "cc.h1t": { ar: "املأ الاستمارة", ckb: "فۆڕمەکە پڕ بکەرەوە", en: "Fill in the form" },
+  "cc.h2t": { ar: "نزورك بالمحل ونوريك", ckb: "سەردانی دوکانەکەت دەکەین و پیشانت دەدەین", en: "We visit your shop and show you" },
+  "cc.h3t": { ar: "تبيع وتعرف أرقامك", ckb: "دەفرۆشیت و ژمارەکانت دەزانیت", en: "You sell, and you know your numbers" },
+  "cc.where": { ar: "متوفر حالياً ببغداد، وقريباً بالسليمانية.", ckb: "ئێستا لە بەغدا بەردەستە، بەم زووانە لە سلێمانی.", en: "Available now in Baghdad, coming soon to Sulaymaniyah." },
+  "cc.cta": { ar: "جرّبه بمحلك", ckb: "لە دوکانەکەتدا تاقی بکەرەوە", en: "Try it in your shop" },
+
+  /* ============================================================ services === */
+  "sv.eyebrow": { ar: "خدماتنا", ckb: "خزمەتگوزارییەکانمان", en: "What we do" },
+  "sv.h2": { ar: "كل شي يخص شغلك، بمكان واحد.", ckb: "هەموو ئەوەی پەیوەندی بە کارەکەتەوە هەیە، لە یەک شوێندا.", en: "Everything your business runs on, in one place." },
+  "sv.s1t": { ar: "أنظمة", ckb: "سیستەمەکان", en: "Systems" },
+  "sv.s1b": { ar: "أنظمة وبرامج تمشّي شغلك.", ckb: "سیستەم و پڕۆگرام کە کارەکەت بەڕێوە دەبەن.", en: "Custom software and management systems that run your business." },
+  "sv.s2t": { ar: "مواقع إلكترونية", ckb: "ماڵپەڕەکان", en: "Websites" },
+  "sv.s2b": { ar: "موقع يعرّف بيك ويجيبلك زباين.", ckb: "ماڵپەڕێک کە ناساندنت دەکات و کڕیارت بۆ دەهێنێت.", en: "Websites that present your business and bring in customers." },
+  "sv.s3t": { ar: "ربط الذكاء الاصطناعي", ckb: "بەستنەوەی زیرەکیی دەستکرد", en: "AI integrations" },
+  "sv.s3b": { ar: "ذكاء اصطناعي داخل موقعك ونظامك.", ckb: "زیرەکیی دەستکرد لەناو ماڵپەڕ و سیستەمەکەتدا.", en: "Adding AI into the website or system you already have." },
+  "sv.s4t": { ar: "أنظمة ذكاء اصطناعي", ckb: "سیستەمی زیرەکیی دەستکرد", en: "AI systems" },
+  "sv.s4b": { ar: "مساعد ذكي يرد ويرتب ويحسب.", ckb: "یاریدەدەرێکی زیرەک کە وەڵام دەداتەوە و ڕێک دەخات و دەژمێرێت.", en: "AI assistants that answer, organise and calculate." },
+  "sv.s5t": { ar: "تسويق", ckb: "بازاڕکردن", en: "Marketing" },
+  "sv.s5b": { ar: "بوستات وفيديوهات وإعلانات.", ckb: "پۆست و ڤیدیۆ و ڕیکلام.", en: "Posts, videos and ads, made by CoreStudio." },
+
+  /* ============================================================= brands === */
+  "br.eyebrow": { ar: "علاماتنا", ckb: "براندەکانمان", en: "Our brands" },
+  "br.h2": { ar: "أربع أسماء، شركة وحدة.", ckb: "چوار ناو، یەک کۆمپانیا.", en: "Four names, one company." },
+  "br.b1": { ar: "الشركة الأم: برمجيات ومواقع وأنظمة وأتمتة وتسويق.", ckb: "کۆمپانیا سەرەکییەکە: نەرمەکاڵا و ماڵپەڕ و سیستەم و ئۆتۆماتیک و بازاڕکردن.", en: "The company: software, websites, systems, automation and marketing." },
+  "br.b2": { ar: "فرع الذكاء الاصطناعي: أنظمة وربط، ونموذجنا Verano.", ckb: "لقی زیرەکیی دەستکرد: سیستەم و بەستنەوە، و مۆدێلەکەمان Verano.", en: "The AI branch: AI systems, integrations, and our model Verano." },
+  "br.b3": { ar: "نظام الكاشير للمحلات والماركتات.", ckb: "سیستەمی کاشیەر بۆ دوکان و مارکێتەکان.", en: "Our cashier system for shops and markets." },
+  "br.b4": { ar: "الجانب الإبداعي: بوستات وفيديوهات وإعلانات ومحتوى.", ckb: "لایەنی داهێنەرانە: پۆست و ڤیدیۆ و ڕیکلام و ناوەڕۆک.", en: "The creative side: posts, videos, ads and content." },
+
+  /* ========================================================= CoreStudio === */
+  "cs.eyebrow": { ar: "كور ستوديو", ckb: "کۆر ستودیۆ", en: "CoreStudio" },
+  "cs.h2": { ar: "الجانب الإبداعي من كور أو إس.", ckb: "لایەنی داهێنەرانەی کۆر ئۆ ئێس.", en: "The creative side of CoreOS." },
+  "cs.body": {
+    ar: "بوستات وفيديوهات وإعلانات ومحتوى لعلامتك. مو شركة منفصلة — نفس الفريق، نفس المعايير.",
+    ckb: "پۆست و ڤیدیۆ و ڕیکلام و ناوەڕۆک بۆ براندەکەت. کۆمپانیایەکی جیاواز نییە — هەمان تیم، هەمان ئاست.",
+    en: "Posts, videos, ads and content for your brand. Not a separate company — the same team, to the same standard.",
   },
 
+  /* ======================================================= who we serve === */
+  "wh.eyebrow": { ar: "ويّا منو نشتغل", ckb: "لەگەڵ کێ کار دەکەین", en: "Who we work with" },
+  "wh.h2": { ar: "شركات ومحلات، مو أفراد.", ckb: "کۆمپانیا و دوکان، نەک تاکەکەس.", en: "Businesses, not individuals." },
+  "wh.body": {
+    ar: "ماركتات، محلات، كافيهات، مطاعم، شركات، ومشاريع صغيرة تريد ترتب شغلها.",
+    ckb: "مارکێت، دوکان، کافێ، چێشتخانە، کۆمپانیا، و پڕۆژەی بچووک کە دەیانەوێت کارەکەیان ڕێک بخەن.",
+    en: "Markets, shops, cafés, restaurants, companies and small businesses that want their work in order.",
+  },
+
+  /* ============================================================ contact === */
+  "ct.quote": { ar: "اطلب سعر", ckb: "داوای نرخ بکە", en: "Ask for a quote" },
+  "ct.reply": { ar: "نرجعلك خلال يوم.", ckb: "لە ماوەی ڕۆژێکدا وەڵامت دەدەینەوە.", en: "We reply within a day." },
+  "ct.formNote": {
+    ar: "كل التواصل يمر بالاستمارة، حتى ما يضيع طلب بين الرسائل.",
+    ckb: "هەموو پەیوەندییەک بە فۆڕمەکەدا تێدەپەڕێت، تا داواکارییەک لەناو نامەکاندا ون نەبێت.",
+    en: "Everything comes through the form, so no enquiry gets lost in a thread.",
+  },
+  "ct.follow": { ar: "تابعنا", ckb: "شوێنمان بکەوە", en: "Follow us" },
+
+  /* =============================================================== misc === */
+  "home.who": { ar: "شركة برمجيات عراقية، مقرها بغداد.", ckb: "کۆمپانیایەکی نەرمەکاڵای عێراقی، بنکەکەی بەغدایە.", en: "An Iraqi software company, based in Baghdad." },
+  "home.oneLine": {
+    ar: "شركة برمجيات عراقية نبني أنظمة ومواقع وذكاء اصطناعي وتسويق للشركات والمحلات.",
+    ckb: "کۆمپانیایەکی نەرمەکاڵای عێراقی کە سیستەم و ماڵپەڕ و زیرەکیی دەستکرد و بازاڕکردن بۆ کۆمپانیا و دوکانەکان دروست دەکات.",
+    en: "An Iraqi software company building systems, websites, AI and marketing for businesses.",
+  },
+  "home.ctaServices": { ar: "شوف خدماتنا", ckb: "خزمەتگوزارییەکانمان ببینە", en: "Our services" },
+  "footer.baghdad": { ar: "بغداد، العراق", ckb: "بەغدا، عێراق", en: "Baghdad, Iraq" },
+
+  "ai.verano": {
+    ar: "كور أو إس.ai هو فرع الذكاء الاصطناعي عدنا: أنظمة ذكية وربطها بأنظمتك الموجودة، ونموذجنا الخاص Verano.",
+    ckb: "کۆر ئۆ ئێس.ai لقی زیرەکیی دەستکردمانە: سیستەمی زیرەک و بەستنەوەیان بە سیستەمە ئامادەکانت، و مۆدێلی تایبەتی خۆمان Verano.",
+    en: "CoreOS.ai is our AI branch: AI systems, integrations into what you already run, and our own model, Verano.",
+  },
   /* ---------------------------------------------------------- 404/misc */
   "nf.h1": { ar: "لا يوجد شيء على", ckb: "هیچ شتێک نییە لە", en: "Nothing lives at" },
   "nf.p": {
