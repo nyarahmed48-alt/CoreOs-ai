@@ -16,7 +16,8 @@
     "clean": "rm -rf dist server.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:lunar": "vite build --config lunar-standalone/vite.config.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
