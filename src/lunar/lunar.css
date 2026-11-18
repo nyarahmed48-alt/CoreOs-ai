@@ -1,0 +1,144 @@
+/* LUNAR COMMAND — component-level styles. Tokens live in src/index.css (@theme lc-*). */
+
+.lc-root {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(79, 216, 235, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(91, 127, 181, 0.08), transparent 60%),
+    var(--color-lc-bg);
+  color: var(--color-lc-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.lc-root ::selection {
+  background: rgba(79, 216, 235, 0.3);
+}
+
+.lc-root :focus-visible {
+  outline: 2px solid var(--color-lc-cyan);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.lc-root [tabindex="-1"]:focus,
+.lc-root [tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+.lc-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.lc-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-lc-mute);
+}
+
+.lc-panel {
+  background: linear-gradient(180deg, rgba(15, 24, 40, 0.92), rgba(10, 16, 28, 0.92));
+  border: 1px solid var(--color-lc-line);
+  border-radius: 14px;
+}
+
+.lc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 9px;
+  border: 1px solid var(--color-lc-line2);
+  background: var(--color-lc-panel2);
+  color: var(--color-lc-text);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  min-height: 36px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.lc-btn:hover:not(:disabled) {
+  border-color: #3b5180;
+  background: #142037;
+}
+.lc-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lc-btn-primary {
+  background: #0f3a45;
+  border-color: #1f7f91;
+  color: #dff9fd;
+}
+.lc-btn-primary:hover:not(:disabled) {
+  background: #134a57;
+  border-color: var(--color-lc-cyan);
+}
+.lc-btn-danger {
+  border-color: #6b2b33;
+  background: #2a1016;
+  color: #ffd9db;
+}
+
+.lc-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.lc-scroll::-webkit-scrollbar-thumb {
+  background: #1e2b45;
+  border-radius: 8px;
+}
+
+.lc-grid-bg {
+  background-image:
+    linear-gradient(rgba(79, 216, 235, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 216, 235, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@keyframes lc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.lc-pulse {
+  animation: lc-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lc-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.lc-fade-in {
+  animation: lc-fade-in 0.25s ease-out;
+}
+
+.lc-range {
+  accent-color: var(--color-lc-cyan);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-root *,
+  .lc-root *::before,
+  .lc-root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+.lc-root[data-motion="reduced"] *,
+.lc-root[data-motion="reduced"] *::before,
+.lc-root[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+@media (forced-colors: active) {
+  .lc-panel,
+  .lc-btn {
+    border: 1px solid CanvasText;
+  }
+}

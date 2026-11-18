@@ -6,6 +6,24 @@
   --font-display: "Space Grotesk", sans-serif;
   --font-brand: "Poppins", "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* LUNAR COMMAND palette (used only under /lunar) */
+  --color-lc-bg: #04060b;
+  --color-lc-panel: #0a101c;
+  --color-lc-panel2: #0f1828;
+  --color-lc-line: #1b2740;
+  --color-lc-line2: #2a3b5e;
+  --color-lc-text: #e6ecf5;
+  --color-lc-dim: #a3b0c6;
+  --color-lc-mute: #7d8ca8;
+  --color-lc-cyan: #4fd8eb;
+  --color-lc-blue: #5b7fb5;
+  --color-lc-green: #4ad295;
+  --color-lc-caution: #e6c34a;
+  --color-lc-amber: #ff9f43;
+  --color-lc-red: #ff5a5f;
+  --color-lc-s1: #1f9fb8;
+  --color-lc-s2: #8e6ae0;
 }
 
 body {

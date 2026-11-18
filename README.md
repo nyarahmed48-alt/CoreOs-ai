@@ -17,6 +17,7 @@ people you already employ rather than replace them.
 | `/coreos-ai`  | CoreOs.ai — the open model lab, 20 codenamed models to test        |
 | `/contact`    | Contact page, all routes leading to coreosgmail.com@gmail.com      |
 | `/manager`    | The internal SaaS manager console (lazy-loaded, not linked in nav) |
+| `/lunar`      | LUNAR COMMAND — lunar-base mission simulator (lazy-loaded; see `src/lunar/README.md`) |
 
 Client-side routing is a small History API router (`src/site/router.tsx`); the
 production server falls back to `index.html` for unknown paths so deep links and

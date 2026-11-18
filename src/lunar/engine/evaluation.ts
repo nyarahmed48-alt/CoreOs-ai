@@ -76,11 +76,12 @@ export function evaluateMission(s: GameState): Evaluation {
   if (s.stats.energyShortfallKwh > 5) reasons.push(`Power demand went unmet by ${s.stats.energyShortfallKwh.toFixed(0)} kWh in total, forcing systems to run below full capacity.`);
   if (s.stats.foodSpoiledKg > 1) reasons.push(`${s.stats.foodSpoiledKg.toFixed(1)} kg of food was lost to spoilage.`);
 
-  const waterRecovery = s.stats.waterUsedKg > 0 ? s.stats.waterRecoveredKg / s.stats.waterUsedKg : 0;
+  const waterOut = s.stats.waterRecoveredKg + s.stats.waterLostKg;
+  const waterRecovery = waterOut > 0 ? s.stats.waterRecoveredKg / waterOut : 0;
   const avgCondition = FACILITY_IDS.reduce((a, f) => a + s.facilities[f].condition, 0) / FACILITY_IDS.length;
 
   const resourceEfficiency: Metric[] = [
-    { label: "Water recovered vs. used", value: `${(waterRecovery * 100).toFixed(0)}%`, note: `${s.stats.waterRecoveredKg.toFixed(0)} kg recovered, ${s.stats.waterLostKg.toFixed(0)} kg lost` },
+    { label: "Water loop recovery", value: `${(waterRecovery * 100).toFixed(0)}%`, note: `${s.stats.waterRecoveredKg.toFixed(0)} kg recovered vs. ${s.stats.waterLostKg.toFixed(0)} kg lost (excludes water split for oxygen)` },
     { label: "Oxygen generated", value: `${s.stats.oxygenProducedKg.toFixed(1)} kg`, note: `Crew needed ≈${((CONFIG.o2PerCrewDay * s.crew.length * s.hour) / 24).toFixed(1)} kg` },
     { label: "Food grown", value: `${s.stats.foodGrownKg.toFixed(1)} kg`, note: `${s.stats.foodSpoiledKg.toFixed(1)} kg spoiled` },
     { label: "Unmet power demand", value: `${s.stats.energyShortfallKwh.toFixed(0)} kWh` },

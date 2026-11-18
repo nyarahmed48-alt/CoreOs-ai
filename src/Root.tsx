@@ -29,6 +29,10 @@ const DEMOS: Record<string, () => ReactElement> = {
 // is split out and never downloaded by ordinary site visitors.
 const Manager = lazy(() => import("./App"));
 
+// LUNAR COMMAND (lunar-base simulator) is a self-contained app, split out the
+// same way so site visitors never download it.
+const LunarCommand = lazy(() => import("./lunar/LunarApp"));
+
 /** Customer portals and iframe embeds are published as `/?portal=<id>` (see
  *  App.tsx). Those links predate the marketing site and are live on client
  *  sites, so they must keep resolving to the portal rather than the homepage. */
@@ -59,6 +63,14 @@ function Routes() {
           <Manager />
         </Suspense>
       </div>
+    );
+  }
+
+  if (path === "/lunar" || path.startsWith("/lunar/")) {
+    return (
+      <Suspense fallback={<div className="min-h-[100dvh] bg-[#04060b]" />}>
+        <LunarCommand />
+      </Suspense>
     );
   }
 

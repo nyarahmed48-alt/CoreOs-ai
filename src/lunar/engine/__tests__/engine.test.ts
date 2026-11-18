@@ -407,3 +407,13 @@ describe("persistence", () => {
     expect(restarted.stats.failures).toBe(0);
   });
 });
+
+describe("evaluation metrics", () => {
+  it("reports water loop recovery as a fraction no greater than 100%", () => {
+    const s = playMission("standard", 2, true);
+    const metric = evaluateMission(s).resourceEfficiency.find((m) => m.label === "Water loop recovery")!;
+    const pctValue = parseFloat(metric.value);
+    expect(pctValue).toBeGreaterThan(50);
+    expect(pctValue).toBeLessThanOrEqual(100);
+  });
+});
