@@ -1,0 +1,4 @@
+/* Standalone build: the build root is lunar-standalone/, so tell Tailwind to
+   scan the app's source for class names explicitly. */
+@import "../src/index.css";
+@source "../src/lunar";

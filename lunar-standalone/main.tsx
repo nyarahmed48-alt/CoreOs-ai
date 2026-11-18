@@ -2,7 +2,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import LunarApp from "../src/lunar/LunarApp";
-import "../src/index.css";
+import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
